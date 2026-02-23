@@ -109,7 +109,11 @@ def make_numpyro_op_configs():
                         differentiable_argnums=(1,),
                         name="Binomial",
                     ),
-                    marks=[xfail_match("gather:.+unsupported gather pattern")],
+                    marks=[
+                        pytest.mark.skip(
+                            reason="Segfaults on MPS (issue #57). Works on CPU but crashes before exception can be raised."
+                        )
+                    ],
                 ),
                 pytest.param(
                     NumpyroDistributionTestConfig(
