@@ -10,6 +10,8 @@ Checks: >
   performance-*,
   readability-*,
   -bugprone-easily-swappable-parameters,
+  -bugprone-throwing-static-initialization,
+  -readability-redundant-parentheses,
   -misc-const-correctness,
   -misc-include-cleaner,
   -misc-no-recursion,
