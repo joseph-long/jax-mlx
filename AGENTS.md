@@ -8,6 +8,7 @@
 - You may NEVER push to `main` unless explicitly requested.
 - You may NEVER delete operations or tests without my explicit approval.
 - For each op, you MUST register an `OperationTestConfig` for tests in `tests/test_ops.py`. See `tests/configs/unary.py` for an example and `tests/configs/util.py` for the signature of `OperationTestConfig`.
+- The only target we care about for MLX is Apple Silicon, which is a unified-memory architecture. Don't copy memory "to device" or "to host": it's already there!
 
 # CI is Always Green
 
