@@ -264,16 +264,16 @@ PJRT_Error* MPS_Client_BufferFromHostBuffer(PJRT_Client_BufferFromHostBuffer_Arg
         }
     }
 
-    auto mps_buffer = client->client->BufferFromHostBuffer(
+    auto mlx_buffer = client->client->BufferFromHostBuffer(
         args->data, static_cast<int>(args->type), dims, byte_strides,
         args->device ? args->device->device : nullptr);
 
-    if (!mps_buffer) {
+    if (!mlx_buffer) {
         return MakeError("Failed to create Metal buffer. GPU memory may be exhausted.");
     }
 
     auto* buffer = new PJRT_Buffer();
-    buffer->buffer = std::move(mps_buffer);
+    buffer->buffer = std::move(mlx_buffer);
     buffer->client = client;
 
     args->buffer = buffer;

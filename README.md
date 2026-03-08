@@ -9,16 +9,26 @@ A JAX backend piggybacking on implementations for Metal/Apple Silicon in Apple M
 jax-mlx achieves a modest 3x speed-up (TODO: revise) over the CPU backend when training a simple ResNet18 model on CIFAR-10 using an M4 MacBook Air.
 
 ```bash
-$ JAX_PLATFORMS=cpu uv run examples/resnet/main.py --steps=30
-loss = 0.029: 100%|██████████| 30/30 [01:29<00:00,  2.99s/it]
+% JAX_PLATFORMS=cpu uv run examples/resnet/main.py --steps=30
+JAX devices: [CpuDevice(id=0), CpuDevice(id=1), CpuDevice(id=2), CpuDevice(id=3), CpuDevice(id=4), CpuDevice(id=5), CpuDevice(id=6), CpuDevice(id=7), CpuDevice(id=8), CpuDevice(id=9)]
+Loading CIFAR-10...
+Loaded 50,000 training samples
+Preparing 195 batches on device...
+Starting training for 30 steps ...
+loss = 0.029: 100%|████████████████████████████████████████████████████████████████████████████████████████| 30/30 [01:55<00:00,  3.86s/it]
 Final training loss: 0.029
-Time per step (second half): 3.041
+Time per step (second half): 4.457
 
-$ JAX_PLATFORMS=mlx uv run examples/resnet/main.py --steps=30
-WARNING:2026-01-26 17:32:53,989:jax._src.xla_bridge:905: Platform 'mlx' is experimental and not all JAX functionality may be correctly supported!
-loss = 0.028: 100%|██████████| 30/30 [00:30<00:00,  1.03s/it]
-Final training loss: 0.028
-Time per step (second half): 0.991
+% JAX_PLATFORMS=mlx uv run examples/resnet/main.py --steps=30
+JAX devices: [MlxDevice(id=0)]
+Loading CIFAR-10...
+Loaded 50,000 training samples
+Preparing 195 batches on device...
+Starting training for 30 steps ...
+loss = 0.018: 100%|████████████████████████████████████████████████████████████████████████████████████████| 30/30 [00:40<00:00,  1.35s/it]
+Final training loss: 0.018
+Time per step (second half): 1.336
+
 ```
 
 ## Installation

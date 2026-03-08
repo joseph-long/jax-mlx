@@ -38,14 +38,14 @@ PJRT_Error* MPS_DeviceDescription_Kind(PJRT_DeviceDescription_Kind_Args* args) {
 }
 
 PJRT_Error* MPS_DeviceDescription_DebugString(PJRT_DeviceDescription_DebugString_Args* args) {
-    static const char* str = "MPS:0";
+    static const char* str = "MLX:0";
     args->debug_string = str;
     args->debug_string_size = 5;
     return nullptr;
 }
 
 PJRT_Error* MPS_DeviceDescription_ToString(PJRT_DeviceDescription_ToString_Args* args) {
-    static const char* str = "MpsDevice(id=0)";
+    static const char* str = "MlxDevice(id=0)";
     args->to_string = str;
     args->to_string_size = 15;
     return nullptr;

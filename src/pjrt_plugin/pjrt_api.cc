@@ -25,14 +25,14 @@ PJRT_Client* GetOrCreateDefaultClient() {
         return g_default_client;
 
     MPS_LOG_INFO("Creating default client\n");
-    auto mps_client = jax_mlx::MlxClient::Create();
-    if (!mps_client) {
-        MPS_LOG_ERROR("Failed to create MPS client\n");
+    auto mlx_client = jax_mlx::MlxClient::Create();
+    if (!mlx_client) {
+        MPS_LOG_ERROR("Failed to create MLX client\n");
         return nullptr;
     }
 
     g_default_client = new PJRT_Client();
-    g_default_client->client = std::move(mps_client);
+    g_default_client->client = std::move(mlx_client);
 
     for (int i = 0; i < g_default_client->client->device_count(); i++) {
         auto* dev = new PJRT_Device();
