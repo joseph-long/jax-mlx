@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace jax_mps {
+namespace jax_mlx {
 
 /// Build a full error message for unsupported ops, including links to the
 /// GitHub issue template and CONTRIBUTING.md.
@@ -33,6 +33,6 @@ inline std::string UnsupportedOpsMessage(const std::vector<std::string>& op_name
            "Add it yourself: https://github.com/tillahoffmann/jax-mlx/blob/main/CONTRIBUTING.md";
 }
 
-}  // namespace jax_mps
+}  // namespace jax_mlx
 
 #endif  // ISSUE_URL_H

@@ -32,251 +32,139 @@ MLX Runtime
 Apple Silicon
 ```
 
-## Layer 1: PJRT C API (~80% reuse)
+---
 
-`pjrt_api.cc`, `pjrt_client.cc`, `pjrt_device.cc`, `pjrt_memory.cc`,
-`pjrt_buffer.cc`, `pjrt_executable.cc`, `pjrt_event.cc`, `pjrt_topology.cc`
+## Status
 
-These files are mechanical PJRT wiring. The only changes are:
-- Replace `jax_mps::MpsClient` → `jax_mlx::MlxClient` in `pjrt_types.h`
-- Replace `jax_mps::MpsBuffer` → `jax_mlx::MlxBuffer`
-- Replace `jax_mps::MpsExecutable` → `jax_mlx::MlxExecutable`
-- Remove `metal_device()` guard (MLX handles GPU availability internally)
-- All public function signatures and PJRT structs are unchanged
+**Branch**: `claude-mps-to-mlx`
 
-## Layer 2: Buffer (`mlx_buffer.h/.cc`)
+### Done
 
-Replaces `mps_buffer.h/.mm`. Wraps `mlx::core::array` instead of `id<MTLBuffer>`.
+- [x] All MLX skeleton files: `mlx_buffer`, `mlx_client`, `mlx_device`, `mlx_executable`, `mlx_type_utils`
+- [x] `stablehlo_parser.cc` (pure C++, op support discovered at execution time)
+- [x] `pjrt_types.h` updated to use `jax_mlx::` types
+- [x] All PJRT boilerplate updated (`pjrt_client.cc`, `pjrt_executable.cc`, etc.)
+- [x] Build system: MLX from Python virtualenv, pure C++, no ObjC frameworks
+- [x] Deps renamed: `jax-mps-deps` → `jax-mlx-deps` (setup_deps.sh, CMakeLists.txt, CI)
+- [x] Namespace: `jax_mps` → `jax_mlx` in all actively compiled files
+- [x] `issue_url.h` namespace updated to `jax_mlx`
+- [x] StableHLO interpreter in `mlx_executable.cc` (~60 ops):
+  - Elementwise: add, subtract, multiply, divide, power, remainder, max, min
+  - Unary math: abs, neg, sign, exp, expm1, sqrt, rsqrt, cbrt, log, log1p, logistic, sin, cos, tan, tanh, floor, ceil, round, is_finite, real, imag, popcnt, count_leading_zeros, not
+  - CHLO: asin, acos, atan, asinh, acosh, atanh, sinh, cosh, erf, erf_inv
+  - Comparisons: eq, ne, lt, le, gt, ge
+  - Shape: reshape, broadcast_in_dim, convert, transpose, iota, copy, concatenate, slice, dynamic_slice, dynamic_update_slice, pad
+  - Reductions: sum, max, min, prod, any, all
+  - Linear algebra: dot_general (via permute+reshape+matmul)
+  - Bitwise: and, or, xor, shift_left, shift_right_arithmetic, shift_right_logical
+  - Other: select, atan2, complex
+  - Module: func.call (recursive)
+- [x] `uv run pytest`: 96 tests passing, 226 skipped
 
-Key properties:
-- **Unified memory**: no separate GPU/CPU copies, no explicit transfers
-- Input: allocate a copy of the PJRT data, construct `mlx::core::array(ptr, shape, dtype, deleter)`
-- Output: after `array_.eval()`, `array_.data<uint8_t>()` is a directly readable CPU pointer
-- No ObjC — pure C++17
+### Remaining failures (1341 total)
 
-`MlxBuffer` exposes the same interface as `MpsBuffer`:
-- `dtype()`, `dimensions()`, `byte_size()`, `element_count()`
-- `ToHostBuffer(void* dst, std::function<void()> on_done)`
-- `IsDeleted()`, `Delete()`
-
-## Layer 3: Client (`mlx_client.h/.cc`)
-
-Replaces `mps_client.h/.mm`. Initializes `mlx::core::Device::gpu` (or CPU fallback).
-Creates one `MlxDevice` (id=0). Exposes `BufferFromHostBuffer` and `CompileStableHLO`.
-No ObjC, no Metal framework link (MLX's dylib handles that internally).
-
-## Layer 4: Executable (`mlx_executable.h/.cc`)
-
-Replaces `mps_executable.h/.mm`. This is the core execution engine.
-
-**Current model**: Build `MPSGraph`, hand to Apple's compiler, execute. Native ops
-punch holes in the graph and are interleaved via `ExecutionPlan`. Apple's compiler
-has bugs with nested control flow.
-
-**New model**:
-```cpp
-// ValueMap: mlir::Value → mlx::core::array (lazy, not yet evaluated)
-using ValueMap = std::unordered_map<void*, mlx::core::array>;
-
-// Walk MLIR op-by-op, build up lazy MLX array graph
-for (auto& op : entry_func_.getBody().front())
-    dispatch(op, value_map);
-
-// Single eval() dispatches everything to Metal via MLX
-mlx::core::eval(output_arrays);
-```
-
-The `ExecutionPlan` with GRAPH/NATIVE segment interleaving is deleted.
-Everything is a single-pass MLIR walk that accumulates lazy MLX arrays.
-
-Wrap with `mlx::core::compile(fn)` for Metal kernel caching across calls.
-
-## Layer 5: Op Registry (`mlx_registry.h`)
-
-Replaces `ops/registry.h`. The `ValueMap` type changes:
-
-```cpp
-// OLD
-using ValueMap = std::unordered_map<void*, MPSGraphTensor*>;
-struct HandlerContext { MPSGraph* graph; mlir::Operation* op; ValueMap& values; };
-
-// NEW
-using ValueMap = std::unordered_map<void*, mlx::core::array>;
-struct HandlerContext { mlir::Operation* op; ValueMap& values; };
-```
-
-The GRAPH/NATIVE handler distinction is deleted — there is only one handler kind.
-
-Unary/binary macros become free-function calls:
-```cpp
-// OLD: REGISTER_MLIR_UNARY_OP("stablehlo.sine", "sinWithTensor:", Sin)
-// NEW: REGISTER_MLIR_UNARY_OP("stablehlo.sine", mlx::core::sin, Sin)
-```
-
-## Layer 6: Op Handlers (`ops/*.cc`)
-
-Replace `ops/*.mm`. Each file becomes pure C++. Most op bodies shrink to 1–3 lines.
-
-Map of StableHLO → MLX equivalents (representative):
-
-| StableHLO | MLX |
-|---|---|
-| `stablehlo.add` | `mlx::core::add` |
-| `stablehlo.multiply` | `mlx::core::multiply` |
-| `stablehlo.dot_general` | `mlx::core::matmul` / `tensordot` |
-| `stablehlo.reduce` | `mlx::core::sum` / `max` / `min` / `prod` |
-| `stablehlo.convolution` | `mlx::core::conv_general` |
-| `stablehlo.sort` | `mlx::core::argsort` + `take` |
-| `stablehlo.fft` | `mlx::core::fft::fft` |
-| `stablehlo.cholesky` | `mlx::core::linalg::cholesky` |
-| `stablehlo.triangular_solve` | `mlx::core::linalg::triangular_solve` |
-| `stablehlo.gather` | `mlx::core::gather` |
-| `stablehlo.scatter` | `mlx::core::scatter` |
-
-Complex types (`complex64`) work natively — no custom shaders needed.
-
-## Layer 7: Control Flow (big win)
-
-Replaces `ops/control_flow_ops.h/.mm`.
-
-```cpp
-// stablehlo.while → literal C++ while loop
-ProcessResult HandleWhile(HandlerContext& ctx) {
-    // init carried values from operands
-    while (true) {
-        run_region(cond_region, carried_values);
-        mlx::core::eval(cond_out);
-        if (!cond_out.item<bool>()) break;
-        run_region(body_region, carried_values);
-    }
-}
-
-// stablehlo.if → C++ if
-ProcessResult HandleIf(HandlerContext& ctx) {
-    mlx::core::eval(pred);
-    run_region(pred.item<bool>() ? true_region : false_region, operands);
-}
-```
-
-No dependency on `MPSGraph`'s graph compiler for control flow. The nested
-`while-inside-cond` segfault (issue #57) cannot occur. MLX's lazy eval still
-batches and fuses ops within each loop body iteration.
-
-## Build System
-
-- Remove `OBJCXX` from `project(LANGUAGES ...)`
-- Remove `Metal`, `MetalPerformanceShaders`, `MetalPerformanceShadersGraph`,
-  `Foundation` framework links
-- Add MLX cmake path from Python package:
-  ```cmake
-  execute_process(
-      COMMAND ${Python3_EXECUTABLE} -c
-          "import mlx.core, os; print(os.path.dirname(os.path.abspath(mlx.core.__file__)))"
-      OUTPUT_VARIABLE MLX_PYTHON_DIR ...)
-  list(APPEND CMAKE_PREFIX_PATH "${MLX_PYTHON_DIR}")
-  find_package(MLX REQUIRED CONFIG)
-  ```
-- Link `mlx` instead of Apple frameworks
-- All `.mm` sources become `.cc` (or new `.cc` files)
-
-## What Transfers Unchanged
-
-| Component | Reuse |
-|---|---|
-| PJRT C API boilerplate | ~80% |
-| StableHLO MLIR parsing (`stablehlo_parser`) | ~95% |
-| Type utilities (dtype mapping) | ~60% |
-| Op registration pattern | ~90% |
-| Test suite | 100% |
-| CI / pre-commit / benchmarks | 100% |
-
-## What Gets Rewritten
-
-| Component | Notes |
-|---|---|
-| `mps_buffer` → `mlx_buffer` | Simpler — unified memory, no transfers |
-| `mps_client` → `mlx_client` | Pure C++, no ObjC |
-| `mps_executable` → `mlx_executable` | Drop ExecutionPlan; add compile() |
-| `ops/registry.h` | Remove MPSGraph*, NATIVE kind |
-| `ops/*.mm` → `ops/*.cc` | Mechanical; MLX API replaces MPSGraph ObjC |
-| `control_flow_ops` | Much simpler; C++ loops replace graph-mode ops |
-| `type_utils` | MLX dtypes instead of MPSDataType |
-| `CMakeLists.txt` | Add MLX, remove ObjC/frameworks |
-
-## Advantages Over Current Design
-
-- **Complex types** work everywhere (`complex64` is native in MLX)
-- **Control flow** works reliably — no Apple graph compiler bugs
-- **Full linalg** via `mlx::core::linalg` (solve, inv, cholesky, svd, eig, etc.)
-- **No ObjC** in the plugin source
-- **Automatic kernel fusion** via `mlx::core::compile()`
-- **Linux/CUDA** path for free once MLX's CUDA backend matures
+| Error | Count | Notes |
+|---|---|---|
+| `stablehlo.custom_call` | ~1189 | PRNG, sorting keys, other JAX internals |
+| `stablehlo.scatter` | ~56 | Index-update ops, scatter accumulation |
+| `stablehlo.while` | unknown | Control flow (loops) |
+| `stablehlo.if` | unknown | Control flow (conditionals) |
+| Accuracy | ~15 | Numerical tolerance failures |
 
 ---
 
-## Rough Draft
+## Next Steps
 
-Goal: get the plugin to compile, link, and load in JAX so that iteration on the
-op layer can begin. Execution returns "not yet implemented" errors at this stage.
+### 1. `stablehlo.custom_call` (highest impact: ~1189 failures)
 
-### Step 1: Add MLX to dependencies
+JAX dispatches PRNG (`threefry2x32`), sort-with-keys, and other ops as
+`stablehlo.custom_call` with a `call_target_name` attribute.
 
-Add `mlx>=0.31.0` to `pyproject.toml` `[project.dependencies]`.
-MLX ships its C++ headers and `libmlx.dylib` inside the Python package, along with
-a CMake config at `{site-packages}/mlx/share/cmake/MLX/MLXConfig.cmake`.
+Approach: inspect `call_target_name` and dispatch to MLX:
 
-### Step 2: Create new MLX skeleton files
-
-Create the following pure-C++ files with the minimum interface needed to
-satisfy all PJRT boilerplate compilation:
-
-- `src/pjrt_plugin/mlx_device.h` — `MlxDevice` with `id()`, `local_hardware_id()`, `debug_string()`
-- `src/pjrt_plugin/mlx_client.h/.cc` — `MlxClient` wrapping `mlx::core::Device::gpu`;
-  `BufferFromHostBuffer` copies data into an MLX array;
-  `CompileStableHLO` stores the `ParsedModule`
-- `src/pjrt_plugin/mlx_buffer.h/.cc` — `MlxBuffer` wrapping `mlx::core::array`;
-  `ToHostBuffer` calls `eval()` then `memcpy`
-- `src/pjrt_plugin/mlx_executable.h/.cc` — `MlxExecutable` stub;
-  `IsValid()` true, `Execute()` returns `ExecutionResult::Error("not yet implemented")`
-- `src/pjrt_plugin/mlx_type_utils.h/.cc` — `PjrtDtypeToMlx`, `MlxDtypeToPjrt`,
-  `MlirTypeToPjrtDtype` (last one reused unchanged from old `type_utils`)
-
-### Step 3: Create `stablehlo_parser.cc`
-
-Copy `stablehlo_parser.mm` to `stablehlo_parser.cc`. Remove the
-`#include "pjrt_plugin/ops/registry.h"` and make `checkUnsupportedOps` always
-return `{}` — op support will be discovered at execution time, not compile time.
-
-### Step 4: Update `pjrt_types.h`
-
-Replace `mps_buffer.h / mps_client.h / mps_device.h / mps_executable.h` includes
-with `mlx_buffer.h / mlx_client.h / mlx_device.h / mlx_executable.h`. Update the
-`PJRT_Client`, `PJRT_Buffer`, and `PJRT_Executable` structs to use `jax_mlx::` types.
-
-### Step 5: Patch `pjrt_client.cc` and `pjrt_executable.cc`
-
-- Remove the two `metal_device()` guard checks in `pjrt_client.cc`
-  (replace with simple `!client->client` null checks)
-- Update `jax_mps::MpsBuffer*` and `jax_mps::MpsDevice*` references in
-  `pjrt_executable.cc` to `jax_mlx::` equivalents
-- Update the zero-sized tensor error message to remove MPS-specific wording
-
-### Step 6: Update `CMakeLists.txt`
-
-- Remove `OBJCXX` from `project(LANGUAGES ...)`
-- Remove `CMAKE_OBJCXX_STANDARD` settings
-- Remove `find_library` calls for Metal/MPS/MPSGraph/Foundation frameworks
-- Add Python-based MLX prefix path discovery and `find_package(MLX REQUIRED CONFIG)`
-- Replace all `.mm` source files in `PJRT_SOURCES` with the new `.cc` files
-- Replace framework links with `mlx`
-
-### Step 7: Build and test
-
-```bash
-uv pip install -e .
-uv run pytest tests/ -x -q 2>&1 | head -60
+```cpp
+else if (opName == "stablehlo.custom_call") {
+    auto ccOp = mlir::cast<mlir::stablehlo::CustomCallOp>(op);
+    auto target = ccOp.getCallTargetName();
+    if (target == "mhlo.threefry2x32") {
+        // Implement Threefry PRNG ...
+    } else {
+        return InterpResult::Error(jax_mlx::UnsupportedOpsMessage({target.str()}));
+    }
+}
 ```
 
-Expected outcome: plugin loads, `jax.devices('mps')` returns a device, all tests
-fail with "not yet implemented" rather than crashing. This is the baseline from
-which op-by-op implementation begins.
+Key targets to identify by running: `JAX_TRACEBACK_FILTERING=off uv run pytest tests/ -q 2>&1 | grep "custom_call" | sort -u`
+
+### 2. `stablehlo.scatter` (~56 failures)
+
+MLX has `mlx::core::scatter` but with a different signature than StableHLO scatter.
+StableHLO scatter has a scatter body region (can be add, multiply, max, etc.).
+
+Approach:
+1. Inspect the scatter body region to determine the scatter kind (add, update, etc.)
+2. Map to the appropriate `mlx::core::scatter` / `mlx::core::scatter_add` etc.
+
+### 3. Control flow: `stablehlo.while` and `stablehlo.if`
+
+These require running sub-regions of the MLIR. Implement by factoring out a
+`runRegion(region, carried_values)` helper that calls `interpretFunction` on the
+region's entry block:
+
+```cpp
+// stablehlo.while
+else if (opName == "stablehlo.while") {
+    auto whileOp = mlir::cast<mlir::stablehlo::WhileOp>(op);
+    // carried_values initialized from operands
+    while (true) {
+        auto cond = interpretRegion(whileOp.getCond(), module, carried_values);
+        mx::eval(cond.outputs);
+        if (!cond.outputs[0].item<bool>()) break;
+        auto body = interpretRegion(whileOp.getBody(), module, carried_values);
+        carried_values = body.outputs;
+    }
+    // map while results to carried_values
+}
+
+// stablehlo.if
+else if (opName == "stablehlo.if") {
+    auto ifOp = mlir::cast<mlir::stablehlo::IfOp>(op);
+    mx::eval({operand(0)});
+    auto& branch = operand(0).item<bool>() ? ifOp.getTrueBranch()
+                                            : ifOp.getFalseBranch();
+    auto result = interpretRegion(branch, module, {});
+    // map results
+}
+```
+
+The key difference from `func.call`: regions share the parent block's `ValueMap`
+(or operate on explicitly-passed `carried_values`), whereas `func.call` creates a
+fresh scope.
+
+### 4. Remove old MPS code
+
+Once all tests pass on the MLX backend, the following files can be deleted:
+
+- `src/pjrt_plugin/mps_buffer.h/.mm`
+- `src/pjrt_plugin/mps_client.h/.mm`
+- `src/pjrt_plugin/mps_device.h/.mm`
+- `src/pjrt_plugin/mps_executable.h/.mm`
+- `src/pjrt_plugin/ops/` (entire directory — all `.mm` files)
+
+### 5. Performance: `mlx::core::compile()`
+
+Wrap `interpretFunction` with `mlx::core::compile()` to cache Metal kernel
+compilation across calls. This is the primary performance optimization — identical
+to how `jax.jit` caches XLA compilation, but inside the MLX runtime layer.
+
+```cpp
+// In MlxExecutable::Execute, on first call:
+compiled_fn_ = mlx::core::compile([this, device](const std::vector<mx::array>& inputs) {
+    return interpretFunction(entry_func_, *module_, inputs).outputs;
+});
+```
+
+### 6. Accuracy fixes
+
+A small number of tests fail with numerical tolerance errors rather than missing ops.
+These should be investigated after the above items are complete.

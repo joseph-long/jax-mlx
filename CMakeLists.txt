@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
-project(jax_mps LANGUAGES C CXX)
+project(jax_mlx LANGUAGES C CXX)
 
 # Add default path for MLIR/StableHLO dependencies
-list(APPEND CMAKE_PREFIX_PATH "$ENV{HOME}/.local/jax-mps-deps")
+list(APPEND CMAKE_PREFIX_PATH "$ENV{HOME}/.local/jax-mlx-deps")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

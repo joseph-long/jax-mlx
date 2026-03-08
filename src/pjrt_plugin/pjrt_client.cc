@@ -198,7 +198,7 @@ PJRT_Error* MPS_Client_Compile(PJRT_Client_Compile_Args* args) {
 
     // Check for unsupported operations discovered during parsing
     if (!parsed_module.unsupported_ops.empty()) {
-        return MakeError(jax_mps::UnsupportedOpsMessage(parsed_module.unsupported_ops));
+        return MakeError(jax_mlx::UnsupportedOpsMessage(parsed_module.unsupported_ops));
     }
 
     // Compile the ParsedModule to MPS executable (takes ownership)

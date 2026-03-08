@@ -1,4 +1,4 @@
-name: jax-mps
+name: jax-mlx
 
 on:
   push:
@@ -36,8 +36,8 @@ jobs:
         id: cache
         uses: actions/cache/restore@v4
         with:
-          path: ${{ github.workspace }}/.jax-mps-deps
-          key: mlir-stablehlo-v2-macos14-${{ hashFiles('scripts/setup_deps.sh') }}
+          path: ${{ github.workspace }}/.jax-mlx-deps
+          key: mlir-stablehlo-v3-macos14-${{ hashFiles('scripts/setup_deps.sh') }}
 
       - name: Install build tools
         if: steps.cache.outputs.cache-hit != 'true'
@@ -45,7 +45,7 @@ jobs:
 
       - name: Build dependencies
         if: steps.cache.outputs.cache-hit != 'true'
-        run: ./scripts/setup_deps.sh --prefix "${{ github.workspace }}/.jax-mps-deps"
+        run: ./scripts/setup_deps.sh --prefix "${{ github.workspace }}/.jax-mlx-deps"
         env:
           JOBS: 4
 
@@ -53,8 +53,8 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
-          path: ${{ github.workspace }}/.jax-mps-deps
-          key: mlir-stablehlo-v2-macos14-${{ hashFiles('scripts/setup_deps.sh') }}
+          path: ${{ github.workspace }}/.jax-mlx-deps
+          key: mlir-stablehlo-v3-macos14-${{ hashFiles('scripts/setup_deps.sh') }}
 
   build:
     name: Build wheel
@@ -71,19 +71,19 @@ jobs:
       - name: Restore deps from cache
         uses: actions/cache/restore@v4
         with:
-          path: ${{ github.workspace }}/.jax-mps-deps
-          key: mlir-stablehlo-v2-macos14-${{ hashFiles('scripts/setup_deps.sh') }}
+          path: ${{ github.workspace }}/.jax-mlx-deps
+          key: mlir-stablehlo-v3-macos14-${{ hashFiles('scripts/setup_deps.sh') }}
           fail-on-cache-miss: true
 
       - name: Install project and dev dependencies
         run: uv sync --all-groups
         env:
-          CMAKE_PREFIX_PATH: ${{ github.workspace }}/.jax-mps-deps
+          CMAKE_PREFIX_PATH: ${{ github.workspace }}/.jax-mlx-deps
 
       - name: Build wheel
         run: uv build --wheel
         env:
-          CMAKE_PREFIX_PATH: ${{ github.workspace }}/.jax-mps-deps
+          CMAKE_PREFIX_PATH: ${{ github.workspace }}/.jax-mlx-deps
 
       - name: Upload wheel
         uses: actions/upload-artifact@v4
@@ -106,8 +106,8 @@ jobs:
       - name: Restore deps from cache
         uses: actions/cache/restore@v4
         with:
-          path: ${{ github.workspace }}/.jax-mps-deps
-          key: mlir-stablehlo-v2-macos14-${{ hashFiles('scripts/setup_deps.sh') }}
+          path: ${{ github.workspace }}/.jax-mlx-deps
+          key: mlir-stablehlo-v3-macos14-${{ hashFiles('scripts/setup_deps.sh') }}
           fail-on-cache-miss: true
 
       - name: Install llvm
@@ -121,7 +121,7 @@ jobs:
       - name: cmake configure
         run: |
           mkdir -p build && cd build
-          cmake .. -DCMAKE_PREFIX_PATH="${{ github.workspace }}/.jax-mps-deps"
+          cmake .. -DCMAKE_PREFIX_PATH="${{ github.workspace }}/.jax-mlx-deps"
 
       - name: clang-tidy
         run: |
@@ -143,14 +143,14 @@ jobs:
       - name: Restore deps from cache
         uses: actions/cache/restore@v4
         with:
-          path: ${{ github.workspace }}/.jax-mps-deps
-          key: mlir-stablehlo-v2-macos14-${{ hashFiles('scripts/setup_deps.sh') }}
+          path: ${{ github.workspace }}/.jax-mlx-deps
+          key: mlir-stablehlo-v3-macos14-${{ hashFiles('scripts/setup_deps.sh') }}
           fail-on-cache-miss: true
 
       - name: Install project dependencies
         run: uv sync --all-groups
         env:
-          CMAKE_PREFIX_PATH: ${{ github.workspace }}/.jax-mps-deps
+          CMAKE_PREFIX_PATH: ${{ github.workspace }}/.jax-mlx-deps
 
       - name: ruff format
         run: uv run ruff format --check src tests
@@ -177,8 +177,8 @@ jobs:
       - name: Restore deps from cache
         uses: actions/cache/restore@v4
         with:
-          path: ${{ github.workspace }}/.jax-mps-deps
-          key: mlir-stablehlo-v2-macos14-${{ hashFiles('scripts/setup_deps.sh') }}
+          path: ${{ github.workspace }}/.jax-mlx-deps
+          key: mlir-stablehlo-v3-macos14-${{ hashFiles('scripts/setup_deps.sh') }}
           fail-on-cache-miss: true
 
       - name: Build dev wheel
@@ -189,7 +189,7 @@ jobs:
           sed -i '' "s/^version = \".*\"/version = \"$DEV_VERSION\"/" pyproject.toml
           uv build --wheel
         env:
-          CMAKE_PREFIX_PATH: ${{ github.workspace }}/.jax-mps-deps
+          CMAKE_PREFIX_PATH: ${{ github.workspace }}/.jax-mlx-deps
 
       - name: Upload dev wheel
         uses: actions/upload-artifact@v4
