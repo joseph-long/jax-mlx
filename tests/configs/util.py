@@ -10,9 +10,10 @@ from jax import numpy as jnp
 from jax import random
 
 CPU_DEVICE = jax.devices("cpu")[0]
-MLX_DEVICE = (
-    jax.devices("mlx")[0] if "mlx" in {d.platform for d in jax.devices()} else None
-)
+try:
+    MLX_DEVICE = jax.devices("mlx")[0]
+except Exception:
+    MLX_DEVICE = None
 STABLEHLO_OP_RE = re.compile(r"(?<![\#\!])(?:stablehlo|chlo)\.[\w\.]+")
 
 
@@ -117,21 +118,25 @@ class OperationTestConfig:
     def get_args(self, key: jax.Array):
         """Get positional arguments, using key for any random generation."""
         args = []
-        for arg_func in self.args:
-            key, subkey = random.split(key)
-            arg = arg_func(subkey)
-            # Convert numpy arrays to JAX arrays for compatibility
-            if isinstance(arg, numpy.ndarray):
-                arg = jnp.asarray(arg)
-            args.append(arg)
+        key = jax.device_put(key, CPU_DEVICE)
+        with jax.default_device(CPU_DEVICE):
+            for arg_func in self.args:
+                key, subkey = random.split(key)
+                arg = arg_func(subkey)
+                # Convert numpy arrays to JAX arrays for compatibility
+                if isinstance(arg, numpy.ndarray):
+                    arg = jnp.asarray(arg)
+                args.append(arg)
         return args
 
     def get_kwargs(self, key: jax.Array):
         """Get keyword arguments, using key for any random generation."""
         kwargs = {}
-        for k, arg_func in self.kwargs.items():
-            key, subkey = random.split(key)
-            kwargs[k] = arg_func(subkey)
+        key = jax.device_put(key, CPU_DEVICE)
+        with jax.default_device(CPU_DEVICE):
+            for k, arg_func in self.kwargs.items():
+                key, subkey = random.split(key)
+                kwargs[k] = arg_func(subkey)
         return kwargs
 
     def get_differentiable_argnums(self) -> tuple[int, ...]:
@@ -156,12 +161,23 @@ class OperationTestConfig:
                 differentiable_argnums.append(argnum)
         return tuple(differentiable_argnums)
 
-    def evaluate_value(self, jit: bool):
+    def evaluate_value(self, jit: bool, device: jax.Device | None = None):
         """Evaluate the output of the operation."""
-        key = random.key(self.seed)
+        with jax.default_device(CPU_DEVICE):
+            key = random.key(self.seed)
         args_key, kwargs_key = random.split(key)
         args = self.get_args(args_key)
         kwargs = self.get_kwargs(kwargs_key)
+        args = [
+            jax.device_put(arg, device)
+            if isinstance(arg, (jax.Array, nnx.Module))
+            else arg
+            for arg in args
+        ]
+        kwargs = {
+            k: (jax.device_put(v, device) if isinstance(v, (jax.Array, nnx.Module)) else v)
+            for k, v in kwargs.items()
+        }
         lowered = None
         func = self.func
         if jit:
@@ -175,13 +191,26 @@ class OperationTestConfig:
             self.EXERCISED_STABLEHLO_OPS.update(STABLEHLO_OP_RE.findall(stablehlo_text))
         return result
 
-    def evaluate_grad(self, argnum: int, jit: bool) -> tuple[jnp.ndarray]:
+    def evaluate_grad(
+        self, argnum: int, jit: bool, device: jax.Device | None = None
+    ) -> tuple[jnp.ndarray]:
         """Evaluate the gradient of the operation. If the operation returns a tuple of
         values, gradients are evaluated for each element."""
-        key = random.key(self.seed)
+        with jax.default_device(CPU_DEVICE):
+            key = random.key(self.seed)
         args_key, kwargs_key = random.split(key)
         args = self.get_args(args_key)
         kwargs = self.get_kwargs(kwargs_key)
+        args = [
+            jax.device_put(arg, device)
+            if isinstance(arg, (jax.Array, nnx.Module))
+            else arg
+            for arg in args
+        ]
+        kwargs = {
+            k: (jax.device_put(v, device) if isinstance(v, (jax.Array, nnx.Module)) else v)
+            for k, v in kwargs.items()
+        }
 
         func = self.func
         result = func(*args, **kwargs)

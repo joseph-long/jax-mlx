@@ -103,7 +103,7 @@ def test_op_value(op_config: OperationTestConfig, jit: bool) -> None:
     for platform in platforms:
         device = jax.devices(platform)[0]
         with jax.default_device(device):
-            result = op_config.evaluate_value(jit)
+            result = op_config.evaluate_value(jit, device)
             jax.tree.map_with_path(
                 lambda path, value: fassert(
                     value.device == device,
@@ -128,7 +128,7 @@ def test_op_grad(op_config: OperationTestConfig, jit: bool) -> None:
         for platform in platforms:
             device = jax.devices(platform)[0]
             with jax.default_device(device):
-                result = op_config.evaluate_grad(argnum, jit)
+                result = op_config.evaluate_grad(argnum, jit, device)
                 jax.tree.map_with_path(
                     lambda path, value: fassert(
                         value.device == device,

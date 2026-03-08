@@ -39,6 +39,18 @@ uv pip install --python .venv -e .
 uv run pytest
 ```
 
+## Always Test Latest Built Artifact
+
+- There may be multiple `libpjrt_plugin_mlx.dylib` files on disk (for example in UV caches). Always pin tests to the freshly built local artifact.
+- After each rebuild, run tests with `JAX_MLX_LIBRARY_PATH` set to the newest build output:
+
+```bash
+LATEST_DYLIB="$(ls -t build/*/lib/libpjrt_plugin_mlx.dylib | head -n 1)"
+JAX_MLX_LIBRARY_PATH="$LATEST_DYLIB" uv run pytest
+```
+
+- Use this same env var for focused test runs too (not just full-suite runs).
+
 # Benchmarks
 
 Benchmarks are excluded from normal test runs. To run them:

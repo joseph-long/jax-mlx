@@ -7,6 +7,7 @@
 #include <cstring>
 #include <cmath>
 #include <algorithm>
+#include <limits>
 #include <numeric>
 #include <set>
 #include <sstream>
@@ -15,6 +16,7 @@
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinTypes.h"
+#include "mlx/fft.h"
 #include "mlx/mlx.h"
 #include "stablehlo/dialect/ChloOps.h"
 #include "stablehlo/dialect/StablehloOps.h"
@@ -386,6 +388,312 @@ static mx::array HandleScatter(mx::array operand, mx::array scatterIndices, mx::
         return mx::scatter_add(operand, indices, updatesForMlx, axes);
     }
     return mx::scatter(operand, indices, updatesForMlx, axes);
+}
+
+static mx::array HandleCholesky(mx::array a, mlir::stablehlo::CholeskyOp choleskyOp) {
+    bool lower = true;
+    if (choleskyOp.getLowerAttr()) lower = choleskyOp.getLower();
+
+    if (a.ndim() < 2) {
+        throw std::invalid_argument("cholesky expects rank >= 2");
+    }
+    int n = a.shape()[a.ndim() - 1];
+    int m = a.shape()[a.ndim() - 2];
+    if (n != m) throw std::invalid_argument("cholesky expects square matrices");
+    if (a.dtype() != mx::float32 && a.dtype() != mx::float64) {
+        throw std::invalid_argument("cholesky only supports f32/f64");
+    }
+
+    a.eval();
+    std::vector<int64_t> dims(a.shape().begin(), a.shape().end());
+    std::vector<int64_t> rawStrides(a.strides().begin(), a.strides().end());
+    auto strides = normalizeStridesToElements(
+        dims, rawStrides, static_cast<int64_t>(a.data_size()),
+        static_cast<size_t>(a.dtype().size()));
+
+    int64_t batch = 1;
+    for (int i = 0; i < a.ndim() - 2; ++i) batch *= a.shape()[i];
+    int64_t matrixElems = static_cast<int64_t>(n) * static_cast<int64_t>(n);
+    int64_t totalElems = batch * matrixElems;
+
+    auto makeOutput = [&](const auto* srcPtr, auto nanValue) -> mx::array {
+        using T = std::decay_t<decltype(*srcPtr)>;
+        std::vector<T> in(static_cast<size_t>(totalElems));
+        std::vector<T> out(static_cast<size_t>(totalElems), static_cast<T>(0));
+
+        size_t dstOffset = 0;
+        copyStridedToLinearBytes(reinterpret_cast<const uint8_t*>(srcPtr),
+                                 reinterpret_cast<uint8_t*>(in.data()),
+                                 dims,
+                                 strides,
+                                 sizeof(T),
+                                 0,
+                                 0,
+                                 dstOffset);
+
+        for (int64_t b = 0; b < batch; ++b) {
+            const int64_t base = b * matrixElems;
+            bool ok = true;
+            for (int i = 0; i < n && ok; ++i) {
+                for (int j = 0; j <= i; ++j) {
+                    T sum = in[static_cast<size_t>(base + i * n + j)];
+                    for (int k = 0; k < j; ++k) {
+                        sum -= out[static_cast<size_t>(base + i * n + k)] *
+                               out[static_cast<size_t>(base + j * n + k)];
+                    }
+                    if (i == j) {
+                        if (!(sum > static_cast<T>(0)) || std::isnan(sum)) {
+                            ok = false;
+                            break;
+                        }
+                        out[static_cast<size_t>(base + i * n + j)] = std::sqrt(sum);
+                    } else {
+                        T d = out[static_cast<size_t>(base + j * n + j)];
+                        out[static_cast<size_t>(base + i * n + j)] = sum / d;
+                    }
+                }
+            }
+
+            if (!ok) {
+                for (int i = 0; i < n; ++i) {
+                    for (int j = 0; j <= i; ++j) {
+                        out[static_cast<size_t>(base + i * n + j)] = nanValue;
+                    }
+                }
+            }
+
+            if (!lower) {
+                std::vector<T> upper(static_cast<size_t>(matrixElems), static_cast<T>(0));
+                for (int i = 0; i < n; ++i) {
+                    for (int j = i; j < n; ++j) {
+                        upper[static_cast<size_t>(i * n + j)] =
+                            out[static_cast<size_t>(base + j * n + i)];
+                    }
+                }
+                std::copy(upper.begin(),
+                          upper.end(),
+                          out.begin() + static_cast<std::ptrdiff_t>(base));
+            }
+        }
+
+        size_t nbytes = out.size() * sizeof(T);
+        void* buf = std::malloc(nbytes > 0 ? nbytes : 1);
+        if (nbytes > 0) std::memcpy(buf, out.data(), nbytes);
+        return mx::array(buf, a.shape(), a.dtype(), [](void* p) { std::free(p); });
+    };
+
+    if (a.dtype() == mx::float32) {
+        return makeOutput(a.data<float>(), std::numeric_limits<float>::quiet_NaN());
+    }
+    return makeOutput(a.data<double>(), std::numeric_limits<double>::quiet_NaN());
+}
+
+static mx::array HandleTriangularSolve(mx::array a, mx::array b,
+                                       mlir::stablehlo::TriangularSolveOp triSolveOp) {
+    bool leftSide = triSolveOp.getLeftSide();
+    bool lower = triSolveOp.getLower();
+    bool unitDiagonal = triSolveOp.getUnitDiagonal();
+    auto transposeA = triSolveOp.getTransposeA();
+    bool isTranspose = (transposeA == mlir::stablehlo::Transpose::TRANSPOSE);
+    bool isAdjoint = (transposeA == mlir::stablehlo::Transpose::ADJOINT);
+
+    if (a.ndim() < 2 || b.ndim() < 2) {
+        throw std::invalid_argument("triangular_solve expects rank >= 2 operands");
+    }
+    if (a.dtype() != b.dtype()) {
+        throw std::invalid_argument("triangular_solve expects matching dtypes");
+    }
+    if (a.dtype() != mx::float32 && a.dtype() != mx::float64) {
+        throw std::invalid_argument("triangular_solve only supports f32/f64");
+    }
+
+    int n = a.shape()[a.ndim() - 1];
+    if (a.shape()[a.ndim() - 2] != n) {
+        throw std::invalid_argument("triangular_solve expects square A");
+    }
+    if (a.ndim() != b.ndim()) {
+        throw std::invalid_argument("triangular_solve expects equal operand ranks");
+    }
+    for (int i = 0; i < a.ndim() - 2; ++i) {
+        if (a.shape()[i] != b.shape()[i]) {
+            throw std::invalid_argument("triangular_solve batch dims must match");
+        }
+    }
+
+    int bRows = b.shape()[b.ndim() - 2];
+    int bCols = b.shape()[b.ndim() - 1];
+    if (leftSide) {
+        if (bRows != n) throw std::invalid_argument("left triangular_solve requires b.shape[-2] == n");
+    } else {
+        if (bCols != n) throw std::invalid_argument("right triangular_solve requires b.shape[-1] == n");
+    }
+
+    a.eval();
+    b.eval();
+    std::vector<int64_t> aDims(a.shape().begin(), a.shape().end());
+    std::vector<int64_t> bDims(b.shape().begin(), b.shape().end());
+    std::vector<int64_t> aRawStrides(a.strides().begin(), a.strides().end());
+    std::vector<int64_t> bRawStrides(b.strides().begin(), b.strides().end());
+    auto aStrides = normalizeStridesToElements(
+        aDims, aRawStrides, static_cast<int64_t>(a.data_size()),
+        static_cast<size_t>(a.dtype().size()));
+    auto bStrides = normalizeStridesToElements(
+        bDims, bRawStrides, static_cast<int64_t>(b.data_size()),
+        static_cast<size_t>(b.dtype().size()));
+
+    int64_t batch = 1;
+    for (int i = 0; i < a.ndim() - 2; ++i) batch *= a.shape()[i];
+    int64_t aMatrixElems = static_cast<int64_t>(n) * static_cast<int64_t>(n);
+    int64_t bMatrixElems = static_cast<int64_t>(bRows) * static_cast<int64_t>(bCols);
+
+    auto solveImpl = [&](const auto* aPtr, const auto* bPtr) -> mx::array {
+        using T = std::decay_t<decltype(*aPtr)>;
+        std::vector<T> aData(static_cast<size_t>(batch * aMatrixElems));
+        std::vector<T> bData(static_cast<size_t>(batch * bMatrixElems));
+        std::vector<T> out(static_cast<size_t>(batch * bMatrixElems), static_cast<T>(0));
+
+        size_t aOff = 0;
+        copyStridedToLinearBytes(reinterpret_cast<const uint8_t*>(aPtr),
+                                 reinterpret_cast<uint8_t*>(aData.data()),
+                                 aDims,
+                                 aStrides,
+                                 sizeof(T),
+                                 0,
+                                 0,
+                                 aOff);
+        size_t bOff = 0;
+        copyStridedToLinearBytes(reinterpret_cast<const uint8_t*>(bPtr),
+                                 reinterpret_cast<uint8_t*>(bData.data()),
+                                 bDims,
+                                 bStrides,
+                                 sizeof(T),
+                                 0,
+                                 0,
+                                 bOff);
+
+        bool upper = false;
+        if (leftSide) upper = (isTranspose || isAdjoint) ? lower : !lower;
+        else upper = (isTranspose || isAdjoint) ? !lower : lower;
+
+        const int rhsCols = leftSide ? bCols : bRows;
+
+        for (int64_t batchIdx = 0; batchIdx < batch; ++batchIdx) {
+            const int64_t aBase = batchIdx * aMatrixElems;
+            const int64_t bBase = batchIdx * bMatrixElems;
+            std::vector<T> c(static_cast<size_t>(aMatrixElems));
+
+            // C is the effective left-side matrix in C * Y = B'.
+            for (int r = 0; r < n; ++r) {
+                for (int cIdx = 0; cIdx < n; ++cIdx) {
+                    if (leftSide) {
+                        if (isTranspose || isAdjoint) {
+                            c[static_cast<size_t>(r * n + cIdx)] =
+                                aData[static_cast<size_t>(aBase + cIdx * n + r)];
+                        } else {
+                            c[static_cast<size_t>(r * n + cIdx)] =
+                                aData[static_cast<size_t>(aBase + r * n + cIdx)];
+                        }
+                    } else {
+                        if (isTranspose || isAdjoint) {
+                            c[static_cast<size_t>(r * n + cIdx)] =
+                                aData[static_cast<size_t>(aBase + r * n + cIdx)];
+                        } else {
+                            c[static_cast<size_t>(r * n + cIdx)] =
+                                aData[static_cast<size_t>(aBase + cIdx * n + r)];
+                        }
+                    }
+                }
+            }
+
+            std::vector<T> y(static_cast<size_t>(n * rhsCols), static_cast<T>(0));
+            auto bPrime = [&](int row, int col) -> T {
+                if (leftSide) {
+                    return bData[static_cast<size_t>(bBase + row * bCols + col)];
+                }
+                // B' = B^T for right-side solves.
+                return bData[static_cast<size_t>(bBase + col * bCols + row)];
+            };
+
+            for (int col = 0; col < rhsCols; ++col) {
+                if (upper) {
+                    for (int i = n - 1; i >= 0; --i) {
+                        T sum = bPrime(i, col);
+                        for (int j = i + 1; j < n; ++j) {
+                            sum -= c[static_cast<size_t>(i * n + j)] *
+                                   y[static_cast<size_t>(j * rhsCols + col)];
+                        }
+                        if (!unitDiagonal) sum /= c[static_cast<size_t>(i * n + i)];
+                        y[static_cast<size_t>(i * rhsCols + col)] = sum;
+                    }
+                } else {
+                    for (int i = 0; i < n; ++i) {
+                        T sum = bPrime(i, col);
+                        for (int j = 0; j < i; ++j) {
+                            sum -= c[static_cast<size_t>(i * n + j)] *
+                                   y[static_cast<size_t>(j * rhsCols + col)];
+                        }
+                        if (!unitDiagonal) sum /= c[static_cast<size_t>(i * n + i)];
+                        y[static_cast<size_t>(i * rhsCols + col)] = sum;
+                    }
+                }
+            }
+
+            if (leftSide) {
+                for (int i = 0; i < n; ++i) {
+                    for (int col = 0; col < bCols; ++col) {
+                        out[static_cast<size_t>(bBase + i * bCols + col)] =
+                            y[static_cast<size_t>(i * rhsCols + col)];
+                    }
+                }
+            } else {
+                for (int row = 0; row < bRows; ++row) {
+                    for (int col = 0; col < n; ++col) {
+                        out[static_cast<size_t>(bBase + row * bCols + col)] =
+                            y[static_cast<size_t>(col * rhsCols + row)];
+                    }
+                }
+            }
+        }
+
+        size_t nbytes = out.size() * sizeof(T);
+        void* buf = std::malloc(nbytes > 0 ? nbytes : 1);
+        if (nbytes > 0) std::memcpy(buf, out.data(), nbytes);
+        return mx::array(buf, b.shape(), b.dtype(), [](void* p) { std::free(p); });
+    };
+
+    if (a.dtype() == mx::float32) {
+        return solveImpl(a.data<float>(), b.data<float>());
+    }
+    return solveImpl(a.data<double>(), b.data<double>());
+}
+
+static mx::array HandleFft(mx::array input, mlir::stablehlo::FftOp fftOp) {
+    auto fftLength = fftOp.getFftLength();
+    int nAxes = static_cast<int>(fftLength.size());
+    if (nAxes <= 0 || nAxes > input.ndim()) {
+        throw std::invalid_argument("fft: invalid fft_length rank");
+    }
+    std::vector<int> axes;
+    axes.reserve(static_cast<size_t>(nAxes));
+    int startAxis = input.ndim() - nAxes;
+    for (int i = 0; i < nAxes; ++i) axes.push_back(startAxis + i);
+
+    mx::Shape lengths;
+    lengths.reserve(static_cast<size_t>(nAxes));
+    for (int64_t n : fftLength) lengths.push_back(static_cast<int>(n));
+
+    switch (fftOp.getFftType()) {
+        case mlir::stablehlo::FftType::FFT:
+            return mx::fft::fftn(input, lengths, axes);
+        case mlir::stablehlo::FftType::IFFT:
+            return mx::fft::ifftn(input, lengths, axes);
+        case mlir::stablehlo::FftType::RFFT:
+            return mx::fft::rfftn(input, lengths, axes);
+        case mlir::stablehlo::FftType::IRFFT:
+            return mx::fft::irfftn(input, lengths, axes);
+        default:
+            throw std::invalid_argument("fft: unsupported fft type");
+    }
 }
 
 // Inspect reduction body to find the operation name
@@ -993,6 +1301,30 @@ static InterpResult interpretBlock(mlir::Block& entry,
                 set(0, HandleScatter(operand(0), operand(1), operand(2), scatterOp));
             } catch (const std::exception& ex) {
                 return InterpResult::Error(std::string("stablehlo.scatter lowering failed: ") + ex.what());
+            }
+        }
+        else if (opName == "stablehlo.cholesky") {
+            auto choleskyOp = mlir::cast<mlir::stablehlo::CholeskyOp>(op);
+            try {
+                set(0, HandleCholesky(operand(0), choleskyOp));
+            } catch (const std::exception& ex) {
+                return InterpResult::Error(std::string("stablehlo.cholesky lowering failed: ") + ex.what());
+            }
+        }
+        else if (opName == "stablehlo.triangular_solve") {
+            auto triSolveOp = mlir::cast<mlir::stablehlo::TriangularSolveOp>(op);
+            try {
+                set(0, HandleTriangularSolve(operand(0), operand(1), triSolveOp));
+            } catch (const std::exception& ex) {
+                return InterpResult::Error(std::string("stablehlo.triangular_solve lowering failed: ") + ex.what());
+            }
+        }
+        else if (opName == "stablehlo.fft") {
+            auto fftOp = mlir::cast<mlir::stablehlo::FftOp>(op);
+            try {
+                set(0, HandleFft(operand(0), fftOp));
+            } catch (const std::exception& ex) {
+                return InterpResult::Error(std::string("stablehlo.fft lowering failed: ") + ex.what());
             }
         }
 
