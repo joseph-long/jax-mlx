@@ -244,11 +244,15 @@ not just raw microbenchmarks, and prioritize investigation accordingly.
 
 #### Approach
 
-1. **Profile ResNet training**: Get StableHLO representation of the main 
-   `train_step` function in `examples/resnet/main.py` and write a script to count
-   occurrences of different operations. Use this to identify the top-10 most-called
-   JAX ops. Compare their per-call time on MLX vs CPU using the existing
-   microbenchmarks or new ones.
+1. **Count ops in ResNet's StableHLO**: JAX code cannot be profiled with
+   `cProfile` or `py-spy` at the JAX op level. Instead, use `jax.jit` +
+   `lower()` to get the StableHLO bytecode for the main `train_step` in
+   `examples/resnet/main.py`, then write a small script that parses the MLIR
+   text and counts occurrences of each op name (e.g. `stablehlo.convolution`,
+   `stablehlo.dot_general`, `stablehlo.broadcast_in_dim`). This identifies
+   the top-10 most-called operations by frequency, which are the best
+   candidates for per-call optimization. Compare their per-call time on MLX
+   vs CPU using the existing microbenchmarks or new ones.
 
 2. **Cross-reference benchmarks**: Run `bash scripts/benchmark.sh` and look at the
    SLOWER column relative to CPU — any op that is slower on MLX than CPU for typical
