@@ -2017,20 +2017,35 @@ MlxExecutable::MlxExecutable(MlxClient* client, mps::ParsedModule module)
 
 MlxExecutable::~MlxExecutable() {}
 
-// Returns true if the module contains any op whose interpreter handler calls
-// eval() on intermediate arrays — these cannot be wrapped in mlxc::compile().
+// Returns true if the module should skip mlxc::compile() wrapping.
+// Two categories of barriers:
+//
+// 1. Hard eval barriers — ops whose handlers call eval() internally and
+//    cannot be compiled at all.
+//
+// 2. Large-kernel ops — ops that already dispatch to a single heavy Metal
+//    kernel (matmul, conv), where mlxc::compile() adds per-call overhead
+//    without fusion benefit and causes measurable regressions.
+//
+// Elementwise/reduce-heavy functions (softmax, layernorm forward, etc.) do
+// benefit from compilation; they don't contain dot_general or convolution.
+//
+// while/if/case: compile() would unroll loops; also requires eval() on
+// condition scalars. These must remain barriers.
+//
 // Walks all functions in the module so func.call targets are also covered.
-// Note: while/if/case require eval() on condition scalars for branch decisions
-// and while loops would be incorrectly unrolled by compile(); they are barriers
-// even though their data arrays are not materialized by our handlers.
 static bool HasHardEvalBarrier(mlir::ModuleOp module) {
     static const std::unordered_set<std::string_view> kBarriers = {
+        // Hard eval barriers
         "stablehlo.cholesky",
         "stablehlo.triangular_solve",
         "chlo.lgamma",
         "stablehlo.while",
         "stablehlo.if",
         "stablehlo.case",
+        // Large-kernel ops: already one Metal dispatch; compile() adds overhead
+        "stablehlo.dot_general",
+        "stablehlo.convolution",
     };
     bool found = false;
     module.walk([&](mlir::Operation* op) -> mlir::WalkResult {
