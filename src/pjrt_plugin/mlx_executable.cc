@@ -329,35 +329,125 @@ static mx::array HandleGather(mx::array operand, mx::array startIndices,
     auto dimNums = gatherOp.getDimensionNumbers();
     auto startIndexMap = dimNums.getStartIndexMap();
     auto collapsedSliceDims = dimNums.getCollapsedSliceDims();
+    auto operandBatchingDims = dimNums.getOperandBatchingDims();
+    auto startIndicesBatchingDims = dimNums.getStartIndicesBatchingDims();
     auto sliceSizes = gatherOp.getSliceSizes();
+    int indexVectorDim = static_cast<int>(dimNums.getIndexVectorDim());
+
+    auto normalizedStartIndices = [&]() -> mx::array {
+        auto idx = startIndices;
+        if (indexVectorDim == idx.ndim()) {
+            idx = mx::expand_dims(idx, {static_cast<int>(idx.ndim())});
+        } else if (indexVectorDim < idx.ndim() - 1) {
+            std::vector<int> perm;
+            perm.reserve(static_cast<size_t>(idx.ndim()));
+            for (int i = 0; i < idx.ndim(); ++i)
+                if (i != indexVectorDim) perm.push_back(i);
+            perm.push_back(indexVectorDim);
+            idx = mx::transpose(idx, perm);
+        }
+        return idx;
+    };
 
     // Handle the common "take along one axis" gather pattern used by embeddings.
-    if (startIndexMap.size() != 1 || collapsedSliceDims.size() != 1) {
-        throw std::invalid_argument("only single-axis gather is implemented");
-    }
-    int axis = static_cast<int>(startIndexMap[0]);
-    if (collapsedSliceDims[0] != startIndexMap[0]) {
-        throw std::invalid_argument("collapsed axis must match gathered axis");
-    }
-    if (sliceSizes[static_cast<size_t>(axis)] != 1) {
-        throw std::invalid_argument("slice size for gathered axis must be 1");
-    }
-    for (int i = 0; i < operand.ndim(); ++i) {
-        if (i != axis && sliceSizes[static_cast<size_t>(i)] != operand.shape()[i]) {
-            throw std::invalid_argument("non-gather axes must use full slice");
+    if (startIndexMap.size() == 1 && collapsedSliceDims.size() == 1) {
+        int axis = static_cast<int>(startIndexMap[0]);
+        if (collapsedSliceDims[0] != startIndexMap[0]) {
+            throw std::invalid_argument("collapsed axis must match gathered axis");
         }
-    }
+        if (sliceSizes[static_cast<size_t>(axis)] != 1) {
+            throw std::invalid_argument("slice size for gathered axis must be 1");
+        }
 
-    auto indices = startIndices;
-    int indexVectorDim = static_cast<int>(dimNums.getIndexVectorDim());
-    if (indexVectorDim < indices.ndim()) {
-        if (indices.shape()[indexVectorDim] != 1) {
+        auto indices = normalizedStartIndices();
+        if (indices.shape().back() != 1) {
             throw std::invalid_argument("index_vector_dim width must be 1");
         }
-        indices = mx::squeeze(indices, {indexVectorDim});
+        indices = mx::squeeze(indices, {static_cast<int>(indices.ndim() - 1)});
+
+        if (!operandBatchingDims.empty() || !startIndicesBatchingDims.empty()) {
+            // Batched take_along_axis: used by categorical/log_prob style gathers.
+            if (operandBatchingDims.size() != startIndicesBatchingDims.size()) {
+                throw std::invalid_argument("operand/start_indices batching dims must match");
+            }
+            if (operandBatchingDims.size() != 1) {
+                throw std::invalid_argument("only one batching dim is currently supported");
+            }
+            int batchAxis = static_cast<int>(operandBatchingDims[0]);
+            if (startIndicesBatchingDims[0] != operandBatchingDims[0]) {
+                throw std::invalid_argument("batching dims must align");
+            }
+
+            for (int i = 0; i < operand.ndim(); ++i) {
+                if (i == axis || i == batchAxis) {
+                    if (sliceSizes[static_cast<size_t>(i)] != 1) {
+                        throw std::invalid_argument(
+                            "gather and batching axes must have slice size 1");
+                    }
+                } else if (sliceSizes[static_cast<size_t>(i)] != operand.shape()[i]) {
+                    throw std::invalid_argument(
+                        "non-gather/non-batching axes must use full slice");
+                }
+            }
+
+            if (indices.ndim() != operand.ndim()) {
+                throw std::invalid_argument("batched gather indices rank mismatch");
+            }
+            return mx::take_along_axis(operand, indices, axis);
+        }
+
+        for (int i = 0; i < operand.ndim(); ++i) {
+            if (i != axis && sliceSizes[static_cast<size_t>(i)] != operand.shape()[i]) {
+                throw std::invalid_argument("non-gather axes must use full slice");
+            }
+        }
+        return mx::take(operand, indices, axis);
     }
 
-    return mx::take(operand, indices, axis);
+    // Two-axis point gather lowering used by MultivariateNormal-like paths.
+    if (startIndexMap.size() == 2 && collapsedSliceDims.size() == 2 &&
+        operandBatchingDims.empty() && startIndicesBatchingDims.empty()) {
+        if (collapsedSliceDims[0] != startIndexMap[0] ||
+            collapsedSliceDims[1] != startIndexMap[1]) {
+            throw std::invalid_argument("collapsed dims must match gathered dims");
+        }
+        auto idx = normalizedStartIndices();
+        if (idx.shape().back() != 2) {
+            throw std::invalid_argument("two-axis gather expects index width 2");
+        }
+        auto idx0 = mx::take(idx, 0, idx.ndim() - 1);
+        auto idx1 = mx::take(idx, 1, idx.ndim() - 1);
+        if (idx0.ndim() != 1 || idx1.ndim() != 1) {
+            throw std::invalid_argument("two-axis gather currently expects 1D point indices");
+        }
+        int n = idx0.shape()[0];
+
+        if (operand.ndim() == 2 && startIndexMap[0] == 0 && startIndexMap[1] == 1) {
+            if (sliceSizes.size() != 2 || sliceSizes[0] != 1 || sliceSizes[1] != 1) {
+                throw std::invalid_argument("rank-2 point gather requires slice sizes [1, 1]");
+            }
+            auto rowIdx = mx::broadcast_to(
+                mx::reshape(idx0, {n, 1}), {n, operand.shape()[1]});
+            auto rows = mx::take_along_axis(operand, rowIdx, 0);
+            auto colIdx = mx::reshape(idx1, {n, 1});
+            return mx::squeeze(mx::take_along_axis(rows, colIdx, 1), {1});
+        }
+
+        if (operand.ndim() == 3 && startIndexMap[0] == 1 && startIndexMap[1] == 2) {
+            if (sliceSizes.size() != 3 || sliceSizes[1] != 1 || sliceSizes[2] != 1) {
+                throw std::invalid_argument("rank-3 point gather requires unit gathered slices");
+            }
+            auto rowIdx = mx::broadcast_to(
+                mx::reshape(idx0, {1, n, 1}),
+                {operand.shape()[0], n, operand.shape()[2]});
+            auto rows = mx::take_along_axis(operand, rowIdx, 1);
+            auto colIdx = mx::broadcast_to(
+                mx::reshape(idx1, {1, n, 1}), {operand.shape()[0], n, 1});
+            return mx::squeeze(mx::take_along_axis(rows, colIdx, 2), {2});
+        }
+    }
+
+    throw std::invalid_argument("unsupported gather pattern");
 }
 
 static mx::array HandleScatter(mx::array operand, mx::array scatterIndices, mx::array updates,
@@ -366,32 +456,7 @@ static mx::array HandleScatter(mx::array operand, mx::array scatterIndices, mx::
     auto scatterDimsToOperandDims = dimNums.getScatterDimsToOperandDims();
     int indexVectorDim = static_cast<int>(dimNums.getIndexVectorDim());
     auto insertedWindowDims = dimNums.getInsertedWindowDims();
-
-    if (scatterDimsToOperandDims.size() != 1 || insertedWindowDims.size() != 1) {
-        throw std::invalid_argument("only single-axis scatter is implemented");
-    }
-    int axis = static_cast<int>(scatterDimsToOperandDims[0]);
-    if (insertedWindowDims[0] != scatterDimsToOperandDims[0]) {
-        throw std::invalid_argument("inserted_window_dims must match scatter axis");
-    }
-
-    auto idx = scatterIndices;
-    if (indexVectorDim < idx.ndim()) {
-        if (idx.shape()[indexVectorDim] != 1) {
-            throw std::invalid_argument("index_vector_dim width must be 1");
-        }
-        idx = mx::squeeze(idx, {indexVectorDim});
-    }
-
-    std::vector<mx::array> indices = {idx};
-    std::vector<int> axes = {axis};
-    auto updatesForMlx = updates;
-    int indexRank = idx.ndim();
-    // MLX scatter expects updates rank == index_rank + operand_rank and
-    // includes singleton dims for inserted_window_dims.
-    if (updatesForMlx.ndim() == indexRank + operand.ndim() - 1) {
-        updatesForMlx = mx::expand_dims(updatesForMlx, indexRank + axis);
-    }
+    auto updateWindowDims = dimNums.getUpdateWindowDims();
 
     std::string scatterFn;
     for (auto& op : scatterOp.getUpdateComputation().front()) {
@@ -401,8 +466,180 @@ static mx::array HandleScatter(mx::array operand, mx::array scatterIndices, mx::
             break;
         }
     }
+
+    auto normalizedIndices = [&]() -> mx::array {
+        auto idx = scatterIndices;
+        if (indexVectorDim == idx.ndim()) {
+            idx = mx::expand_dims(idx, {static_cast<int>(idx.ndim())});
+        } else if (indexVectorDim < idx.ndim() - 1) {
+            std::vector<int> perm;
+            perm.reserve(static_cast<size_t>(idx.ndim()));
+            for (int i = 0; i < idx.ndim(); ++i)
+                if (i != indexVectorDim) perm.push_back(i);
+            perm.push_back(indexVectorDim);
+            idx = mx::transpose(idx, perm);
+        }
+        return idx;
+    };
+
+    auto idx = normalizedIndices();
+
+    // Full-index scalar scatter into a single point of a rank-N tensor.
+    if (scatterDimsToOperandDims.size() == static_cast<size_t>(operand.ndim()) &&
+        insertedWindowDims.size() == static_cast<size_t>(operand.ndim()) &&
+        idx.ndim() == 1 && idx.shape()[0] == operand.ndim()) {
+        for (int d = 0; d < operand.ndim(); ++d) {
+            if (scatterDimsToOperandDims[static_cast<size_t>(d)] != d ||
+                insertedWindowDims[static_cast<size_t>(d)] != d) {
+                throw std::invalid_argument("full-index scatter requires identity dims");
+            }
+        }
+
+        std::vector<int> strides(static_cast<size_t>(operand.ndim()), 1);
+        for (int d = operand.ndim() - 2; d >= 0; --d) {
+            strides[static_cast<size_t>(d)] =
+                strides[static_cast<size_t>(d + 1)] * operand.shape()[d + 1];
+        }
+
+        auto linear = mx::take(idx, 0, 0) * strides[0];
+        for (int d = 1; d < operand.ndim(); ++d) {
+            linear = linear + mx::take(idx, d, 0) * strides[static_cast<size_t>(d)];
+        }
+
+        auto flatOperand = mx::reshape(operand, {static_cast<int>(operand.size())});
+        auto flatIndex = mx::reshape(linear, {1});
+        auto flatUpdate = mx::reshape(updates, {1});
+        auto outFlat =
+            scatterFn == "stablehlo.add"
+                ? mx::scatter_add_axis(flatOperand, flatIndex, flatUpdate, 0)
+                : mx::put_along_axis(flatOperand, flatIndex, flatUpdate, 0);
+        return mx::reshape(outFlat, operand.shape());
+    }
+
+    // Axis-style scatter/accumulate along a single operand axis.
+    if (scatterDimsToOperandDims.size() == 1 && insertedWindowDims.size() == 1 &&
+        insertedWindowDims[0] == scatterDimsToOperandDims[0] && idx.shape().back() == 1) {
+        int axis = static_cast<int>(scatterDimsToOperandDims[0]);
+        auto idxAxis = mx::squeeze(idx, {static_cast<int>(idx.ndim() - 1)});
+        if (updates.ndim() == idxAxis.ndim()) {
+            if (scatterFn == "stablehlo.add") {
+                return mx::scatter_add_axis(operand, idxAxis, updates, axis);
+            }
+            return mx::put_along_axis(operand, idxAxis, updates, axis);
+        }
+    }
+
+    // Two-axis point scatter into rank-2 tensors.
+    if (scatterDimsToOperandDims.size() == 2 && insertedWindowDims.size() == 2 &&
+        scatterDimsToOperandDims[0] == 0 && scatterDimsToOperandDims[1] == 1 &&
+        insertedWindowDims[0] == 0 && insertedWindowDims[1] == 1 &&
+        operand.ndim() == 2 && idx.shape().back() == 2) {
+        auto idx0 = mx::take(idx, 0, idx.ndim() - 1);
+        auto idx1 = mx::take(idx, 1, idx.ndim() - 1);
+        if (idx0.ndim() != 1 || idx1.ndim() != 1) {
+            throw std::invalid_argument("rank-2 point scatter expects 1D indices");
+        }
+        int64_t points = idx0.shape()[0];
+        auto linear = idx0 * operand.shape()[1] + idx1;
+        auto flatOperand = mx::reshape(operand, {operand.shape()[0] * operand.shape()[1]});
+        auto flatUpdates = mx::reshape(updates, {static_cast<int>(points)});
+        auto outFlat =
+            scatterFn == "stablehlo.add"
+                ? mx::scatter_add_axis(flatOperand, linear, flatUpdates, 0)
+                : mx::put_along_axis(flatOperand, linear, flatUpdates, 0);
+        return mx::reshape(outFlat, {operand.shape()[0], operand.shape()[1]});
+    }
+
+    // Batched two-axis point scatter into rank-3 tensors with update_window_dims=[0].
+    if (scatterDimsToOperandDims.size() == 2 && insertedWindowDims.size() == 2 &&
+        updateWindowDims.size() == 1 && updateWindowDims[0] == 0 &&
+        scatterDimsToOperandDims[0] == 1 && scatterDimsToOperandDims[1] == 2 &&
+        insertedWindowDims[0] == 1 && insertedWindowDims[1] == 2 &&
+        operand.ndim() == 3 && idx.shape().back() == 2) {
+        auto idx0 = mx::take(idx, 0, idx.ndim() - 1);
+        auto idx1 = mx::take(idx, 1, idx.ndim() - 1);
+        if (idx0.ndim() != 1 || idx1.ndim() != 1) {
+            throw std::invalid_argument("rank-3 point scatter expects 1D indices");
+        }
+        int b = operand.shape()[0];
+        int64_t points = idx0.shape()[0];
+        auto linear = idx0 * operand.shape()[2] + idx1;
+
+        auto upd = updates;
+        if (upd.ndim() == 1 && b == 1) {
+            upd = mx::reshape(upd, {1, static_cast<int>(points)});
+        } else if (upd.ndim() == 2 && upd.shape()[0] == static_cast<int>(points) &&
+                   upd.shape()[1] == b) {
+            upd = mx::transpose(upd, {1, 0});
+        }
+        if (upd.ndim() != 2 || upd.shape()[0] != b ||
+            upd.shape()[1] != static_cast<int>(points)) {
+            throw std::invalid_argument("rank-3 point scatter updates must be [B, P]");
+        }
+
+        std::vector<mx::array> slices;
+        slices.reserve(static_cast<size_t>(b));
+        for (int bi = 0; bi < b; ++bi) {
+            auto opSlice = mx::take(operand, bi, 0);
+            auto flatOp = mx::reshape(opSlice, {operand.shape()[1] * operand.shape()[2]});
+            auto updSlice = mx::take(upd, bi, 0);
+            auto outFlat =
+                scatterFn == "stablehlo.add"
+                    ? mx::scatter_add_axis(flatOp, linear, updSlice, 0)
+                    : mx::put_along_axis(flatOp, linear, updSlice, 0);
+            slices.push_back(mx::reshape(outFlat, {operand.shape()[1], operand.shape()[2]}));
+        }
+        return mx::stack(slices, 0);
+    }
+
+    // Existing single-axis fallback.
+    if (scatterDimsToOperandDims.size() != 1 || insertedWindowDims.size() != 1) {
+        throw std::invalid_argument("only single-axis scatter is implemented");
+    }
+    int axis = static_cast<int>(scatterDimsToOperandDims[0]);
+    if (insertedWindowDims[0] != scatterDimsToOperandDims[0]) {
+        throw std::invalid_argument("inserted_window_dims must match scatter axis");
+    }
+    auto idxAxis = idx;
+    if (idxAxis.shape().back() != 1) {
+        throw std::invalid_argument("index_vector_dim width must be 1");
+    }
+    idxAxis = mx::squeeze(idxAxis, {static_cast<int>(idxAxis.ndim() - 1)});
+
+    std::vector<mx::array> indices = {idxAxis};
+    std::vector<int> axes = {axis};
+    auto updatesForMlx = updates;
+    int indexRank = idxAxis.ndim();
+    if (updatesForMlx.ndim() == indexRank + operand.ndim() - 1) {
+        updatesForMlx = mx::expand_dims(updatesForMlx, indexRank + axis);
+    }
     if (scatterFn == "stablehlo.add") {
         return mx::scatter_add(operand, indices, updatesForMlx, axes);
+    }
+    if (scatterFn == "stablehlo.subtract" || scatterFn == "stablehlo.multiply" ||
+        scatterFn == "stablehlo.divide" || scatterFn == "stablehlo.maximum" ||
+        scatterFn == "stablehlo.minimum" || scatterFn == "stablehlo.power") {
+        auto current = mx::take(operand, idxAxis, axis);
+        mx::array reduced = current;
+        if (scatterFn == "stablehlo.subtract") {
+            reduced = mx::subtract(current, updates);
+        } else if (scatterFn == "stablehlo.multiply") {
+            reduced = mx::multiply(current, updates);
+        } else if (scatterFn == "stablehlo.divide") {
+            reduced = mx::divide(current, updates);
+        } else if (scatterFn == "stablehlo.maximum") {
+            reduced = mx::maximum(current, updates);
+        } else if (scatterFn == "stablehlo.minimum") {
+            reduced = mx::minimum(current, updates);
+        } else if (scatterFn == "stablehlo.power") {
+            reduced = mx::power(current, updates);
+        }
+
+        auto reducedForMlx = reduced;
+        if (reducedForMlx.ndim() == indexRank + operand.ndim() - 1) {
+            reducedForMlx = mx::expand_dims(reducedForMlx, indexRank + axis);
+        }
+        return mx::scatter(operand, indices, reducedForMlx, axes);
     }
     return mx::scatter(operand, indices, updatesForMlx, axes);
 }
@@ -748,6 +985,51 @@ static mx::array HandleLgamma(mx::array x) {
     return apply(x.data<double>());
 }
 
+static bool SortComparatorDescending(mlir::Region& comparator) {
+    for (auto& op : comparator.front()) {
+        auto nm = op.getName().getStringRef();
+        if (nm == "stablehlo.compare") {
+            auto cmp = mlir::cast<mlir::stablehlo::CompareOp>(op);
+            auto dir = cmp.getComparisonDirection();
+            if (dir == mlir::stablehlo::ComparisonDirection::GT ||
+                dir == mlir::stablehlo::ComparisonDirection::GE) {
+                return true;
+            }
+            return false;
+        }
+    }
+    return false;
+}
+
+static mx::array ReverseAlongAxis(mx::array x, int axis) {
+    int n = x.shape()[axis];
+    auto idx = mx::arange(static_cast<double>(n - 1), -1.0, -1.0, mx::int32);
+    return mx::take(x, idx, axis);
+}
+
+static std::vector<mx::array> HandleSort(std::vector<mx::array> inputs,
+                                         mlir::stablehlo::SortOp sortOp) {
+    if (inputs.empty()) return {};
+    int axis = static_cast<int>(sortOp.getDimension());
+    if (axis < 0) axis += inputs[0].ndim();
+    if (axis < 0 || axis >= inputs[0].ndim()) {
+        throw std::invalid_argument("stablehlo.sort: invalid dimension");
+    }
+
+    bool descending = SortComparatorDescending(sortOp.getComparator());
+    auto indices = mx::argsort(inputs[0], axis);
+    if (descending) {
+        indices = ReverseAlongAxis(indices, axis);
+    }
+
+    std::vector<mx::array> out;
+    out.reserve(inputs.size());
+    for (auto& in : inputs) {
+        out.push_back(mx::take_along_axis(in, indices, axis));
+    }
+    return out;
+}
+
 // Inspect reduction body to find the operation name
 static std::string reductionOpName(mlir::Region& body) {
     for (auto& op : body.front()) {
@@ -755,6 +1037,21 @@ static std::string reductionOpName(mlir::Region& body) {
         if (nm != "stablehlo.return" && nm != "func.return") return nm.str();
     }
     return "";
+}
+
+static std::optional<mlir::stablehlo::ComparisonDirection>
+reductionCompareDirection(mlir::Region& body) {
+    for (auto& op : body.front()) {
+        if (op.getName().getStringRef() == "stablehlo.compare") {
+            auto cmp = mlir::cast<mlir::stablehlo::CompareOp>(op);
+            auto dir = cmp.getComparisonDirection();
+            if (dir == mlir::stablehlo::ComparisonDirection::GT ||
+                dir == mlir::stablehlo::ComparisonDirection::LT) {
+                return dir;
+            }
+        }
+    }
+    return std::nullopt;
 }
 
 // Bitwise NOT: implemented as XOR with all-ones for integer types, logical_not for bool
@@ -1240,34 +1537,20 @@ static InterpResult interpretBlock(mlir::Block& entry,
 
         // --- Dynamic update slice ---
         else if (opName == "stablehlo.dynamic_update_slice") {
-            // operands: [operand, update, start_indices...]
-            // Implement by building per-axis scatter indices then calling mx::scatter
             auto& base = operand(0);
             auto& update = operand(1);
             int rank = base.ndim();
 
-            std::vector<int> starts(rank);
+            mx::Shape starts(rank), stops(rank);
             for (int i = 0; i < rank; i++) {
                 auto si = vm.at(valKey(op.getOperand(2 + i)));
                 si.eval();
-                starts[i] = (si.dtype() == mx::int32) ? si.item<int32_t>()
-                                                       : static_cast<int>(si.item<int64_t>());
+                int start = (si.dtype() == mx::int32) ? si.item<int32_t>()
+                                                      : static_cast<int>(si.item<int64_t>());
+                starts[i] = start;
+                stops[i] = start + update.shape()[i];
             }
-
-            // Build per-axis index arrays matching the update shape, then scatter
-            mx::Shape updShape(update.shape().begin(), update.shape().end());
-            std::vector<mx::array> axisIndices;
-            axisIndices.reserve(rank);
-            std::vector<int> axesList(rank);
-            for (int d = 0; d < rank; d++) {
-                int64_t upd_size = update.shape()[d];
-                auto range = mx::arange(starts[d], starts[d] + (int)upd_size, 1, mx::int32);
-                mx::Shape rshp(rank, 1);
-                rshp[d] = static_cast<int>(upd_size);
-                axisIndices.push_back(mx::broadcast_to(mx::reshape(range, rshp), updShape));
-                axesList[d] = d;
-            }
-            set(0, mx::scatter(base, axisIndices, update, axesList));
+            set(0, mx::slice_update(base, update, starts, stops));
         }
 
         // --- Pad ---
@@ -1307,6 +1590,27 @@ static InterpResult interpretBlock(mlir::Block& entry,
                 axes.push_back(static_cast<int>(d));
 
             auto redInputs = redOp.getInputs();
+            // Arg{max,min} tuple reduction: reduce(value, iota) -> (value, index)
+            if (redInputs.size() == 2 && op.getNumResults() == 2 && axes.size() == 1) {
+                auto cmpDir = reductionCompareDirection(redOp.getBody());
+                if (cmpDir.has_value()) {
+                    auto data = vm.at(valKey(redInputs[0]));
+                    int axis = axes[0];
+                    auto idx = *cmpDir == mlir::stablehlo::ComparisonDirection::GT
+                                   ? mx::argmax(data, axis, false)
+                                   : mx::argmin(data, axis, false);
+                    auto vals = mx::take_along_axis(
+                        data, mx::expand_dims(idx, {axis}), axis);
+                    vals = mx::squeeze(vals, {axis});
+                    auto idxType =
+                        mlir::cast<mlir::RankedTensorType>(op.getResult(1).getType());
+                    auto idxDtype = MlirTypeToMlx(idxType.getElementType());
+                    vm.emplace(valKey(op.getResult(0)), vals);
+                    vm.emplace(valKey(op.getResult(1)), mx::astype(idx, idxDtype));
+                    continue;
+                }
+            }
+
             for (size_t i = 0; i < redInputs.size(); i++) {
                 auto& inp = vm.at(valKey(redInputs[i]));
                 mx::array result = mx::array(0.0f);  // default; overwritten below
@@ -1348,6 +1652,25 @@ static InterpResult interpretBlock(mlir::Block& entry,
                 set(0, HandleGather(operand(0), operand(1), gatherOp));
             } catch (const std::exception& ex) {
                 return InterpResult::Error(std::string("stablehlo.gather lowering failed: ") + ex.what());
+            }
+        }
+        else if (opName == "stablehlo.sort") {
+            auto sortOp = mlir::cast<mlir::stablehlo::SortOp>(op);
+            std::vector<mx::array> inputs;
+            inputs.reserve(op.getNumOperands());
+            for (unsigned i = 0; i < op.getNumOperands(); ++i) {
+                inputs.push_back(operand(i));
+            }
+            try {
+                auto sorted = HandleSort(std::move(inputs), sortOp);
+                if (sorted.size() != op.getNumResults()) {
+                    return InterpResult::Error("stablehlo.sort result arity mismatch");
+                }
+                for (unsigned i = 0; i < op.getNumResults(); ++i) {
+                    set(i, sorted[i]);
+                }
+            } catch (const std::exception& ex) {
+                return InterpResult::Error(std::string("stablehlo.sort lowering failed: ") + ex.what());
             }
         }
         else if (opName == "stablehlo.scatter") {
@@ -1533,6 +1856,75 @@ static InterpResult interpretBlock(mlir::Block& entry,
                         "stablehlo.custom_call(Sharding): unsupported operand/result arity");
                 }
                 continue;
+            }
+            if (target == "mhlo.erf") {
+                if (op.getNumOperands() == 1 && op.getNumResults() == 1) {
+                    set(0, mx::erf(operand(0)));
+                    continue;
+                }
+                return InterpResult::Error(
+                    "stablehlo.custom_call(mhlo.erf): unsupported operand/result arity");
+            }
+            if (target == "mhlo.asin" || target == "mhlo.acos" || target == "mhlo.atan") {
+                if (op.getNumOperands() == 1 && op.getNumResults() == 1) {
+                    if (target == "mhlo.asin") set(0, mx::arcsin(operand(0)));
+                    else if (target == "mhlo.acos") set(0, mx::arccos(operand(0)));
+                    else set(0, mx::arctan(operand(0)));
+                    continue;
+                }
+                return InterpResult::Error(
+                    "stablehlo.custom_call(" + target + "): unsupported operand/result arity");
+            }
+            if (target == "mhlo.asinh" || target == "mhlo.acosh" || target == "mhlo.atanh") {
+                if (op.getNumOperands() == 1 && op.getNumResults() == 1) {
+                    if (target == "mhlo.asinh") set(0, mx::arcsinh(operand(0)));
+                    else if (target == "mhlo.acosh") set(0, mx::arccosh(operand(0)));
+                    else set(0, mx::arctanh(operand(0)));
+                    continue;
+                }
+                return InterpResult::Error(
+                    "stablehlo.custom_call(" + target + "): unsupported operand/result arity");
+            }
+            if (target == "mhlo.sinh" || target == "mhlo.cosh" || target == "mhlo.tanh") {
+                if (op.getNumOperands() == 1 && op.getNumResults() == 1) {
+                    if (target == "mhlo.sinh") set(0, mx::sinh(operand(0)));
+                    else if (target == "mhlo.cosh") set(0, mx::cosh(operand(0)));
+                    else set(0, mx::tanh(operand(0)));
+                    continue;
+                }
+                return InterpResult::Error(
+                    "stablehlo.custom_call(" + target + "): unsupported operand/result arity");
+            }
+            if (target == "mhlo.topk") {
+                if (op.getNumOperands() == 1 && op.getNumResults() == 2) {
+                    // MLX argsort/topk on strided views can produce incorrect ordering;
+                    // normalize to contiguous storage before sorting.
+                    auto x = mx::contiguous(operand(0));
+                    int axis = x.ndim() - 1;
+                    auto outValsType =
+                        mlir::cast<mlir::RankedTensorType>(op.getResult(0).getType());
+                    auto outIdxType =
+                        mlir::cast<mlir::RankedTensorType>(op.getResult(1).getType());
+                    int k = static_cast<int>(outValsType.getShape().back());
+                    if (k < 0 || k > x.shape()[axis]) {
+                        return InterpResult::Error(
+                            "stablehlo.custom_call(mhlo.topk): invalid k");
+                    }
+
+                    auto sortedIdx = ReverseAlongAxis(mx::argsort(x, axis), axis);
+                    mx::Shape starts(static_cast<size_t>(sortedIdx.ndim()), 0);
+                    mx::Shape stops(sortedIdx.shape().begin(), sortedIdx.shape().end());
+                    mx::Shape strides(static_cast<size_t>(sortedIdx.ndim()), 1);
+                    stops[static_cast<size_t>(axis)] = k;
+                    auto topIdx = mx::slice(sortedIdx, starts, stops, strides);
+                    auto topVals = mx::take_along_axis(x, topIdx, axis);
+                    auto idxDtype = MlirTypeToMlx(outIdxType.getElementType());
+                    set(0, topVals);
+                    set(1, mx::astype(topIdx, idxDtype));
+                    continue;
+                }
+                return InterpResult::Error(
+                    "stablehlo.custom_call(mhlo.topk): unsupported operand/result arity");
             }
             return InterpResult::Error(
                 jax_mlx::UnsupportedOpsMessage(
