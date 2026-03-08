@@ -1,6 +1,7 @@
 #include "pjrt_plugin/mlx_buffer.h"
 
 #include <cstdlib>
+#include <cstddef>
 #include <cstring>
 #include <numeric>
 #include <stdexcept>
@@ -8,6 +9,73 @@
 #include "pjrt_plugin/mlx_type_utils.h"
 
 namespace jax_mlx {
+
+namespace {
+
+std::vector<int64_t> NormalizeStridesToElements(const std::vector<int64_t>& dims,
+                                                const std::vector<int64_t>& raw_strides,
+                                                int64_t data_size_elems,
+                                                size_t elem_size) {
+    if (raw_strides.empty()) return raw_strides;
+
+    auto max_offset = [&](const std::vector<int64_t>& strides) {
+        int64_t off = 0;
+        for (size_t i = 0; i < dims.size(); ++i) {
+            if (dims[i] > 1) off += (dims[i] - 1) * std::abs(strides[i]);
+        }
+        return off;
+    };
+
+    // MLX exposes strides in element units. Some call paths may present byte
+    // units; detect that and normalize.
+    int64_t off = max_offset(raw_strides);
+    if (off < data_size_elems || elem_size <= 1) return raw_strides;
+
+    std::vector<int64_t> normalized = raw_strides;
+    bool divisible = true;
+    for (auto& s : normalized) {
+        if (s % static_cast<int64_t>(elem_size) != 0) {
+            divisible = false;
+            break;
+        }
+        s /= static_cast<int64_t>(elem_size);
+    }
+    if (!divisible) return raw_strides;
+
+    return max_offset(normalized) < data_size_elems ? normalized : raw_strides;
+}
+
+void CopyStridedToContiguous(const uint8_t* src,
+                             uint8_t* dst,
+                             const std::vector<int64_t>& dims,
+                             const std::vector<int64_t>& strides_elems,
+                             size_t elem_size,
+                             size_t dim,
+                             int64_t src_index,
+                             size_t& dst_offset) {
+    if (dim == dims.size()) {
+        auto* src_bytes = reinterpret_cast<const std::byte*>(src);
+        std::ptrdiff_t byte_offset =
+            static_cast<std::ptrdiff_t>(src_index) * static_cast<std::ptrdiff_t>(elem_size);
+        std::memcpy(dst + dst_offset,
+                    src_bytes + byte_offset,
+                    elem_size);
+        dst_offset += elem_size;
+        return;
+    }
+    for (int64_t i = 0; i < dims[dim]; ++i) {
+        CopyStridedToContiguous(src,
+                                dst,
+                                dims,
+                                strides_elems,
+                                elem_size,
+                                dim + 1,
+                                src_index + i * strides_elems[dim],
+                                dst_offset);
+    }
+}
+
+}  // namespace
 
 MlxBuffer::MlxBuffer(MlxDevice* device, mlx::core::array array, int pjrt_dtype,
                      const std::vector<int64_t>& dims)
@@ -58,7 +126,27 @@ void MlxBuffer::ToHostBuffer(void* dst, std::function<void()> on_done) {
     array_.eval();
     size_t nbytes = byte_size();
     if (nbytes > 0) {
-        std::memcpy(dst, array_.data<uint8_t>(), nbytes);
+        if (array_.flags().row_contiguous) {
+            std::memcpy(dst, array_.data<uint8_t>(), nbytes);
+        } else {
+            std::vector<int64_t> raw_strides;
+            raw_strides.reserve(array_.strides().size());
+            for (auto s : array_.strides()) raw_strides.push_back(static_cast<int64_t>(s));
+
+            auto strides = NormalizeStridesToElements(dims_,
+                                                      raw_strides,
+                                                      static_cast<int64_t>(array_.data_size()),
+                                                      DtypeByteSize(pjrt_dtype_));
+            size_t dst_offset = 0;
+            CopyStridedToContiguous(array_.data<uint8_t>(),
+                                    static_cast<uint8_t*>(dst),
+                                    dims_,
+                                    strides,
+                                    DtypeByteSize(pjrt_dtype_),
+                                    0,
+                                    0,
+                                    dst_offset);
+        }
     }
     if (on_done) on_done();
 }

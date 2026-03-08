@@ -3,7 +3,9 @@
 #include "pjrt_plugin/mlx_executable.h"
 
 #include <cstdlib>
+#include <cstddef>
 #include <cstring>
+#include <cmath>
 #include <algorithm>
 #include <numeric>
 #include <set>
@@ -43,6 +45,69 @@ static mx::Shape toMlxShape(mlir::RankedTensorType type) {
     return s;
 }
 
+static std::vector<int64_t> normalizeStridesToElements(const std::vector<int64_t>& dims,
+                                                       const std::vector<int64_t>& rawStrides,
+                                                       int64_t dataSizeElems,
+                                                       size_t elemSize) {
+    if (rawStrides.empty()) return rawStrides;
+    auto maxOffset = [&](const std::vector<int64_t>& strides) {
+        int64_t off = 0;
+        for (size_t i = 0; i < dims.size(); ++i) {
+            if (dims[i] > 1) off += (dims[i] - 1) * std::abs(strides[i]);
+        }
+        return off;
+    };
+    if (maxOffset(rawStrides) < dataSizeElems || elemSize <= 1) return rawStrides;
+
+    std::vector<int64_t> normalized = rawStrides;
+    bool divisible = true;
+    for (auto& s : normalized) {
+        if (s % static_cast<int64_t>(elemSize) != 0) {
+            divisible = false;
+            break;
+        }
+        s /= static_cast<int64_t>(elemSize);
+    }
+    if (!divisible) return rawStrides;
+    return maxOffset(normalized) < dataSizeElems ? normalized : rawStrides;
+}
+
+static void copyStridedToLinearBytes(const uint8_t* src,
+                                     uint8_t* dst,
+                                     const std::vector<int64_t>& dims,
+                                     const std::vector<int64_t>& stridesElems,
+                                     size_t elemSize,
+                                     size_t dim,
+                                     int64_t srcIndex,
+                                     size_t& dstOffset) {
+    if (dim == dims.size()) {
+        auto* srcBytes = reinterpret_cast<const std::byte*>(src);
+        std::ptrdiff_t byteOffset =
+            static_cast<std::ptrdiff_t>(srcIndex) * static_cast<std::ptrdiff_t>(elemSize);
+        std::memcpy(dst + dstOffset,
+                    srcBytes + byteOffset,
+                    elemSize);
+        dstOffset += elemSize;
+        return;
+    }
+    for (int64_t i = 0; i < dims[dim]; ++i) {
+        copyStridedToLinearBytes(src,
+                                 dst,
+                                 dims,
+                                 stridesElems,
+                                 elemSize,
+                                 dim + 1,
+                                 srcIndex + i * stridesElems[dim],
+                                 dstOffset);
+    }
+}
+
+// Apply an arbitrary axis permutation.
+static mx::array permuteAxes(mx::array input, const std::vector<int>& perm) {
+    if (perm.empty()) return input;
+    return mx::transpose(input, perm);
+}
+
 // Build an MLX array from a DenseElementsAttr constant
 static mx::array makeConstant(mlir::stablehlo::ConstantOp op) {
     auto denseAttr = mlir::cast<mlir::DenseElementsAttr>(op.getValue());
@@ -71,15 +136,21 @@ static mx::array makeConstant(mlir::stablehlo::ConstantOp op) {
 static mx::array broadcastInDim(mx::array input,
                                  llvm::ArrayRef<int64_t> bdcDims,
                                  mx::Shape outShape) {
+    if (input.ndim() == 0 && bdcDims.empty()) {
+        // MLX broadcast_to on reshaped scalars can produce sparse-looking outputs.
+        // Force scalar broadcasting via arithmetic expansion.
+        return mx::add(mx::zeros(outShape, input.dtype()), input);
+    }
     int outRank = static_cast<int>(outShape.size());
     mx::Shape interShape(outRank, 1);
     int inDimIdx = 0;
     for (int64_t d : bdcDims)
         interShape[static_cast<size_t>(d)] = input.shape()[inDimIdx++];
-    return mx::broadcast_to(mx::reshape(input, interShape), outShape);
+    auto reshaped = mx::reshape(input, interShape);
+    return mx::add(mx::zeros(outShape, input.dtype()), reshaped);
 }
 
-// stablehlo.dot_general → MLX matmul via permute+reshape
+// stablehlo.dot_general lowered through MLX einsum.
 static mx::array dotGeneral(mx::array lhs, mx::array rhs,
                               mlir::stablehlo::DotDimensionNumbersAttr dimNums) {
     auto lhsBatchArr = dimNums.getLhsBatchingDimensions();
@@ -87,58 +158,234 @@ static mx::array dotGeneral(mx::array lhs, mx::array rhs,
     auto lhsContractArr = dimNums.getLhsContractingDimensions();
     auto rhsContractArr = dimNums.getRhsContractingDimensions();
 
+    static constexpr const char* kSymbols =
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    static constexpr int kSymbolCount = 52;
+
+    if (lhs.ndim() + rhs.ndim() > kSymbolCount) {
+        // Conservative fallback for unusually high-rank tensors.
+        return mx::matmul(lhs, rhs);
+    }
+
+    std::vector<char> lhsLabels(lhs.ndim(), '\0');
+    std::vector<char> rhsLabels(rhs.ndim(), '\0');
+    int nextSymbol = 0;
+    auto allocSymbol = [&]() -> char { return kSymbols[nextSymbol++]; };
+
+    for (size_t i = 0; i < lhsBatchArr.size(); ++i) {
+        char sym = allocSymbol();
+        lhsLabels[static_cast<size_t>(lhsBatchArr[i])] = sym;
+        rhsLabels[static_cast<size_t>(rhsBatchArr[i])] = sym;
+    }
+    for (size_t i = 0; i < lhsContractArr.size(); ++i) {
+        char sym = allocSymbol();
+        lhsLabels[static_cast<size_t>(lhsContractArr[i])] = sym;
+        rhsLabels[static_cast<size_t>(rhsContractArr[i])] = sym;
+    }
+    for (int i = 0; i < lhs.ndim(); ++i)
+        if (lhsLabels[static_cast<size_t>(i)] == '\0')
+            lhsLabels[static_cast<size_t>(i)] = allocSymbol();
+    for (int i = 0; i < rhs.ndim(); ++i)
+        if (rhsLabels[static_cast<size_t>(i)] == '\0')
+            rhsLabels[static_cast<size_t>(i)] = allocSymbol();
+
+    std::string lhsSub(lhsLabels.begin(), lhsLabels.end());
+    std::string rhsSub(rhsLabels.begin(), rhsLabels.end());
+
+    std::string outSub;
+    outSub.reserve(static_cast<size_t>(lhs.ndim() + rhs.ndim()));
     std::set<int> lhsBatchSet(lhsBatchArr.begin(), lhsBatchArr.end());
     std::set<int> lhsContractSet(lhsContractArr.begin(), lhsContractArr.end());
     std::set<int> rhsBatchSet(rhsBatchArr.begin(), rhsBatchArr.end());
     std::set<int> rhsContractSet(rhsContractArr.begin(), rhsContractArr.end());
 
-    std::vector<int> lhsFreeDims, rhsFreeDims;
-    for (int i = 0; i < lhs.ndim(); i++)
+    for (auto d : lhsBatchArr)
+        outSub.push_back(lhsLabels[static_cast<size_t>(d)]);
+    for (int i = 0; i < lhs.ndim(); ++i)
         if (!lhsBatchSet.count(i) && !lhsContractSet.count(i))
-            lhsFreeDims.push_back(i);
-    for (int i = 0; i < rhs.ndim(); i++)
+            outSub.push_back(lhsLabels[static_cast<size_t>(i)]);
+    for (int i = 0; i < rhs.ndim(); ++i)
         if (!rhsBatchSet.count(i) && !rhsContractSet.count(i))
-            rhsFreeDims.push_back(i);
+            outSub.push_back(rhsLabels[static_cast<size_t>(i)]);
 
-    // Permute lhs: [batch, free, contract]
-    std::vector<int> lhsPerm, rhsPerm;
-    for (auto d : lhsBatchArr) lhsPerm.push_back(d);
-    for (auto d : lhsFreeDims) lhsPerm.push_back(d);
-    for (auto d : lhsContractArr) lhsPerm.push_back(d);
+    return mx::einsum(lhsSub + "," + rhsSub + "->" + outSub, {lhs, rhs});
+}
 
-    // Permute rhs: [batch, contract, free]
-    for (auto d : rhsBatchArr) rhsPerm.push_back(d);
-    for (auto d : rhsContractArr) rhsPerm.push_back(d);
-    for (auto d : rhsFreeDims) rhsPerm.push_back(d);
+static std::vector<int> toIntVector(std::optional<llvm::ArrayRef<int64_t>> arr,
+                                    int defaultValue,
+                                    int sizeHint) {
+    if (!arr.has_value()) return std::vector<int>(sizeHint, defaultValue);
+    std::vector<int> out;
+    out.reserve(arr->size());
+    for (int64_t v : *arr) out.push_back(static_cast<int>(v));
+    return out;
+}
 
-    auto lhsP = mx::transpose(lhs, lhsPerm);
-    auto rhsP = mx::transpose(rhs, rhsPerm);
+static std::pair<std::vector<int>, std::vector<int>> parsePadding(
+    std::optional<mlir::DenseIntElementsAttr> attr, int spatialDims) {
+    std::vector<int> lo(spatialDims, 0), hi(spatialDims, 0);
+    if (!attr.has_value()) return {lo, hi};
 
-    int batchN = static_cast<int>(lhsBatchArr.size());
-    int freeL = static_cast<int>(lhsFreeDims.size());
-    int freeR = static_cast<int>(rhsFreeDims.size());
-    int contractN = static_cast<int>(lhsContractArr.size());
+    std::vector<int64_t> vals;
+    for (int64_t v : attr->getValues<int64_t>()) vals.push_back(v);
+    if (vals.size() != static_cast<size_t>(2 * spatialDims)) return {lo, hi};
+    for (int i = 0; i < spatialDims; ++i) {
+        lo[i] = static_cast<int>(vals[static_cast<size_t>(2 * i)]);
+        hi[i] = static_cast<int>(vals[static_cast<size_t>(2 * i + 1)]);
+    }
+    return {lo, hi};
+}
 
-    int64_t batchSz = 1, M = 1, N = 1, K = 1;
-    for (int i = 0; i < batchN; i++) batchSz *= lhsP.shape()[i];
-    for (int i = batchN; i < batchN + freeL; i++) M *= lhsP.shape()[i];
-    for (int i = batchN; i < batchN + contractN; i++) K *= lhsP.shape()[i];
-    for (int i = batchN + contractN; i < batchN + contractN + freeR; i++)
-        N *= rhsP.shape()[i];
+static int findSpatialPos(llvm::ArrayRef<int64_t> spatialDims, int64_t axis) {
+    for (int i = 0; i < static_cast<int>(spatialDims.size()); ++i) {
+        if (spatialDims[static_cast<size_t>(i)] == axis) return i;
+    }
+    return -1;
+}
 
-    // Matmul on [batch, M, K] x [batch, K, N] = [batch, M, N]
-    auto lhsR = mx::reshape(lhsP, {(int)batchSz, (int)M, (int)K});
-    auto rhsR = mx::reshape(rhsP, {(int)batchSz, (int)K, (int)N});
-    auto out = mx::matmul(lhsR, rhsR);  // [batch, M, N]
+static mx::array HandleConvolution(mx::array lhs, mx::array rhs,
+                                   mlir::stablehlo::ConvolutionOp convOp) {
+    auto dimNums = convOp.getDimensionNumbers();
+    int spatialDims = static_cast<int>(dimNums.getInputSpatialDimensions().size());
 
-    // Reshape result to output shape
-    mx::Shape outShape;
-    for (int i = 0; i < batchN; i++) outShape.push_back(lhsP.shape()[i]);
-    for (int i = batchN; i < batchN + freeL; i++) outShape.push_back(lhsP.shape()[i]);
-    for (int i = batchN + contractN; i < rhsP.ndim(); i++) outShape.push_back(rhsP.shape()[i]);
+    // MLX expects input [N, spatial..., C_in], weights [C_out, spatial..., C_in].
+    std::vector<int> inputPerm;
+    inputPerm.reserve(static_cast<size_t>(lhs.ndim()));
+    inputPerm.push_back(static_cast<int>(dimNums.getInputBatchDimension()));
+    for (int64_t d : dimNums.getInputSpatialDimensions()) inputPerm.push_back(static_cast<int>(d));
+    inputPerm.push_back(static_cast<int>(dimNums.getInputFeatureDimension()));
+    auto lhsCanonical = permuteAxes(lhs, inputPerm);
 
-    if (outShape.empty()) return mx::reshape(out, {});
-    return mx::reshape(out, outShape);
+    std::vector<int> kernelPerm;
+    kernelPerm.reserve(static_cast<size_t>(rhs.ndim()));
+    kernelPerm.push_back(static_cast<int>(dimNums.getKernelOutputFeatureDimension()));
+    for (int64_t d : dimNums.getKernelSpatialDimensions()) kernelPerm.push_back(static_cast<int>(d));
+    kernelPerm.push_back(static_cast<int>(dimNums.getKernelInputFeatureDimension()));
+    auto rhsCanonical = permuteAxes(rhs, kernelPerm);
+
+    auto strides = toIntVector(convOp.getWindowStrides(), 1, spatialDims);
+    auto lhsDil = toIntVector(convOp.getLhsDilation(), 1, spatialDims);
+    auto rhsDil = toIntVector(convOp.getRhsDilation(), 1, spatialDims);
+    auto [padLo, padHi] = parsePadding(convOp.getPadding(), spatialDims);
+
+    bool flip = false;
+    if (auto reversal = convOp.getWindowReversal(); reversal.has_value()) {
+        for (bool v : *reversal)
+            if (v) flip = true;
+    }
+
+    uint64_t batchGroups = convOp.getBatchGroupCount();
+    if (batchGroups != 1) {
+        throw std::invalid_argument("stablehlo.convolution with batch_group_count != 1");
+    }
+
+    auto outCanonical = mx::conv_general(lhsCanonical,
+                                         rhsCanonical,
+                                         strides,
+                                         padLo,
+                                         padHi,
+                                         rhsDil,
+                                         lhsDil,
+                                         static_cast<int>(convOp.getFeatureGroupCount()),
+                                         flip);
+
+    int outRank = outCanonical.ndim();
+    std::vector<int> outPerm(static_cast<size_t>(outRank), 0);
+    for (int axis = 0; axis < outRank; ++axis) {
+        if (axis == dimNums.getOutputBatchDimension()) {
+            outPerm[static_cast<size_t>(axis)] = 0;
+        } else if (axis == dimNums.getOutputFeatureDimension()) {
+            outPerm[static_cast<size_t>(axis)] = outRank - 1;
+        } else {
+            int p = findSpatialPos(dimNums.getOutputSpatialDimensions(), axis);
+            if (p < 0) throw std::invalid_argument("invalid output spatial dimensions");
+            outPerm[static_cast<size_t>(axis)] = 1 + p;
+        }
+    }
+    return permuteAxes(outCanonical, outPerm);
+}
+
+static mx::array HandleGather(mx::array operand, mx::array startIndices,
+                              mlir::stablehlo::GatherOp gatherOp) {
+    auto dimNums = gatherOp.getDimensionNumbers();
+    auto startIndexMap = dimNums.getStartIndexMap();
+    auto collapsedSliceDims = dimNums.getCollapsedSliceDims();
+    auto sliceSizes = gatherOp.getSliceSizes();
+
+    // Handle the common "take along one axis" gather pattern used by embeddings.
+    if (startIndexMap.size() != 1 || collapsedSliceDims.size() != 1) {
+        throw std::invalid_argument("only single-axis gather is implemented");
+    }
+    int axis = static_cast<int>(startIndexMap[0]);
+    if (collapsedSliceDims[0] != startIndexMap[0]) {
+        throw std::invalid_argument("collapsed axis must match gathered axis");
+    }
+    if (sliceSizes[static_cast<size_t>(axis)] != 1) {
+        throw std::invalid_argument("slice size for gathered axis must be 1");
+    }
+    for (int i = 0; i < operand.ndim(); ++i) {
+        if (i != axis && sliceSizes[static_cast<size_t>(i)] != operand.shape()[i]) {
+            throw std::invalid_argument("non-gather axes must use full slice");
+        }
+    }
+
+    auto indices = startIndices;
+    int indexVectorDim = static_cast<int>(dimNums.getIndexVectorDim());
+    if (indexVectorDim < indices.ndim()) {
+        if (indices.shape()[indexVectorDim] != 1) {
+            throw std::invalid_argument("index_vector_dim width must be 1");
+        }
+        indices = mx::squeeze(indices, {indexVectorDim});
+    }
+
+    return mx::take(operand, indices, axis);
+}
+
+static mx::array HandleScatter(mx::array operand, mx::array scatterIndices, mx::array updates,
+                               mlir::stablehlo::ScatterOp scatterOp) {
+    auto dimNums = scatterOp.getScatterDimensionNumbers();
+    auto scatterDimsToOperandDims = dimNums.getScatterDimsToOperandDims();
+    int indexVectorDim = static_cast<int>(dimNums.getIndexVectorDim());
+    auto insertedWindowDims = dimNums.getInsertedWindowDims();
+
+    if (scatterDimsToOperandDims.size() != 1 || insertedWindowDims.size() != 1) {
+        throw std::invalid_argument("only single-axis scatter is implemented");
+    }
+    int axis = static_cast<int>(scatterDimsToOperandDims[0]);
+    if (insertedWindowDims[0] != scatterDimsToOperandDims[0]) {
+        throw std::invalid_argument("inserted_window_dims must match scatter axis");
+    }
+
+    auto idx = scatterIndices;
+    if (indexVectorDim < idx.ndim()) {
+        if (idx.shape()[indexVectorDim] != 1) {
+            throw std::invalid_argument("index_vector_dim width must be 1");
+        }
+        idx = mx::squeeze(idx, {indexVectorDim});
+    }
+
+    std::vector<mx::array> indices = {idx};
+    std::vector<int> axes = {axis};
+    auto updatesForMlx = updates;
+    int indexRank = idx.ndim();
+    // MLX scatter expects updates rank == index_rank + operand_rank and
+    // includes singleton dims for inserted_window_dims.
+    if (updatesForMlx.ndim() == indexRank + operand.ndim() - 1) {
+        updatesForMlx = mx::expand_dims(updatesForMlx, indexRank + axis);
+    }
+
+    std::string scatterFn;
+    for (auto& op : scatterOp.getUpdateComputation().front()) {
+        auto nm = op.getName().getStringRef();
+        if (nm != "stablehlo.return" && nm != "func.return") {
+            scatterFn = nm.str();
+            break;
+        }
+    }
+    if (scatterFn == "stablehlo.add") {
+        return mx::scatter_add(operand, indices, updatesForMlx, axes);
+    }
+    return mx::scatter(operand, indices, updatesForMlx, axes);
 }
 
 // Inspect reduction body to find the operation name
@@ -176,6 +423,61 @@ static mx::array popcnt(mx::array a) {
         count = mx::add(count, mx::bitwise_and(shifted, one));
     }
     return mx::astype(count, a.dtype());
+}
+
+// stablehlo.remainder follows truncating remainder semantics.
+static mx::array truncRemainder(mx::array x, mx::array y) {
+    auto r = mx::remainder(x, y);
+    auto zero = mx::zeros(r.shape(), r.dtype());
+    auto xNeg = mx::less(x, zero);
+    auto yNeg = mx::less(y, zero);
+    auto signDiff = mx::not_equal(xNeg, yNeg);
+    auto nonZero = mx::not_equal(r, zero);
+    auto adjust = mx::logical_and(signDiff, nonZero);
+    return mx::where(adjust, mx::subtract(r, y), r);
+}
+
+static mx::Dtype unsignedDtypeFor(mx::Dtype dt) {
+    if (dt == mx::int32 || dt == mx::uint32) return mx::uint32;
+    if (dt == mx::int64 || dt == mx::uint64) return mx::uint64;
+    return dt;
+}
+
+static mx::array invalidShiftMask(mx::array shift, mx::array value) {
+    int bits = value.dtype().size() * 8;
+    auto zero = mx::zeros(shift.shape(), shift.dtype());
+    auto bitsArr = mx::full(shift.shape(), bits, shift.dtype());
+    return mx::logical_or(mx::less(shift, zero), mx::greater_equal(shift, bitsArr));
+}
+
+static mx::array shiftLeftLikeCpu(mx::array value, mx::array shift) {
+    auto invalid = invalidShiftMask(shift, value);
+    auto zeroShift = mx::zeros(shift.shape(), shift.dtype());
+    auto safeShift = mx::where(invalid, zeroShift, shift);
+    auto shifted = mx::left_shift(value, safeShift);
+    auto zeroOut = mx::zeros(value.shape(), value.dtype());
+    return mx::where(invalid, zeroOut, shifted);
+}
+
+static mx::array shiftRightLogicalLikeCpu(mx::array value, mx::array shift) {
+    auto invalid = invalidShiftMask(shift, value);
+    auto zeroShift = mx::zeros(shift.shape(), shift.dtype());
+    auto safeShift = mx::where(invalid, zeroShift, shift);
+    auto u = mx::astype(value, unsignedDtypeFor(value.dtype()));
+    auto shifted = mx::right_shift(u, safeShift);
+    auto shiftedCast = mx::astype(shifted, value.dtype());
+    auto zeroOut = mx::zeros(value.shape(), value.dtype());
+    return mx::where(invalid, zeroOut, shiftedCast);
+}
+
+static mx::array shiftRightArithmeticLikeCpu(mx::array value, mx::array shift) {
+    auto invalid = invalidShiftMask(shift, value);
+    auto zeroShift = mx::zeros(shift.shape(), shift.dtype());
+    auto safeShift = mx::where(invalid, zeroShift, shift);
+    auto shifted = mx::right_shift(value, safeShift);
+    auto zero = mx::zeros(value.shape(), value.dtype());
+    auto signFill = mx::where(mx::less(value, zero), mx::full(value.shape(), -1, value.dtype()), zero);
+    return mx::where(invalid, signFill, shifted);
 }
 
 // ============================================================================
@@ -329,12 +631,47 @@ static InterpResult interpretBlock(mlir::Block& entry,
             auto dtype = MlirTypeToMlx(
                 mlir::cast<mlir::RankedTensorType>(cvtOp.getType()).getElementType());
             set(0, mx::astype(operand(0), dtype));
+        } else if (opName == "stablehlo.bitcast_convert" || opName.contains("bitcast_convert")) {
+            auto outType = mlir::cast<mlir::RankedTensorType>(op.getResult(0).getType());
+            auto outDtype = MlirTypeToMlx(outType.getElementType());
+            auto outShape = toMlxShape(outType);
+
+            auto in = operand(0);
+            int64_t inBytes = static_cast<int64_t>(in.size()) * in.dtype().size();
+            int64_t outElems = 1;
+            for (int d : outShape) outElems *= d;
+            int64_t outBytes = outElems * outDtype.size();
+            if (inBytes != outBytes) {
+                return InterpResult::Error(
+                    "stablehlo.bitcast_convert: byte-size mismatch");
+            }
+            // Generic bitcast fallback via logical-order byte packing.
+            in.eval();
+            void* buf = std::malloc(static_cast<size_t>(outBytes > 0 ? outBytes : 1));
+            if (outBytes > 0) {
+                std::vector<int64_t> dims(in.shape().begin(), in.shape().end());
+                std::vector<int64_t> rawStrides(in.strides().begin(), in.strides().end());
+                auto strides = normalizeStridesToElements(dims,
+                                                          rawStrides,
+                                                          static_cast<int64_t>(in.data_size()),
+                                                          static_cast<size_t>(in.dtype().size()));
+                size_t dstOffset = 0;
+                copyStridedToLinearBytes(in.data<uint8_t>(),
+                                         static_cast<uint8_t*>(buf),
+                                         dims,
+                                         strides,
+                                         static_cast<size_t>(in.dtype().size()),
+                                         0,
+                                         0,
+                                         dstOffset);
+            }
+            set(0, mx::array(buf, outShape, outDtype, [](void* p) { std::free(p); }));
         } else if (opName == "stablehlo.transpose") {
             auto transpOp = mlir::cast<mlir::stablehlo::TransposeOp>(op);
             std::vector<int> perm;
             for (int64_t d : transpOp.getPermutation())
                 perm.push_back(static_cast<int>(d));
-            set(0, mx::transpose(operand(0), perm));
+            set(0, permuteAxes(operand(0), perm));
         } else if (opName == "stablehlo.iota") {
             auto iotaOp = mlir::cast<mlir::stablehlo::IotaOp>(op);
             auto resultType = mlir::cast<mlir::RankedTensorType>(iotaOp.getType());
@@ -348,6 +685,16 @@ static InterpResult interpretBlock(mlir::Block& entry,
             set(0, mx::broadcast_to(mx::reshape(range, rangeShape), outShape));
         } else if (opName == "stablehlo.copy") {
             set(0, operand(0));  // identity
+        } else if (opName == "stablehlo.reverse") {
+            auto revOp = mlir::cast<mlir::stablehlo::ReverseOp>(op);
+            auto out = operand(0);
+            for (int64_t d : revOp.getDimensions()) {
+                int axis = static_cast<int>(d);
+                int n = out.shape()[axis];
+                auto idx = mx::arange(static_cast<double>(n - 1), -1.0, -1.0, mx::int32);
+                out = mx::take(out, idx, axis);
+            }
+            set(0, out);
         }
 
         // --- Unary math ---
@@ -396,39 +743,85 @@ static InterpResult interpretBlock(mlir::Block& entry,
         else if (opName == "stablehlo.maximum")   set(0, mx::maximum(operand(0), operand(1)));
         else if (opName == "stablehlo.minimum")   set(0, mx::minimum(operand(0), operand(1)));
         else if (opName == "stablehlo.power")     set(0, mx::power(operand(0), operand(1)));
-        else if (opName == "stablehlo.remainder") set(0, mx::remainder(operand(0), operand(1)));
+        else if (opName == "stablehlo.remainder") set(0, truncRemainder(operand(0), operand(1)));
         else if (opName == "stablehlo.and")       set(0, mx::bitwise_and(operand(0), operand(1)));
         else if (opName == "stablehlo.or")        set(0, mx::bitwise_or(operand(0), operand(1)));
         else if (opName == "stablehlo.xor")       set(0, mx::bitwise_xor(operand(0), operand(1)));
         else if (opName == "stablehlo.shift_left")
-            set(0, mx::left_shift(operand(0), operand(1)));
+            set(0, shiftLeftLikeCpu(operand(0), operand(1)));
         else if (opName == "stablehlo.shift_right_arithmetic")
-            set(0, mx::right_shift(operand(0), operand(1)));
+            set(0, shiftRightArithmeticLikeCpu(operand(0), operand(1)));
         else if (opName == "stablehlo.shift_right_logical")
-            set(0, mx::right_shift(operand(0), operand(1)));
-        else if (opName == "stablehlo.atan2" || opName == "chlo.next_after") {
+            set(0, shiftRightLogicalLikeCpu(operand(0), operand(1)));
+        else if (opName == "stablehlo.atan2" || opName == "chlo.next_after" ||
+                 opName == "stablehlo.next_after") {
             if (opName == "stablehlo.atan2")
                 set(0, mx::arctan2(operand(0), operand(1)));
-            else  // chlo.next_after - not in MLX; fall through to error
-                return InterpResult::Error("chlo.next_after not implemented");
+            else {
+                auto x = operand(0);
+                auto y = operand(1);
+                if (x.dtype() != y.dtype() || x.size() != y.size()) {
+                    return InterpResult::Error("chlo.next_after expects same dtype/size operands");
+                }
+                mx::Shape shape(x.shape().begin(), x.shape().end());
+                if (x.dtype() == mx::float32) {
+                    auto xFlat = mx::reshape(
+                        mx::add(mx::zeros(x.shape(), x.dtype()), x), {static_cast<int>(x.size())});
+                    auto yFlat = mx::reshape(
+                        mx::add(mx::zeros(y.shape(), y.dtype()), y), {static_cast<int>(y.size())});
+                    xFlat.eval();
+                    yFlat.eval();
+                    std::vector<float> out(static_cast<size_t>(x.size()));
+                    auto* xp = xFlat.data<float>();
+                    auto* yp = yFlat.data<float>();
+                    for (size_t i = 0; i < out.size(); ++i) out[i] = std::nextafter(xp[i], yp[i]);
+                    size_t nbytes = out.size() * sizeof(float);
+                    void* buf = std::malloc(nbytes > 0 ? nbytes : 1);
+                    if (nbytes > 0) std::memcpy(buf, out.data(), nbytes);
+                    set(0, mx::array(buf, shape, mx::float32, [](void* p) { std::free(p); }));
+                } else if (x.dtype() == mx::float64) {
+                    auto xFlat = mx::reshape(
+                        mx::add(mx::zeros(x.shape(), x.dtype()), x), {static_cast<int>(x.size())});
+                    auto yFlat = mx::reshape(
+                        mx::add(mx::zeros(y.shape(), y.dtype()), y), {static_cast<int>(y.size())});
+                    xFlat.eval();
+                    yFlat.eval();
+                    std::vector<double> out(static_cast<size_t>(x.size()));
+                    auto* xp = xFlat.data<double>();
+                    auto* yp = yFlat.data<double>();
+                    for (size_t i = 0; i < out.size(); ++i) out[i] = std::nextafter(xp[i], yp[i]);
+                    size_t nbytes = out.size() * sizeof(double);
+                    void* buf = std::malloc(nbytes > 0 ? nbytes : 1);
+                    if (nbytes > 0) std::memcpy(buf, out.data(), nbytes);
+                    set(0, mx::array(buf, shape, mx::float64, [](void* p) { std::free(p); }));
+                } else {
+                    return InterpResult::Error("chlo.next_after only supports f32/f64");
+                }
+            }
         }
 
         // --- Compare ---
         else if (opName == "stablehlo.compare") {
             auto cmpOp = mlir::cast<mlir::stablehlo::CompareOp>(op);
+            auto lhs = operand(0);
+            auto rhs = operand(1);
+            if (cmpOp.getCompareType() == mlir::stablehlo::ComparisonType::UNSIGNED) {
+                lhs = mx::astype(lhs, unsignedDtypeFor(lhs.dtype()));
+                rhs = mx::astype(rhs, unsignedDtypeFor(rhs.dtype()));
+            }
             switch (cmpOp.getComparisonDirection()) {
                 case mlir::stablehlo::ComparisonDirection::EQ:
-                    set(0, mx::equal(operand(0), operand(1))); break;
+                    set(0, mx::equal(lhs, rhs)); break;
                 case mlir::stablehlo::ComparisonDirection::NE:
-                    set(0, mx::not_equal(operand(0), operand(1))); break;
+                    set(0, mx::not_equal(lhs, rhs)); break;
                 case mlir::stablehlo::ComparisonDirection::LT:
-                    set(0, mx::less(operand(0), operand(1))); break;
+                    set(0, mx::less(lhs, rhs)); break;
                 case mlir::stablehlo::ComparisonDirection::LE:
-                    set(0, mx::less_equal(operand(0), operand(1))); break;
+                    set(0, mx::less_equal(lhs, rhs)); break;
                 case mlir::stablehlo::ComparisonDirection::GT:
-                    set(0, mx::greater(operand(0), operand(1))); break;
+                    set(0, mx::greater(lhs, rhs)); break;
                 case mlir::stablehlo::ComparisonDirection::GE:
-                    set(0, mx::greater_equal(operand(0), operand(1))); break;
+                    set(0, mx::greater_equal(lhs, rhs)); break;
             }
         }
 
@@ -578,6 +971,30 @@ static InterpResult interpretBlock(mlir::Block& entry,
             auto dotOp = mlir::cast<mlir::stablehlo::DotGeneralOp>(op);
             set(0, dotGeneral(operand(0), operand(1), dotOp.getDotDimensionNumbers()));
         }
+        else if (opName == "stablehlo.convolution") {
+            auto convOp = mlir::cast<mlir::stablehlo::ConvolutionOp>(op);
+            try {
+                set(0, HandleConvolution(operand(0), operand(1), convOp));
+            } catch (const std::exception& ex) {
+                return InterpResult::Error(std::string("stablehlo.convolution lowering failed: ") + ex.what());
+            }
+        }
+        else if (opName == "stablehlo.gather") {
+            auto gatherOp = mlir::cast<mlir::stablehlo::GatherOp>(op);
+            try {
+                set(0, HandleGather(operand(0), operand(1), gatherOp));
+            } catch (const std::exception& ex) {
+                return InterpResult::Error(std::string("stablehlo.gather lowering failed: ") + ex.what());
+            }
+        }
+        else if (opName == "stablehlo.scatter") {
+            auto scatterOp = mlir::cast<mlir::stablehlo::ScatterOp>(op);
+            try {
+                set(0, HandleScatter(operand(0), operand(1), operand(2), scatterOp));
+            } catch (const std::exception& ex) {
+                return InterpResult::Error(std::string("stablehlo.scatter lowering failed: ") + ex.what());
+            }
+        }
 
         // --- Complex ---
         else if (opName == "stablehlo.complex") {
@@ -713,6 +1130,26 @@ static InterpResult interpretBlock(mlir::Block& entry,
             for (size_t i = 0; i < branchResult.outputs.size(); i++)
                 vm.emplace(valKey(op.getResult(i)),
                            std::move(branchResult.outputs[i]));
+        }
+        // --- Custom call ---
+        else if (opName == "stablehlo.custom_call") {
+            auto ccOp = mlir::cast<mlir::stablehlo::CustomCallOp>(op);
+            std::string target = ccOp.getCallTargetName().str();
+            if (target.find("Sharding") != std::string::npos) {
+                if (op.getNumOperands() == op.getNumResults()) {
+                    for (size_t i = 0; i < op.getNumResults(); i++)
+                        vm.emplace(valKey(op.getResult(i)), operand(i));
+                } else if (op.getNumOperands() == 1 && op.getNumResults() == 1) {
+                    set(0, operand(0));
+                } else {
+                    return InterpResult::Error(
+                        "stablehlo.custom_call(Sharding): unsupported operand/result arity");
+                }
+                continue;
+            }
+            return InterpResult::Error(
+                jax_mlx::UnsupportedOpsMessage(
+                    {"stablehlo.custom_call(" + target + ")"}));
         }
 
         // --- Unknown op ---

@@ -168,3 +168,9 @@ compiled_fn_ = mlx::core::compile([this, device](const std::vector<mx::array>& i
 
 A small number of tests fail with numerical tolerance errors rather than missing ops.
 These should be investigated after the above items are complete.
+
+### 7. Remove avoidable `next_after` materialization
+
+Current `next_after` fallback uses a contiguous-realization path before host-side
+`std::nextafter`. This is acceptable short-term for correctness, but should be
+replaced with stride-aware logical iteration that avoids forcing contiguity.
