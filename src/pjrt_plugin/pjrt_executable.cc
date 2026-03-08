@@ -213,7 +213,7 @@ PJRT_Error* MPS_LoadedExecutable_Execute(PJRT_LoadedExecutable_Execute_Args* arg
 
     // Check for execution errors
     if (!exec_result.ok()) {
-        return MakeError("MPS execution failed: " + exec_result.error);
+        return MakeError("MLX execution failed: " + exec_result.error);
     }
 
     // Write outputs to the pre-allocated output_lists

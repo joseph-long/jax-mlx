@@ -11,7 +11,7 @@
 // Platform constants
 // ============================================================================
 
-const char* const kPlatformName = "mps";
+const char* const kPlatformName = "mlx";
 const char* const kPlatformVersion = "0.1.0";
 
 // ============================================================================

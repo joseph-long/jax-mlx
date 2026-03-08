@@ -1,4 +1,4 @@
-"""JAX MPS Plugin - Metal Performance Shaders backend for JAX."""
+"""JAX MLX Plugin - MLX backend for JAX."""
 
 import os
 import sys
@@ -8,11 +8,11 @@ from pathlib import Path
 # jaxlib version this plugin was built against (major.minor). Used for runtime
 # compatibility checking.
 _BUILT_FOR_JAXLIB = (0, 9)
-_LIB_NAME = "libpjrt_plugin_mps.dylib"
+_LIB_NAME = "libpjrt_plugin_mlx.dylib"
 
 
-class MPSPluginError(Exception):
-    """Exception raised when MPS plugin initialization fails."""
+class MLXPluginError(Exception):
+    """Exception raised when MLX plugin initialization fails."""
 
     pass
 
@@ -35,18 +35,18 @@ def _get_search_paths():
 
 
 def _find_library():
-    """Find the pjrt_plugin_mps shared library.
+    """Find the pjrt_plugin_mlx shared library.
 
     Returns:
         Path to the library, or None if not found.
     """
     # Environment variable takes precedence
-    if "JAX_MPS_LIBRARY_PATH" in os.environ:
-        env_path = os.environ["JAX_MPS_LIBRARY_PATH"]
+    if "JAX_MLX_LIBRARY_PATH" in os.environ:
+        env_path = os.environ["JAX_MLX_LIBRARY_PATH"]
         if Path(env_path).exists():
             return env_path
-        raise MPSPluginError(
-            f"JAX_MPS_LIBRARY_PATH is set to '{env_path}', but the file does not exist."
+        raise MLXPluginError(
+            f"JAX_MLX_LIBRARY_PATH is set to '{env_path}', but the file does not exist."
         )
 
     for path, _ in _get_search_paths():
@@ -92,18 +92,18 @@ def _check_jaxlib_version():
 
 
 def initialize():
-    """Initialize the MPS plugin with JAX.
+    """Initialize the MLX plugin with JAX.
 
     This function is called by JAX's plugin discovery mechanism.
 
     Raises:
-        MPSPluginError: If Metal GPU is not available or plugin initialization fails.
+        MLXPluginError: If Metal GPU is not available or plugin initialization fails.
     """
     # Check platform first
     if sys.platform != "darwin":
-        raise MPSPluginError(
-            f"MPS plugin requires macOS, but running on {sys.platform}. MPS (Metal "
-            "Performance Shaders) is only available on Apple devices."
+        raise MLXPluginError(
+            f"MLX plugin requires macOS, but running on {sys.platform}. "
+            "Apple MLX is only available on Apple devices."
         )
 
     # Check jaxlib version compatibility
@@ -112,9 +112,9 @@ def initialize():
     library_path = _find_library()
     if library_path is None:
         searched = "\n".join(f"  - {desc}" for _, desc in _get_search_paths())
-        raise MPSPluginError(
+        raise MLXPluginError(
             f"Could not find {_LIB_NAME}. Searched paths:\n{searched}\n"
-            "You can also set JAX_MPS_LIBRARY_PATH environment variable."
+            "You can also set JAX_MLX_LIBRARY_PATH environment variable."
         )
 
     # Disable shardy partitioner - it produces sdy dialect ops that our StableHLO parser
@@ -149,20 +149,20 @@ def initialize():
     try:
         from jax._src import xla_bridge as xb
     except ImportError as e:
-        raise MPSPluginError(f"Failed to import JAX xla_bridge: {e}") from e
+        raise MLXPluginError(f"Failed to import JAX xla_bridge: {e}") from e
 
     if not hasattr(xb, "register_plugin"):
-        raise MPSPluginError("JAX version does not support register_plugin API.")
+        raise MLXPluginError("JAX version does not support register_plugin API.")
 
     try:
         xb.register_plugin(
-            "mps",
+            "mlx",
             priority=-1,  # Below CPU (0) so CPU is the default device during dev stub phase
             library_path=library_path,
             options=None,
         )
     except Exception as e:
         # Handle "already registered" case - this is fine, not an error
-        if "ALREADY_EXISTS" in str(e) and "mps" in str(e).lower():
+        if "ALREADY_EXISTS" in str(e) and "mlx" in str(e).lower():
             return
-        raise MPSPluginError(f"Failed to register MPS plugin with JAX: {e}") from e
+        raise MLXPluginError(f"Failed to register MLX plugin with JAX: {e}") from e

@@ -2,7 +2,7 @@
 
 ## Motivation
 
-The current MPS Graph approach has fundamental brittleness:
+The previous graph-compiler approach had fundamental brittleness:
 
 - Apple's internal `WhileOpHandler` segfaults on `case → while → nested while` patterns
 - `MPSGraph` rejects `complex<f32>` as a non-native type in `gather_nd` and other ops
@@ -36,7 +36,7 @@ Apple Silicon
 
 ## Status
 
-**Branch**: `claude-mps-to-mlx`
+**Branch**: `claude-mlx-backend`
 
 ### Done
 
@@ -45,7 +45,7 @@ Apple Silicon
 - [x] `pjrt_types.h` updated to use `jax_mlx::` types
 - [x] All PJRT boilerplate updated (`pjrt_client.cc`, `pjrt_executable.cc`, etc.)
 - [x] Build system: MLX from Python virtualenv, pure C++, no ObjC frameworks
-- [x] Deps renamed: `jax-mps-deps` → `jax-mlx-deps` (setup_deps.sh, CMakeLists.txt, CI)
+- [x] Deps path: `~/.local/jax-mlx-deps` (setup_deps.sh, CMakeLists.txt, CI)
 - [x] Namespace: `jax_mps` → `jax_mlx` in all actively compiled files
 - [x] `issue_url.h` namespace updated to `jax_mlx`
 - [x] StableHLO interpreter in `mlx_executable.cc` (~60 ops):
@@ -141,7 +141,7 @@ The key difference from `func.call`: regions share the parent block's `ValueMap`
 (or operate on explicitly-passed `carried_values`), whereas `func.call` creates a
 fresh scope.
 
-### 4. Remove old MPS code
+### 4. Remove old legacy MPSGraph code
 
 Once all tests pass on the MLX backend, the following files can be deleted:
 

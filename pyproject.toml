@@ -1,7 +1,7 @@
 [project]
 name = "jax-mlx"
 version = "0.9.7"
-description = "JAX backend for Apple Metal Performance Shaders (MPS)"
+description = "JAX backend for Apple MLX"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "Apache-2.0"}
@@ -10,7 +10,7 @@ dependencies = [
     "jaxlib>=0.9.0,<0.10",
     "mlx>=0.31.0",
 ]
-keywords = ["jax", "metal", "mps", "apple", "gpu", "machine-learning"]
+keywords = ["jax", "metal", "mlx", "apple", "gpu", "machine-learning"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -26,7 +26,7 @@ Homepage = "https://github.com/joseph-long/jax-mlx"
 Repository = "https://github.com/joseph-long/jax-mlx"
 
 [project.entry-points."jax_plugins"]
-mps = "jax_plugins.mps"
+mlx = "jax_plugins.mlx"
 
 [build-system]
 requires = ["scikit-build-core>=0.8", "mlx>=0.31.0"]
@@ -42,7 +42,7 @@ build.verbose = true
 
 # Install the built library to the package
 wheel.packages = ["src/jax_plugins"]
-wheel.install-dir = "jax_plugins/mps"
+wheel.install-dir = "jax_plugins/mlx"
 
 [tool.cibuildwheel]
 build = ["cp311-macosx_arm64", "cp312-macosx_arm64", "cp313-macosx_arm64"]

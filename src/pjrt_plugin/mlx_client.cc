@@ -16,7 +16,7 @@ MlxClient::MlxClient() {}
 MlxClient::~MlxClient() {}
 
 bool MlxClient::Initialize() {
-    platform_name_ = "mps";
+    platform_name_ = "mlx";
     platform_version_ = "mlx-0.1.0";
     devices_.push_back(std::make_unique<MlxDevice>(this, 0, "MLX GPU"));
     return true;

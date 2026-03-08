@@ -24,7 +24,7 @@ inline std::string UnsupportedOpsMessage(const std::vector<std::string>& op_name
     }
 
     return "Unsupported operation(s): " + op_list +
-           ". The MPS backend does not have a handler for these operations.\n\n"
+           ". The MLX backend does not have a handler for these operations.\n\n"
            "File an issue: "
            "https://github.com/joseph-long/jax-mlx/issues/new?template=missing-op.yml"
            "&title=Missing+op:+" +

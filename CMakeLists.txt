@@ -133,9 +133,9 @@ set(PJRT_SOURCES
     ${PROTO_SRCS}
 )
 
-add_library(pjrt_plugin_mps SHARED ${PJRT_SOURCES})
+add_library(pjrt_plugin_mlx SHARED ${PJRT_SOURCES})
 
-target_include_directories(pjrt_plugin_mps PRIVATE
+target_include_directories(pjrt_plugin_mlx PRIVATE
     ${CMAKE_SOURCE_DIR}/src
     ${XLA_INCLUDE_DIR}
     ${LLVM_INCLUDE_DIRS}
@@ -148,7 +148,7 @@ target_include_directories(pjrt_plugin_mps PRIVATE
 
 # Debug logging level (0=error, 1=warn, 2=info, 3=debug)
 if(DEFINED ENV{MPS_LOG_LEVEL})
-    target_compile_definitions(pjrt_plugin_mps PRIVATE MPS_LOG_LEVEL=$ENV{MPS_LOG_LEVEL})
+    target_compile_definitions(pjrt_plugin_mlx PRIVATE MPS_LOG_LEVEL=$ENV{MPS_LOG_LEVEL})
 endif()
 
 # Core MLIR libraries (order matters for static linking)
@@ -236,7 +236,7 @@ if(UTF8_VALIDITY_LIB)
     list(APPEND UTF8_LIBS ${UTF8_VALIDITY_LIB})
 endif()
 
-target_link_libraries(pjrt_plugin_mps PRIVATE
+target_link_libraries(pjrt_plugin_mlx PRIVATE
     mlx
     ${STABLEHLO_LIBS}
     ${MLIR_LIBS}
@@ -246,17 +246,17 @@ target_link_libraries(pjrt_plugin_mps PRIVATE
 )
 
 # For wheel distribution: ensure RPATH is set correctly
-set_target_properties(pjrt_plugin_mps PROPERTIES
-    OUTPUT_NAME "pjrt_plugin_mps"
+set_target_properties(pjrt_plugin_mlx PROPERTIES
+    OUTPUT_NAME "pjrt_plugin_mlx"
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
     INSTALL_RPATH "@loader_path"
     BUILD_WITH_INSTALL_RPATH TRUE
 )
 
 # Install target - this is used by scikit-build-core
-# Note: scikit-build's wheel.install-dir adds "jax_plugins/mps" prefix,
-# so we only need "lib" here to get "jax_plugins/mps/lib" in the wheel
-install(TARGETS pjrt_plugin_mps
+# Note: scikit-build's wheel.install-dir adds "jax_plugins/mlx" prefix,
+# so we only need "lib" here to get "jax_plugins/mlx/lib" in the wheel
+install(TARGETS pjrt_plugin_mlx
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION lib
 )

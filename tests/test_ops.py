@@ -28,20 +28,20 @@ from .configs import (
 )
 
 # Test mode configuration via environment variable:
-# - "compare" (default): Run on both CPU and MPS, compare results
-# - "mps": Run only on MPS
+# - "compare" (default): Run on both CPU and MLX, compare results
+# - "mlx": Run only on MLX
 # - "cpu": Run only on CPU
 TEST_MODE = os.environ.get("JAX_TEST_MODE", "compare").lower()
-if TEST_MODE not in ("compare", "mps", "cpu"):
+if TEST_MODE not in ("compare", "mlx", "cpu"):
     raise ValueError(
-        f"Invalid JAX_TEST_MODE: {TEST_MODE}. Must be 'compare', 'mps', or 'cpu'."
+        f"Invalid JAX_TEST_MODE: {TEST_MODE}. Must be 'compare', 'mlx', or 'cpu'."
     )
 
 
 def get_test_platforms() -> list[str]:
     """Return the platforms to test based on JAX_TEST_MODE environment variable."""
     if TEST_MODE == "compare":
-        return ["cpu", "mps"]
+        return ["cpu", "mlx"]
     else:
         return [TEST_MODE]
 
@@ -145,8 +145,8 @@ def test_op_grad(op_config: OperationTestConfig, jit: bool) -> None:
 def test_unsupported_op_error_message(jit: bool) -> None:
     """Check that unsupported-op errors link to the issue template and CONTRIBUTING.md."""
     if TEST_MODE == "cpu":
-        pytest.skip("MPS-specific test skipped in CPU-only mode")
-    device = jax.devices("mps")[0]
+        pytest.skip("MLX-specific test skipped in CPU-only mode")
+    device = jax.devices("mlx")[0]
     with jax.default_device(device):
         try:
             # This is an obscure op. It's unlikely to be implemented, but this test may
@@ -171,7 +171,7 @@ def assert_all_ops_tested():
         return
 
     # Skip op coverage check in CPU-only mode since EXERCISED_STABLEHLO_OPS is only
-    # populated when running on MPS.
+    # populated when running on MLX.
     if TEST_MODE == "cpu":
         return
 

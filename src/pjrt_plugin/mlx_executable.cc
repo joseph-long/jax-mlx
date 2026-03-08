@@ -4,6 +4,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <algorithm>
 #include <numeric>
 #include <set>
 #include <sstream>
@@ -194,9 +195,49 @@ struct InterpResult {
 };
 
 // Forward declaration so func.call can recurse
+static InterpResult interpretBlock(mlir::Block& block,
+                                    mlir::ModuleOp module,
+                                    ValueMap vm);
+
 static InterpResult interpretFunction(mlir::func::FuncOp func,
                                        mlir::ModuleOp module,
                                        const std::vector<mx::array>& inputs);
+
+static void BindBlockArguments(mlir::Block& block,
+                                const std::vector<mx::array>& inputs,
+                                ValueMap& vm) {
+    if (inputs.size() != block.getNumArguments()) return;
+    for (size_t i = 0; i < inputs.size(); i++)
+        vm.emplace(valKey(block.getArgument(i)), inputs[i]);
+}
+
+static InterpResult interpretRegion(mlir::Region& region,
+                                     mlir::ModuleOp module,
+                                     const std::vector<mx::array>& inputs,
+                                     const ValueMap& parentVm) {
+    if (region.empty()) {
+        return InterpResult::Error("Region is empty");
+    }
+    auto& block = region.front();
+    if (inputs.size() != block.getNumArguments()) {
+        return InterpResult::Error(
+            "Region input arity mismatch: expected " +
+            std::to_string(block.getNumArguments()) + ", got " +
+            std::to_string(inputs.size()));
+    }
+    ValueMap vm = parentVm;
+    BindBlockArguments(block, inputs, vm);
+    return interpretBlock(block, module, std::move(vm));
+}
+
+static int64_t ScalarToInt64(mx::array a) {
+    a.eval();
+    if (a.dtype() == mx::int32) return static_cast<int64_t>(a.item<int32_t>());
+    if (a.dtype() == mx::uint32) return static_cast<int64_t>(a.item<uint32_t>());
+    if (a.dtype() == mx::uint64) return static_cast<int64_t>(a.item<uint64_t>());
+    if (a.dtype() == mx::bool_) return a.item<bool>() ? 1 : 0;
+    return a.item<int64_t>();
+}
 
 static ExecutionResult runFunction(mlir::func::FuncOp func,
                                     mlir::ModuleOp module,
@@ -237,6 +278,12 @@ static InterpResult interpretFunction(mlir::func::FuncOp func,
     for (size_t i = 0; i < blockArgs.size(); i++)
         vm.emplace(valKey(blockArgs[i]), inputs[i]);
 
+    return interpretBlock(entry, module, std::move(vm));
+}
+
+static InterpResult interpretBlock(mlir::Block& entry,
+                                    mlir::ModuleOp module,
+                                    ValueMap vm) {
     std::vector<mx::array> outputs;
 
     for (auto& op : entry) {
@@ -253,7 +300,7 @@ static InterpResult interpretFunction(mlir::func::FuncOp func,
         };
 
         // --- func.return: collect outputs ---
-        if (opName == "func.return") {
+        if (opName == "func.return" || opName == "stablehlo.return") {
             for (auto v : op.getOperands()) {
                 auto it = vm.find(valKey(v));
                 if (it == vm.end())
@@ -388,6 +435,11 @@ static InterpResult interpretFunction(mlir::func::FuncOp func,
         // --- Select ---
         else if (opName == "stablehlo.select") {
             set(0, mx::where(operand(0), operand(1), operand(2)));
+        }
+        // --- Clamp ---
+        else if (opName == "stablehlo.clamp") {
+            // Operands: [min, operand, max]
+            set(0, mx::minimum(mx::maximum(operand(1), operand(0)), operand(2)));
         }
 
         // --- Concatenate ---
@@ -579,12 +631,88 @@ static InterpResult interpretFunction(mlir::func::FuncOp func,
 
         // --- While loop ---
         else if (opName == "stablehlo.while") {
-            return InterpResult::Error("stablehlo.while not yet implemented");
+            auto whileOp = mlir::cast<mlir::stablehlo::WhileOp>(op);
+            std::vector<mx::array> carried;
+            carried.reserve(op.getNumOperands());
+            for (auto v : op.getOperands()) carried.push_back(vm.at(valKey(v)));
+
+            int64_t iter = 0;
+            constexpr int64_t kMaxWhileIters = 1000000;
+            while (true) {
+                if (iter++ > kMaxWhileIters) {
+                    return InterpResult::Error(
+                        "stablehlo.while exceeded max iterations (" +
+                        std::to_string(kMaxWhileIters) + ")");
+                }
+                auto condResult = interpretRegion(whileOp.getCond(), module, carried, vm);
+                if (!condResult.ok()) return condResult;
+                if (condResult.outputs.empty()) {
+                    return InterpResult::Error(
+                        "stablehlo.while condition returned no predicate");
+                }
+                bool pred = ScalarToInt64(condResult.outputs[0]) != 0;
+                if (!pred) break;
+
+                auto bodyResult = interpretRegion(whileOp.getBody(), module, carried, vm);
+                if (!bodyResult.ok()) return bodyResult;
+                if (bodyResult.outputs.size() != carried.size()) {
+                    return InterpResult::Error(
+                        "stablehlo.while body output arity mismatch");
+                }
+                carried = std::move(bodyResult.outputs);
+            }
+            if (carried.size() != op.getNumResults()) {
+                return InterpResult::Error("stablehlo.while result arity mismatch");
+            }
+            for (size_t i = 0; i < carried.size(); i++)
+                vm.emplace(valKey(op.getResult(i)), std::move(carried[i]));
         }
 
         // --- If ---
         else if (opName == "stablehlo.if") {
-            return InterpResult::Error("stablehlo.if not yet implemented");
+            auto ifOp = mlir::cast<mlir::stablehlo::IfOp>(op);
+            bool pred = ScalarToInt64(operand(0)) != 0;
+            std::vector<mx::array> branchInputs;
+            branchInputs.reserve(op.getNumOperands() - 1);
+            for (size_t i = 1; i < op.getNumOperands(); i++)
+                branchInputs.push_back(vm.at(valKey(op.getOperand(i))));
+
+            auto branchResult = interpretRegion(
+                pred ? ifOp.getTrueBranch() : ifOp.getFalseBranch(),
+                module, branchInputs, vm);
+            if (!branchResult.ok()) return branchResult;
+            if (branchResult.outputs.size() != op.getNumResults()) {
+                return InterpResult::Error("stablehlo.if result arity mismatch");
+            }
+            for (size_t i = 0; i < branchResult.outputs.size(); i++)
+                vm.emplace(valKey(op.getResult(i)),
+                           std::move(branchResult.outputs[i]));
+        }
+
+        // --- Case ---
+        else if (opName == "stablehlo.case") {
+            auto caseOp = mlir::cast<mlir::stablehlo::CaseOp>(op);
+            int64_t idx = ScalarToInt64(operand(0));
+            int64_t numBranches = static_cast<int64_t>(caseOp->getNumRegions());
+            if (numBranches <= 0) {
+                return InterpResult::Error("stablehlo.case requires at least one branch");
+            }
+            idx = std::max<int64_t>(0, std::min<int64_t>(idx, numBranches - 1));
+
+            std::vector<mx::array> branchInputs;
+            branchInputs.reserve(op.getNumOperands() - 1);
+            for (size_t i = 1; i < op.getNumOperands(); i++)
+                branchInputs.push_back(vm.at(valKey(op.getOperand(i))));
+
+            auto& region = caseOp->getRegion(static_cast<unsigned>(idx));
+            auto branchResult = interpretRegion(region, module, branchInputs, vm);
+            if (!branchResult.ok()) return branchResult;
+            if (branchResult.outputs.size() != op.getNumResults()) {
+                return InterpResult::Error("stablehlo.case result arity mismatch");
+            }
+            for (size_t i = 0; i < branchResult.outputs.size(); i++)
+                vm.emplace(valKey(op.getResult(i)),
+                           std::move(branchResult.outputs[i]));
         }
 
         // --- Unknown op ---

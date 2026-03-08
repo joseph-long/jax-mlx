@@ -11,7 +11,7 @@ brew install cmake ninja
 ./scripts/setup_deps.sh
 ```
 
-> If you previously built deps for the old `jax-mps` project (at `~/.local/jax-mps-deps`), you can symlink them rather than rebuilding: `ln -sf ~/.local/jax-mps-deps ~/.local/jax-mlx-deps`
+> If you previously built deps in `~/.local/jax-mlx-deps`, you can reuse them directly.
 
 Then install the Python dependencies, build the plugin, and set up pre-commit hooks:
 
@@ -39,7 +39,7 @@ Unsupported op: stablehlo.cosine
 
 ### Finding the MLX implementation
 
-Check `mlx::core` free functions in the MLX headers. The `mps_ops/` directory lists MPS Graph methods and is useful for discovering what operations are available and their semantics.
+Check `mlx::core` free functions in the MLX headers. The `mps_ops/` directory lists legacy graph methods and is useful for discovering what operations are available and their semantics.
 
 ### Adding the handler
 

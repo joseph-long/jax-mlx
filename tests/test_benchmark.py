@@ -17,7 +17,7 @@ for op_config in OPERATION_TEST_CONFIGS:
         )
 
 DEVICES = []
-for platform in ["cpu", "mps"]:
+for platform in ["cpu", "mlx"]:
     try:
         DEVICES.append(jax.devices(platform)[0])
     except RuntimeError as ex:

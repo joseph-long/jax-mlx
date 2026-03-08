@@ -10,8 +10,8 @@ from jax import numpy as jnp
 from jax import random
 
 CPU_DEVICE = jax.devices("cpu")[0]
-MPS_DEVICE = (
-    jax.devices("mps")[0] if "mps" in {d.platform for d in jax.devices()} else None
+MLX_DEVICE = (
+    jax.devices("mlx")[0] if "mlx" in {d.platform for d in jax.devices()} else None
 )
 STABLEHLO_OP_RE = re.compile(r"(?<![\#\!])(?:stablehlo|chlo)\.[\w\.]+")
 
@@ -19,10 +19,10 @@ STABLEHLO_OP_RE = re.compile(r"(?<![\#\!])(?:stablehlo|chlo)\.[\w\.]+")
 def xfail_match(pattern: str) -> pytest.MarkDecorator:
     """Create a strict xfail marker that validates the error message pattern.
 
-    When MPS is not available (e.g., JAX_PLATFORMS=cpu), return a no-op marker
-    since MPS-specific errors won't occur and the test should pass normally.
+    When MLX is not available (e.g., JAX_PLATFORMS=cpu), return a no-op marker
+    since MLX-specific errors won't occur and the test should pass normally.
     """
-    if MPS_DEVICE is None:
+    if MLX_DEVICE is None:
         return pytest.mark.noop
     return pytest.mark.xfail(reason=pattern, match=pattern, strict=True)  # pyright: ignore[reportCallIssue]
 
@@ -170,7 +170,7 @@ class OperationTestConfig:
         result = func(*args, **kwargs)
 
         # Only mark ops as exercised if the operation succeeded on MPS.
-        if lowered and get_device_placement(result) == MPS_DEVICE:
+        if lowered and get_device_placement(result) == MLX_DEVICE:
             stablehlo_text = str(lowered.compiler_ir(dialect="stablehlo"))
             self.EXERCISED_STABLEHLO_OPS.update(STABLEHLO_OP_RE.findall(stablehlo_text))
         return result
@@ -222,7 +222,7 @@ class OperationTestConfig:
             grad_vals.append(grad_func(*args))
 
             # Only mark ops as exercised if the operation succeeded on MPS.
-            if lowered and get_device_placement(result) == MPS_DEVICE:
+            if lowered and get_device_placement(result) == MLX_DEVICE:
                 stablehlo_text = str(lowered.compiler_ir(dialect="stablehlo"))
                 self.EXERCISED_STABLEHLO_OPS.update(
                     STABLEHLO_OP_RE.findall(stablehlo_text)

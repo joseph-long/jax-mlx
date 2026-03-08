@@ -20,7 +20,7 @@ Tests, linting, and compilation on the `main` branch and in Continuous Integrati
 # Adding New Ops
 
 1. Identify the op to implement and find its StableHLO op name (e.g., `stablehlo.cosine`). The simplest approach is to implement a test for the op and look for failures (the error message includes the StableHLO op name).
-2. Find the matching MLX free function (e.g., `mlx::core::cos`). The `mps_ops/` directory lists MPS Graph methods and is useful for discovering what operations are available and their semantics.
+2. Find the matching MLX free function (e.g., `mlx::core::cos`). The `mps_ops/` directory lists legacy graph methods and is useful for discovering what operations are available and their semantics.
 3. Add a handler in `src/pjrt_plugin/mlx_executable.cc`:
    - For simple unary ops: add an `else if` branch in the interpreter calling the MLX free function directly.
    - For ops requiring type inspection, attribute access, or multi-step lowering: write a static helper function above the interpreter.
