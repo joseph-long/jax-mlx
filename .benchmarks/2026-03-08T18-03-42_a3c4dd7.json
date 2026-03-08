@@ -1,0 +1,5601 @@
+{
+  "machine_info": {
+    "node": "kingfisher",
+    "processor": "arm",
+    "machine": "arm64",
+    "python_compiler": "Clang 21.1.4 ",
+    "python_implementation": "CPython",
+    "python_implementation_version": "3.13.11",
+    "python_version": "3.13.11",
+    "python_build": [
+      "main",
+      "Dec 17 2025 20:55:16"
+    ],
+    "release": "25.3.0",
+    "system": "Darwin",
+    "cpu": {
+      "python_version": "3.13.11.final.0 (64 bit)",
+      "cpuinfo_version": [
+        9,
+        0,
+        0
+      ],
+      "cpuinfo_version_string": "9.0.0",
+      "arch": "ARM_8",
+      "bits": 64,
+      "count": 10,
+      "arch_string_raw": "arm64",
+      "brand_raw": "Apple M4"
+    }
+  },
+  "commit_info": {
+    "id": "a3c4dd7993335856fbd977772eec990c7732ff1b",
+    "time": "2026-03-08T14:02:14-04:00",
+    "author_time": "2026-03-08T14:02:14-04:00",
+    "dirty": false,
+    "project": "jax-mlx",
+    "branch": "claude-mps-to-mlx"
+  },
+  "benchmarks": [
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.exp_1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.exp_1]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cf5f8c0>]"
+      },
+      "param": "cpu-benchmark.exp_1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 7.1249669417738914e-06,
+        "max": 0.00028725003357976675,
+        "mean": 8.404504808568234e-06,
+        "stddev": 5.660058697910464e-06,
+        "rounds": 6191,
+        "median": 7.3750270530581474e-06,
+        "iqr": 1.6600824892520905e-07,
+        "q1": 7.292022928595543e-06,
+        "q3": 7.458031177520752e-06,
+        "iqr_outliers": 738,
+        "stddev_outliers": 361,
+        "outliers": "361;738",
+        "ld15iqr": 7.1249669417738914e-06,
+        "hd15iqr": 7.707974873483181e-06,
+        "ops": 118983.8096089277,
+        "total": 0.05203228926984593,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.add_1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.add_1]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cdc3110>]"
+      },
+      "param": "cpu-benchmark.add_1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 3.1249946914613247e-06,
+        "max": 6.262498209252954e-05,
+        "mean": 5.752425277355704e-06,
+        "stddev": 1.6651192480436028e-06,
+        "rounds": 30889,
+        "median": 5.375011824071407e-06,
+        "iqr": 3.33995558321476e-07,
+        "q1": 5.291018169373274e-06,
+        "q3": 5.62501372769475e-06,
+        "iqr_outliers": 3916,
+        "stddev_outliers": 1317,
+        "outliers": "1317;3916",
+        "ld15iqr": 4.792003892362118e-06,
+        "hd15iqr": 6.165995728224516e-06,
+        "ops": 173839.7200805855,
+        "total": 0.17768666439224035,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.sum_1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.sum_1]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cdc3890>]"
+      },
+      "param": "cpu-benchmark.sum_1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 3.7499703466892242e-06,
+        "max": 3.783300053328276e-05,
+        "mean": 5.3628592514625465e-06,
+        "stddev": 1.2076851281898473e-06,
+        "rounds": 45115,
+        "median": 5.082983989268541e-06,
+        "iqr": 2.9098009690642357e-07,
+        "q1": 4.959001671522856e-06,
+        "q3": 5.249981768429279e-06,
+        "iqr_outliers": 6048,
+        "stddev_outliers": 2326,
+        "outliers": "2326;6048",
+        "ld15iqr": 4.542001988738775e-06,
+        "hd15iqr": 5.707959644496441e-06,
+        "ops": 186467.69439777528,
+        "total": 0.2419453951297328,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.softmax_1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.softmax_1]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfcdf30>]"
+      },
+      "param": "cpu-benchmark.softmax_1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 1.2375006917864084e-05,
+        "max": 6.454100366681814e-05,
+        "mean": 1.9271191191309115e-05,
+        "stddev": 1.8888393678984152e-06,
+        "rounds": 27972,
+        "median": 1.933303428813815e-05,
+        "iqr": 1.2909586075693369e-06,
+        "q1": 1.8584018107503653e-05,
+        "q3": 1.987497671507299e-05,
+        "iqr_outliers": 2346,
+        "stddev_outliers": 6416,
+        "outliers": "6416;2346",
+        "ld15iqr": 1.6665959265083075e-05,
+        "hd15iqr": 2.1832995116710663e-05,
+        "ops": 51890.928281121414,
+        "total": 0.5390537600032985,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.exp_10]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.exp_10]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfce3f0>]"
+      },
+      "param": "cpu-benchmark.exp_10",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 2.2249994799494743e-05,
+        "max": 0.0004399159806780517,
+        "mean": 3.683020368560738e-05,
+        "stddev": 8.380152307256877e-06,
+        "rounds": 21183,
+        "median": 3.5582983400672674e-05,
+        "iqr": 2.207991201430559e-06,
+        "q1": 3.487500362098217e-05,
+        "q3": 3.708299482241273e-05,
+        "iqr_outliers": 2310,
+        "stddev_outliers": 1071,
+        "outliers": "1071;2310",
+        "ld15iqr": 3.158301115036011e-05,
+        "hd15iqr": 4.0416023693978786e-05,
+        "ops": 27151.628281403806,
+        "total": 0.7801742046722211,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.add_10]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.add_10]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfe1eb0>]"
+      },
+      "param": "cpu-benchmark.add_10",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 9.624985978007317e-06,
+        "max": 5.22089540027082e-05,
+        "mean": 1.769859839748486e-05,
+        "stddev": 3.996944237884695e-06,
+        "rounds": 32521,
+        "median": 1.775001874193549e-05,
+        "iqr": 5.542009603232145e-06,
+        "q1": 1.4749995898455381e-05,
+        "q3": 2.0292005501687527e-05,
+        "iqr_outliers": 230,
+        "stddev_outliers": 10928,
+        "outliers": "10928;230",
+        "ld15iqr": 9.624985978007317e-06,
+        "hd15iqr": 2.862501423805952e-05,
+        "ops": 56501.64931377332,
+        "total": 0.5755761184846051,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.sum_10]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.sum_10]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d4668b0>]"
+      },
+      "param": "cpu-benchmark.sum_10",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 1.2749980669468641e-05,
+        "max": 6.570800906047225e-05,
+        "mean": 1.983204000312106e-05,
+        "stddev": 1.7151290423079988e-06,
+        "rounds": 32129,
+        "median": 1.995800994336605e-05,
+        "iqr": 8.33999365568161e-07,
+        "q1": 1.9458006136119366e-05,
+        "q3": 2.0292005501687527e-05,
+        "iqr_outliers": 5953,
+        "stddev_outliers": 5884,
+        "outliers": "5884;5953",
+        "ld15iqr": 1.8207996618002653e-05,
+        "hd15iqr": 2.158299321308732e-05,
+        "ops": 50423.4561771066,
+        "total": 0.6371836132602766,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.softmax_10]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.softmax_10]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d4669c0>]"
+      },
+      "param": "cpu-benchmark.softmax_10",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 5.462497938424349e-05,
+        "max": 0.00011870800517499447,
+        "mean": 6.608190087413292e-05,
+        "stddev": 3.5407744830806823e-06,
+        "rounds": 10508,
+        "median": 6.462499732151628e-05,
+        "iqr": 2.707995008677244e-06,
+        "q1": 6.412499351426959e-05,
+        "q3": 6.683298852294683e-05,
+        "iqr_outliers": 794,
+        "stddev_outliers": 1240,
+        "outliers": "1240;794",
+        "ld15iqr": 6.0125021263957024e-05,
+        "hd15iqr": 7.0915964897722e-05,
+        "ops": 15132.736600672448,
+        "total": 0.6943886143853888,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.exp_100]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.exp_100]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d47b550>]"
+      },
+      "param": "cpu-benchmark.exp_100",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00012162496568635106,
+        "max": 0.0002628329675644636,
+        "mean": 0.00013667491062922414,
+        "stddev": 1.849382633804224e-05,
+        "rounds": 6421,
+        "median": 0.00013162498362362385,
+        "iqr": 3.875000402331352e-06,
+        "q1": 0.0001300839940086007,
+        "q3": 0.00013395899441093206,
+        "iqr_outliers": 694,
+        "stddev_outliers": 440,
+        "outliers": "440;694",
+        "ld15iqr": 0.00012445799075067043,
+        "hd15iqr": 0.00013979198411107063,
+        "ops": 7316.631819228553,
+        "total": 0.8775896011502482,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.add_100]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.add_100]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d47b650>]"
+      },
+      "param": "cpu-benchmark.add_100",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 5.741702625527978e-05,
+        "max": 0.0007390829850919545,
+        "mean": 7.144569574298543e-05,
+        "stddev": 1.7267312908635264e-05,
+        "rounds": 12605,
+        "median": 6.758398376405239e-05,
+        "iqr": 4.552231985144317e-06,
+        "q1": 6.625003879889846e-05,
+        "q3": 7.080227078404278e-05,
+        "iqr_outliers": 1652,
+        "stddev_outliers": 580,
+        "outliers": "580;1652",
+        "ld15iqr": 5.974998930469155e-05,
+        "hd15iqr": 7.766601629555225e-05,
+        "ops": 13996.644438838437,
+        "total": 0.9005729948403314,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.sum_100]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.sum_100]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d47cd70>]"
+      },
+      "param": "cpu-benchmark.sum_100",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 3.687501884996891e-05,
+        "max": 0.00010045798262581229,
+        "mean": 4.662333499185761e-05,
+        "stddev": 6.5135172542541096e-06,
+        "rounds": 14599,
+        "median": 4.812504630535841e-05,
+        "iqr": 9.416020475327969e-06,
+        "q1": 4.0458980947732925e-05,
+        "q3": 4.9875001423060894e-05,
+        "iqr_outliers": 402,
+        "stddev_outliers": 4090,
+        "outliers": "4090;402",
+        "ld15iqr": 3.687501884996891e-05,
+        "hd15iqr": 6.399996345862746e-05,
+        "ops": 21448.487118620793,
+        "total": 0.6806540675461292,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.softmax_100]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.softmax_100]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d47ce60>]"
+      },
+      "param": "cpu-benchmark.softmax_100",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00022816599812358618,
+        "max": 0.0016511249705217779,
+        "mean": 0.00026279456735178595,
+        "stddev": 6.80009555243081e-05,
+        "rounds": 3791,
+        "median": 0.00024337501963600516,
+        "iqr": 1.5916943084448576e-05,
+        "q1": 0.00023625005269423127,
+        "q3": 0.00025216699577867985,
+        "iqr_outliers": 531,
+        "stddev_outliers": 395,
+        "outliers": "395;531",
+        "ld15iqr": 0.00022816599812358618,
+        "hd15iqr": 0.0002763750380836427,
+        "ops": 3805.253700931212,
+        "total": 0.9962542048306204,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.exp_1000]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.exp_1000]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d44e970>]"
+      },
+      "param": "cpu-benchmark.exp_1000",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0011167500051669776,
+        "max": 0.003633999964222312,
+        "mean": 0.0014972094668530658,
+        "stddev": 0.0003621333977160325,
+        "rounds": 847,
+        "median": 0.0013546249829232693,
+        "iqr": 0.00035563598794396967,
+        "q1": 0.001267468513105996,
+        "q3": 0.0016231045010499656,
+        "iqr_outliers": 45,
+        "stddev_outliers": 146,
+        "outliers": "146;45",
+        "ld15iqr": 0.0011167500051669776,
+        "hd15iqr": 0.0021611250122077763,
+        "ops": 667.9092152027774,
+        "total": 1.2681364184245467,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.add_1000]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.add_1000]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d44ea50>]"
+      },
+      "param": "cpu-benchmark.add_1000",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0012981249601580203,
+        "max": 0.012297374953050166,
+        "mean": 0.0016951930390162056,
+        "stddev": 0.0007797173337148453,
+        "rounds": 701,
+        "median": 0.0015089170192368329,
+        "iqr": 0.00039098976412788033,
+        "q1": 0.0013869269896531478,
+        "q3": 0.001777916753781028,
+        "iqr_outliers": 31,
+        "stddev_outliers": 26,
+        "outliers": "26;31",
+        "ld15iqr": 0.0012981249601580203,
+        "hd15iqr": 0.002383291022852063,
+        "ops": 589.9033189638058,
+        "total": 1.1883303203503601,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.sum_1000]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.sum_1000]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfd35f0>]"
+      },
+      "param": "cpu-benchmark.sum_1000",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0004716669791378081,
+        "max": 0.0030477920081466436,
+        "mean": 0.0005842236503469486,
+        "stddev": 0.00017534110544071776,
+        "rounds": 1799,
+        "median": 0.0005230829701758921,
+        "iqr": 0.00010017699969466776,
+        "q1": 0.0004936250043101609,
+        "q3": 0.0005938020040048286,
+        "iqr_outliers": 204,
+        "stddev_outliers": 195,
+        "outliers": "195;204",
+        "ld15iqr": 0.0004716669791378081,
+        "hd15iqr": 0.0007443330250680447,
+        "ops": 1711.6732597287655,
+        "total": 1.0510183469741605,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.softmax_1000]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.softmax_1000]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfe9250>]"
+      },
+      "param": "cpu-benchmark.softmax_1000",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0030714580207131803,
+        "max": 0.006123708968516439,
+        "mean": 0.0039430226311771,
+        "stddev": 0.0006597397647320597,
+        "rounds": 293,
+        "median": 0.0037390420329757035,
+        "iqr": 0.000945249674259685,
+        "q1": 0.003411281286389567,
+        "q3": 0.004356530960649252,
+        "iqr_outliers": 1,
+        "stddev_outliers": 96,
+        "outliers": "96;1",
+        "ld15iqr": 0.0030714580207131803,
+        "hd15iqr": 0.006123708968516439,
+        "ops": 253.61254386244104,
+        "total": 1.1553056309348904,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.matmul_1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.matmul_1]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfe9310>]"
+      },
+      "param": "cpu-benchmark.matmul_1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 2.6249908842146397e-06,
+        "max": 0.002696750045288354,
+        "mean": 3.148510793673636e-06,
+        "stddev": 8.871819018594219e-06,
+        "rounds": 137932,
+        "median": 3.0409428291022778e-06,
+        "iqr": 2.0797597244381905e-07,
+        "q1": 2.9170187190175056e-06,
+        "q3": 3.1249946914613247e-06,
+        "iqr_outliers": 4471,
+        "stddev_outliers": 280,
+        "outliers": "280;4471",
+        "ld15iqr": 2.6249908842146397e-06,
+        "hd15iqr": 3.4579425118863583e-06,
+        "ops": 317610.47223002044,
+        "total": 0.43428039079299197,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.matmul_10]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.matmul_10]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cf9e780>]"
+      },
+      "param": "cpu-benchmark.matmul_10",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 5.125009920448065e-06,
+        "max": 5.362502997741103e-05,
+        "mean": 7.595836306486423e-06,
+        "stddev": 1.485533722952344e-06,
+        "rounds": 43089,
+        "median": 7.417052984237671e-06,
+        "iqr": 8.33999365568161e-07,
+        "q1": 7.040973287075758e-06,
+        "q3": 7.874972652643919e-06,
+        "iqr_outliers": 1344,
+        "stddev_outliers": 1891,
+        "outliers": "1891;1344",
+        "ld15iqr": 5.790963768959045e-06,
+        "hd15iqr": 9.165960364043713e-06,
+        "ops": 131651.0729892975,
+        "total": 0.32729699061019346,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.matmul_100]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.matmul_100]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cf9e8e0>]"
+      },
+      "param": "cpu-benchmark.matmul_100",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00011266698129475117,
+        "max": 0.00028916599694639444,
+        "mean": 0.00015751800474007364,
+        "stddev": 2.0650879694562394e-05,
+        "rounds": 6170,
+        "median": 0.0001563329715281725,
+        "iqr": 2.924998989328742e-05,
+        "q1": 0.00014125002780929208,
+        "q3": 0.0001705000177025795,
+        "iqr_outliers": 64,
+        "stddev_outliers": 2106,
+        "outliers": "2106;64",
+        "ld15iqr": 0.00011266698129475117,
+        "hd15iqr": 0.00021445797756314278,
+        "ops": 6348.480617502345,
+        "total": 0.9718860892462544,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.matmul_1000]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.matmul_1000]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d45f2f0>]"
+      },
+      "param": "cpu-benchmark.matmul_1000",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.23865637503331527,
+        "max": 0.25535416597267613,
+        "mean": 0.2469066418008879,
+        "stddev": 0.007819459881413138,
+        "rounds": 5,
+        "median": 0.249179209000431,
+        "iqr": 0.014617166481912136,
+        "q1": 0.23869653150904924,
+        "q3": 0.2533136979909614,
+        "iqr_outliers": 0,
+        "stddev_outliers": 3,
+        "outliers": "3;0",
+        "ld15iqr": 0.23865637503331527,
+        "hd15iqr": 0.25535416597267613,
+        "ops": 4.0501138110591075,
+        "total": 1.2345332090044394,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.matmul_batched_8]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.matmul_batched_8]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d45f4d0>]"
+      },
+      "param": "cpu-benchmark.matmul_batched_8",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 1.8291000742465258e-05,
+        "max": 0.0004939589998684824,
+        "mean": 2.7750133036016923e-05,
+        "stddev": 1.840556944841147e-05,
+        "rounds": 26059,
+        "median": 2.5250017642974854e-05,
+        "iqr": 3.5410048440098763e-06,
+        "q1": 2.3667002096772194e-05,
+        "q3": 2.720800694078207e-05,
+        "iqr_outliers": 1174,
+        "stddev_outliers": 644,
+        "outliers": "644;1174",
+        "ld15iqr": 1.837499439716339e-05,
+        "hd15iqr": 3.254198236390948e-05,
+        "ops": 36035.86327683904,
+        "total": 0.723140716785565,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.matmul_batched_32]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.matmul_batched_32]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429c70>]"
+      },
+      "param": "cpu-benchmark.matmul_batched_32",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 3.1584000680595636e-05,
+        "max": 0.0015637499745935202,
+        "mean": 4.827453216133121e-05,
+        "stddev": 2.883908725631161e-05,
+        "rounds": 15395,
+        "median": 4.129199078306556e-05,
+        "iqr": 7.2919647209346294e-06,
+        "q1": 3.950000973418355e-05,
+        "q3": 4.679197445511818e-05,
+        "iqr_outliers": 2432,
+        "stddev_outliers": 905,
+        "outliers": "905;2432",
+        "ld15iqr": 3.1584000680595636e-05,
+        "hd15iqr": 5.774997407570481e-05,
+        "ops": 20714.856368945166,
+        "total": 0.7431864226236939,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.matmul_batched_128]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.matmul_batched_128]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429d00>]"
+      },
+      "param": "cpu-benchmark.matmul_batched_128",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 8.183298632502556e-05,
+        "max": 0.00025141704827547073,
+        "mean": 0.00012014336798810545,
+        "stddev": 1.6551209347943028e-05,
+        "rounds": 7178,
+        "median": 0.00011837499914690852,
+        "iqr": 1.9542057998478413e-05,
+        "q1": 0.00010924995876848698,
+        "q3": 0.0001287920167669654,
+        "iqr_outliers": 203,
+        "stddev_outliers": 1913,
+        "outliers": "1913;203",
+        "ld15iqr": 8.183298632502556e-05,
+        "hd15iqr": 0.00015820900443941355,
+        "ops": 8323.389103749805,
+        "total": 0.8623890954186209,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.conv2d_32ch]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.conv2d_32ch]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429d90>]"
+      },
+      "param": "cpu-benchmark.conv2d_32ch",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0003530419780872762,
+        "max": 0.003434958984144032,
+        "mean": 0.00048502160591068206,
+        "stddev": 0.00011763516961024121,
+        "rounds": 2544,
+        "median": 0.0004595409845933318,
+        "iqr": 6.952096009626985e-05,
+        "q1": 0.00043291650945320725,
+        "q3": 0.0005024374695494771,
+        "iqr_outliers": 174,
+        "stddev_outliers": 188,
+        "outliers": "188;174",
+        "ld15iqr": 0.0003530419780872762,
+        "hd15iqr": 0.0006068749935366213,
+        "ops": 2061.763822092809,
+        "total": 1.2338949654367752,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.conv2d_64ch]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.conv2d_64ch]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429e20>]"
+      },
+      "param": "cpu-benchmark.conv2d_64ch",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0012108340160921216,
+        "max": 0.004196833993773907,
+        "mean": 0.0015769443105271318,
+        "stddev": 0.00024341040839101616,
+        "rounds": 663,
+        "median": 0.0015145830111578107,
+        "iqr": 0.00021779177768621594,
+        "q1": 0.0014349269622471184,
+        "q3": 0.0016527187399333343,
+        "iqr_outliers": 39,
+        "stddev_outliers": 99,
+        "outliers": "99;39",
+        "ld15iqr": 0.0012108340160921216,
+        "hd15iqr": 0.0019920000340789557,
+        "ops": 634.1378026632568,
+        "total": 1.0455140778794885,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.conv2d_128ch]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.conv2d_128ch]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429eb0>]"
+      },
+      "param": "cpu-benchmark.conv2d_128ch",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.004979707999154925,
+        "max": 0.0076012919889763,
+        "mean": 0.00562779054150528,
+        "stddev": 0.00037915100510169797,
+        "rounds": 151,
+        "median": 0.005595041962806135,
+        "iqr": 0.0003337915404699743,
+        "q1": 0.005404677227488719,
+        "q3": 0.005738468767958693,
+        "iqr_outliers": 8,
+        "stddev_outliers": 29,
+        "outliers": "29;8",
+        "ld15iqr": 0.004979707999154925,
+        "hd15iqr": 0.0062528750277124345,
+        "ops": 177.68962661722077,
+        "total": 0.8497963717672974,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.layernorm_256]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.layernorm_256]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429f40>]"
+      },
+      "param": "cpu-benchmark.layernorm_256",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00013387500075623393,
+        "max": 0.0032392090070061386,
+        "mean": 0.00019679638821249132,
+        "stddev": 0.00013752096231520566,
+        "rounds": 1042,
+        "median": 0.00016545795369893312,
+        "iqr": 8.12090584076941e-05,
+        "q1": 0.00015262496890500188,
+        "q3": 0.00023383402731269598,
+        "iqr_outliers": 13,
+        "stddev_outliers": 17,
+        "outliers": "17;13",
+        "ld15iqr": 0.00013387500075623393,
+        "hd15iqr": 0.0003562920028343797,
+        "ops": 5081.39406969323,
+        "total": 0.20506183651741594,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.layernorm_512]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.layernorm_512]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429fd0>]"
+      },
+      "param": "cpu-benchmark.layernorm_512",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00024054100504145026,
+        "max": 0.0010397079749964178,
+        "mean": 0.0003525585446260261,
+        "stddev": 9.377245895305854e-05,
+        "rounds": 2815,
+        "median": 0.0003064170014113188,
+        "iqr": 9.940672316588461e-05,
+        "q1": 0.00029276027635205537,
+        "q3": 0.00039216699951794,
+        "iqr_outliers": 119,
+        "stddev_outliers": 578,
+        "outliers": "578;119",
+        "ld15iqr": 0.00024054100504145026,
+        "hd15iqr": 0.0005428330041468143,
+        "ops": 2836.4083504506825,
+        "total": 0.9924523031222634,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[cpu-benchmark.layernorm_1024]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[cpu-benchmark.layernorm_1024]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d42a060>]"
+      },
+      "param": "cpu-benchmark.layernorm_1024",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0009052910027094185,
+        "max": 0.048078958003316075,
+        "mean": 0.0014312153251455043,
+        "stddev": 0.001658526651364985,
+        "rounds": 1031,
+        "median": 0.0012293750187382102,
+        "iqr": 0.00036469697079155594,
+        "q1": 0.001081437774701044,
+        "q3": 0.0014461347454926,
+        "iqr_outliers": 76,
+        "stddev_outliers": 16,
+        "outliers": "16;76",
+        "ld15iqr": 0.0009052910027094185,
+        "hd15iqr": 0.00200133299222216,
+        "ops": 698.7068838843904,
+        "total": 1.475583000225015,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.exp_1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.exp_1]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cf5f8c0>]"
+      },
+      "param": "mlx-benchmark.exp_1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0001087500131689012,
+        "max": 0.002263457980006933,
+        "mean": 0.00021629146249583297,
+        "stddev": 0.00023568905387300813,
+        "rounds": 703,
+        "median": 0.00015249999705702066,
+        "iqr": 1.0313000530004501e-05,
+        "q1": 0.0001490829890826717,
+        "q3": 0.0001593959896126762,
+        "iqr_outliers": 135,
+        "stddev_outliers": 50,
+        "outliers": "50;135",
+        "ld15iqr": 0.00013441697228699923,
+        "hd15iqr": 0.0001764999469742179,
+        "ops": 4623.390995006406,
+        "total": 0.15205289813457057,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.add_1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.add_1]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cdc3110>]"
+      },
+      "param": "mlx-benchmark.add_1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 8.849997539073229e-05,
+        "max": 0.0023487499565817416,
+        "mean": 0.0001965771421083623,
+        "stddev": 0.00019093793847154016,
+        "rounds": 6251,
+        "median": 0.00015174999134615064,
+        "iqr": 9.114490239880979e-06,
+        "q1": 0.00014717725571244955,
+        "q3": 0.00015629174595233053,
+        "iqr_outliers": 1429,
+        "stddev_outliers": 422,
+        "outliers": "422;1429",
+        "ld15iqr": 0.00013354100519791245,
+        "hd15iqr": 0.00017012498574331403,
+        "ops": 5087.061442010152,
+        "total": 1.2288037153193727,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.sum_1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.sum_1]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cdc3890>]"
+      },
+      "param": "mlx-benchmark.sum_1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 9.275000775232911e-05,
+        "max": 0.0020797079778276384,
+        "mean": 0.0002014373721570338,
+        "stddev": 0.00021581054731003346,
+        "rounds": 1566,
+        "median": 0.00015347948647104204,
+        "iqr": 8.291972335428e-06,
+        "q1": 0.00015062501188367605,
+        "q3": 0.00015891698421910405,
+        "iqr_outliers": 266,
+        "stddev_outliers": 76,
+        "outliers": "76;266",
+        "ld15iqr": 0.0001385000068694353,
+        "hd15iqr": 0.00017145898891612887,
+        "ops": 4964.322108116232,
+        "total": 0.3154509247979149,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.softmax_1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.softmax_1]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfcdf30>]"
+      },
+      "param": "mlx-benchmark.softmax_1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00015050004003569484,
+        "max": 0.006204582983627915,
+        "mean": 0.00026301916334830686,
+        "stddev": 0.00040730105208393113,
+        "rounds": 885,
+        "median": 0.00018849998014047742,
+        "iqr": 9.89573891274631e-06,
+        "q1": 0.0001842500059865415,
+        "q3": 0.00019414574489928782,
+        "iqr_outliers": 137,
+        "stddev_outliers": 33,
+        "outliers": "33;137",
+        "ld15iqr": 0.00016975001199170947,
+        "hd15iqr": 0.00021004199516028166,
+        "ops": 3802.0043378958503,
+        "total": 0.23277195956325158,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.exp_10]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.exp_10]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfce3f0>]"
+      },
+      "param": "mlx-benchmark.exp_10",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 9.420898277312517e-05,
+        "max": 0.0034308749600313604,
+        "mean": 0.00020053159103724066,
+        "stddev": 0.00019624251983920674,
+        "rounds": 6254,
+        "median": 0.0001539579825475812,
+        "iqr": 1.4000048395246267e-05,
+        "q1": 0.00014712498523294926,
+        "q3": 0.00016112503362819552,
+        "iqr_outliers": 902,
+        "stddev_outliers": 409,
+        "outliers": "409;902",
+        "ld15iqr": 0.00012612499995157123,
+        "hd15iqr": 0.0001824169885367155,
+        "ops": 4986.74545405811,
+        "total": 1.254124570346903,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.add_10]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.add_10]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfe1eb0>]"
+      },
+      "param": "mlx-benchmark.add_10",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00011379201896488667,
+        "max": 0.0024785830173641443,
+        "mean": 0.00022138748291618615,
+        "stddev": 0.00021500720789548465,
+        "rounds": 3315,
+        "median": 0.00016633403720334172,
+        "iqr": 1.3249737094156444e-05,
+        "q1": 0.0001630412443773821,
+        "q3": 0.00017629098147153854,
+        "iqr_outliers": 600,
+        "stddev_outliers": 177,
+        "outliers": "177;600",
+        "ld15iqr": 0.0001436670427210629,
+        "hd15iqr": 0.00019616697682067752,
+        "ops": 4516.967205316591,
+        "total": 0.7338995058671571,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.sum_10]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.sum_10]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d4668b0>]"
+      },
+      "param": "mlx-benchmark.sum_10",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00011116696987301111,
+        "max": 0.0031744170119054615,
+        "mean": 0.0002183576204936018,
+        "stddev": 0.0002226256892517007,
+        "rounds": 5481,
+        "median": 0.0001646250020712614,
+        "iqr": 1.5843252185732126e-05,
+        "q1": 0.0001609169994480908,
+        "q3": 0.00017676025163382292,
+        "iqr_outliers": 837,
+        "stddev_outliers": 276,
+        "outliers": "276;837",
+        "ld15iqr": 0.00013737502740696073,
+        "hd15iqr": 0.00020074995700269938,
+        "ops": 4579.643237270491,
+        "total": 1.1968181179254316,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.softmax_10]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.softmax_10]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d4669c0>]"
+      },
+      "param": "mlx-benchmark.softmax_10",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00015237502520903945,
+        "max": 0.004232082981616259,
+        "mean": 0.0003115280867506582,
+        "stddev": 0.00046125499828321924,
+        "rounds": 4279,
+        "median": 0.0002317500184290111,
+        "iqr": 1.8906473997049034e-05,
+        "q1": 0.00022670801263302565,
+        "q3": 0.0002456144866300747,
+        "iqr_outliers": 563,
+        "stddev_outliers": 89,
+        "outliers": "89;563",
+        "ld15iqr": 0.00019937503384426236,
+        "hd15iqr": 0.00027416698867455125,
+        "ops": 3209.9834413979597,
+        "total": 1.3330286832060665,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.exp_100]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.exp_100]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d47b550>]"
+      },
+      "param": "mlx-benchmark.exp_100",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00021820800611749291,
+        "max": 0.004322749970015138,
+        "mean": 0.0003788174074739873,
+        "stddev": 0.0005006690194662667,
+        "rounds": 3184,
+        "median": 0.0002836039930116385,
+        "iqr": 2.462498378008604e-05,
+        "q1": 0.0002727080136537552,
+        "q3": 0.00029733299743384123,
+        "iqr_outliers": 461,
+        "stddev_outliers": 85,
+        "outliers": "85;461",
+        "ld15iqr": 0.00023912498727440834,
+        "hd15iqr": 0.00033474998781457543,
+        "ops": 2639.7942129115813,
+        "total": 1.2061546253971756,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.add_100]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.add_100]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d47b650>]"
+      },
+      "param": "mlx-benchmark.add_100",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00025174999609589577,
+        "max": 0.005978916946332902,
+        "mean": 0.0005077190571097591,
+        "stddev": 0.0006444843400072757,
+        "rounds": 2766,
+        "median": 0.0003614375018514693,
+        "iqr": 4.283396992832422e-05,
+        "q1": 0.0003494580159895122,
+        "q3": 0.00039229198591783643,
+        "iqr_outliers": 412,
+        "stddev_outliers": 95,
+        "outliers": "95;412",
+        "ld15iqr": 0.0002870829775929451,
+        "hd15iqr": 0.00045674998546019197,
+        "ops": 1969.5931952852013,
+        "total": 1.4043509119655937,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.sum_100]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.sum_100]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d47cd70>]"
+      },
+      "param": "mlx-benchmark.sum_100",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00016145803965628147,
+        "max": 0.00427391700213775,
+        "mean": 0.00031056049127567025,
+        "stddev": 0.00035828618008133654,
+        "rounds": 4467,
+        "median": 0.0002346250112168491,
+        "iqr": 2.9708025977015495e-05,
+        "q1": 0.00022362498566508293,
+        "q3": 0.0002533330116420984,
+        "iqr_outliers": 539,
+        "stddev_outliers": 162,
+        "outliers": "162;539",
+        "ld15iqr": 0.00017912499606609344,
+        "hd15iqr": 0.00029791699489578605,
+        "ops": 3219.9846023309706,
+        "total": 1.387273714528419,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.softmax_100]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.softmax_100]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d47ce60>]"
+      },
+      "param": "mlx-benchmark.softmax_100",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0005403339746408165,
+        "max": 0.0054673750419169664,
+        "mean": 0.000868783674486731,
+        "stddev": 0.000752486923920289,
+        "rounds": 1665,
+        "median": 0.000672958034556359,
+        "iqr": 9.808350296225399e-05,
+        "q1": 0.0006292397301876917,
+        "q3": 0.0007273232331499457,
+        "iqr_outliers": 198,
+        "stddev_outliers": 95,
+        "outliers": "95;198",
+        "ld15iqr": 0.0005403339746408165,
+        "hd15iqr": 0.0008749589906074107,
+        "ops": 1151.0345202915908,
+        "total": 1.446524818020407,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.exp_1000]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.exp_1000]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d44e970>]"
+      },
+      "param": "mlx-benchmark.exp_1000",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0010469999979250133,
+        "max": 0.01367558300262317,
+        "mean": 0.0015259091687544698,
+        "stddev": 0.001035882790296639,
+        "rounds": 818,
+        "median": 0.0011573540105018765,
+        "iqr": 0.0002127490588463843,
+        "q1": 0.001118791988119483,
+        "q3": 0.0013315410469658673,
+        "iqr_outliers": 104,
+        "stddev_outliers": 76,
+        "outliers": "76;104",
+        "ld15iqr": 0.0010469999979250133,
+        "hd15iqr": 0.001653458981309086,
+        "ops": 655.3470026110758,
+        "total": 1.2481937000411563,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.add_1000]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.add_1000]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d44ea50>]"
+      },
+      "param": "mlx-benchmark.add_1000",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0014902919647283852,
+        "max": 0.0067067500203847885,
+        "mean": 0.0021242365605488975,
+        "stddev": 0.0011334694428593037,
+        "rounds": 659,
+        "median": 0.0016282909782603383,
+        "iqr": 0.0003651559673016891,
+        "q1": 0.0015649377746740356,
+        "q3": 0.0019300937419757247,
+        "iqr_outliers": 97,
+        "stddev_outliers": 81,
+        "outliers": "81;97",
+        "ld15iqr": 0.0014902919647283852,
+        "hd15iqr": 0.0025554579915478826,
+        "ops": 470.7573622316351,
+        "total": 1.3998718934017234,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.sum_1000]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.sum_1000]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfd35f0>]"
+      },
+      "param": "mlx-benchmark.sum_1000",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0005823339452035725,
+        "max": 0.004411957983393222,
+        "mean": 0.0008861578982364384,
+        "stddev": 0.0006716030318357352,
+        "rounds": 1591,
+        "median": 0.0006972909905016422,
+        "iqr": 9.680201765149832e-05,
+        "q1": 0.0006570312398253009,
+        "q3": 0.0007538332574767992,
+        "iqr_outliers": 231,
+        "stddev_outliers": 98,
+        "outliers": "98;231",
+        "ld15iqr": 0.0005823339452035725,
+        "hd15iqr": 0.0009010829962790012,
+        "ops": 1128.4670621230384,
+        "total": 1.4098772160941735,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.softmax_1000]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.softmax_1000]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfe9250>]"
+      },
+      "param": "mlx-benchmark.softmax_1000",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00429208402056247,
+        "max": 0.009528124995995313,
+        "mean": 0.005998594586891145,
+        "stddev": 0.001703517083087119,
+        "rounds": 203,
+        "median": 0.005048374994657934,
+        "iqr": 0.0034573644952615723,
+        "q1": 0.0044775417482014745,
+        "q3": 0.007934906243463047,
+        "iqr_outliers": 0,
+        "stddev_outliers": 74,
+        "outliers": "74;0",
+        "ld15iqr": 0.00429208402056247,
+        "hd15iqr": 0.009528124995995313,
+        "ops": 166.70571506621252,
+        "total": 1.2177147011389025,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.matmul_1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.matmul_1]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfe9310>]"
+      },
+      "param": "mlx-benchmark.matmul_1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 9.612500434741378e-05,
+        "max": 0.007736874977126718,
+        "mean": 0.00021515729605606917,
+        "stddev": 0.00022897917779294156,
+        "rounds": 6183,
+        "median": 0.000159291026648134,
+        "iqr": 3.362503775861114e-05,
+        "q1": 0.00015204197552520782,
+        "q3": 0.00018566701328381896,
+        "iqr_outliers": 766,
+        "stddev_outliers": 368,
+        "outliers": "368;766",
+        "ld15iqr": 0.00010283297160640359,
+        "hd15iqr": 0.00023620901629328728,
+        "ops": 4647.76244324712,
+        "total": 1.3303175615146756,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.matmul_10]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.matmul_10]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cf9e780>]"
+      },
+      "param": "mlx-benchmark.matmul_10",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00010287499753758311,
+        "max": 0.0024278329801745713,
+        "mean": 0.00022388900655511632,
+        "stddev": 0.00019898475062296011,
+        "rounds": 5082,
+        "median": 0.00016914549632929265,
+        "iqr": 3.1957984901964664e-05,
+        "q1": 0.00016241701086983085,
+        "q3": 0.0001943749957717955,
+        "iqr_outliers": 671,
+        "stddev_outliers": 352,
+        "outliers": "352;671",
+        "ld15iqr": 0.0001147080329246819,
+        "hd15iqr": 0.0002429999876767397,
+        "ops": 4466.4988932979295,
+        "total": 1.1378039313131012,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.matmul_100]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.matmul_100]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cf9e8e0>]"
+      },
+      "param": "mlx-benchmark.matmul_100",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00024820800172165036,
+        "max": 0.004130291985347867,
+        "mean": 0.0003880030715045563,
+        "stddev": 0.0004223879933014245,
+        "rounds": 2885,
+        "median": 0.00029320799512788653,
+        "iqr": 3.2833966542966664e-05,
+        "q1": 0.000282708031591028,
+        "q3": 0.00031554199813399464,
+        "iqr_outliers": 395,
+        "stddev_outliers": 111,
+        "outliers": "111;395",
+        "ld15iqr": 0.00024820800172165036,
+        "hd15iqr": 0.00036570802330970764,
+        "ops": 2577.2991850871394,
+        "total": 1.1193888612906449,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.matmul_1000]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.matmul_1000]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d45f2f0>]"
+      },
+      "param": "mlx-benchmark.matmul_1000",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.05905483302194625,
+        "max": 0.06754470797022805,
+        "mean": 0.0636626250052359,
+        "stddev": 0.0018231048947627817,
+        "rounds": 16,
+        "median": 0.06386597952223383,
+        "iqr": 0.001726687012705952,
+        "q1": 0.06282002100488171,
+        "q3": 0.06454670801758766,
+        "iqr_outliers": 2,
+        "stddev_outliers": 2,
+        "outliers": "2;2",
+        "ld15iqr": 0.062131915998179466,
+        "hd15iqr": 0.06754470797022805,
+        "ops": 15.70780343910977,
+        "total": 1.0186020000837743,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.matmul_batched_8]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.matmul_batched_8]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d45f4d0>]"
+      },
+      "param": "mlx-benchmark.matmul_batched_8",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00011270900722593069,
+        "max": 0.0028168329736217856,
+        "mean": 0.00022103769537658966,
+        "stddev": 0.0001993699054905899,
+        "rounds": 5128,
+        "median": 0.00016854150453582406,
+        "iqr": 2.4834007490426302e-05,
+        "q1": 0.00016320799477398396,
+        "q3": 0.00018804200226441026,
+        "iqr_outliers": 704,
+        "stddev_outliers": 362,
+        "outliers": "362;704",
+        "ld15iqr": 0.00012629100820049644,
+        "hd15iqr": 0.0002264580107294023,
+        "ops": 4524.115211644172,
+        "total": 1.1334813018911518,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.matmul_batched_32]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.matmul_batched_32]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429c70>]"
+      },
+      "param": "mlx-benchmark.matmul_batched_32",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00013345800107344985,
+        "max": 0.001860541000496596,
+        "mean": 0.00025970303994404836,
+        "stddev": 0.0001931171179189824,
+        "rounds": 1538,
+        "median": 0.00020512499031610787,
+        "iqr": 2.7790956664830446e-05,
+        "q1": 0.0001996250357478857,
+        "q3": 0.00022741599241271615,
+        "iqr_outliers": 233,
+        "stddev_outliers": 102,
+        "outliers": "102;233",
+        "ld15iqr": 0.00016416702419519424,
+        "hd15iqr": 0.00027070799842476845,
+        "ops": 3850.5517694958235,
+        "total": 0.3994232754339464,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.matmul_batched_128]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.matmul_batched_128]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429d00>]"
+      },
+      "param": "mlx-benchmark.matmul_batched_128",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00021454098168760538,
+        "max": 0.003558084019459784,
+        "mean": 0.0003489939513159163,
+        "stddev": 0.00028383894891896924,
+        "rounds": 3971,
+        "median": 0.0002668749657459557,
+        "iqr": 3.103146445937455e-05,
+        "q1": 0.0002543330192565918,
+        "q3": 0.00028536448371596634,
+        "iqr_outliers": 656,
+        "stddev_outliers": 273,
+        "outliers": "273;656",
+        "ld15iqr": 0.00021454098168760538,
+        "hd15iqr": 0.0003322080010548234,
+        "ops": 2865.379174135829,
+        "total": 1.3858549806755036,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.conv2d_32ch]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.conv2d_32ch]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429d90>]"
+      },
+      "param": "mlx-benchmark.conv2d_32ch",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0002270000404678285,
+        "max": 0.003964332980103791,
+        "mean": 0.00037582903962911834,
+        "stddev": 0.0003476932498098572,
+        "rounds": 3505,
+        "median": 0.0002878329833038151,
+        "iqr": 3.3801537938416004e-05,
+        "q1": 0.0002749169943854213,
+        "q3": 0.0003087185323238373,
+        "iqr_outliers": 497,
+        "stddev_outliers": 176,
+        "outliers": "176;497",
+        "ld15iqr": 0.0002270000404678285,
+        "hd15iqr": 0.0003600830095820129,
+        "ops": 2660.784278369857,
+        "total": 1.3172807839000598,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.conv2d_64ch]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.conv2d_64ch]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429e20>]"
+      },
+      "param": "mlx-benchmark.conv2d_64ch",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0004163749981671572,
+        "max": 0.004335917008575052,
+        "mean": 0.0006093453180733577,
+        "stddev": 0.00047657562476185913,
+        "rounds": 2161,
+        "median": 0.00046912499237805605,
+        "iqr": 6.536401633638889e-05,
+        "q1": 0.00044829200487583876,
+        "q3": 0.0005136560212122276,
+        "iqr_outliers": 343,
+        "stddev_outliers": 138,
+        "outliers": "138;343",
+        "ld15iqr": 0.0004163749981671572,
+        "hd15iqr": 0.0006119579775258899,
+        "ops": 1641.1055773134083,
+        "total": 1.316795232356526,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.conv2d_128ch]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.conv2d_128ch]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429eb0>]"
+      },
+      "param": "mlx-benchmark.conv2d_128ch",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0011161250295117497,
+        "max": 0.005212457966990769,
+        "mean": 0.001636965136104346,
+        "stddev": 0.0008582948073084823,
+        "rounds": 845,
+        "median": 0.0012891250080429018,
+        "iqr": 0.0002643952611833811,
+        "q1": 0.0012440002465154976,
+        "q3": 0.0015083955076988786,
+        "iqr_outliers": 122,
+        "stddev_outliers": 90,
+        "outliers": "90;122",
+        "ld15iqr": 0.0011161250295117497,
+        "hd15iqr": 0.0019607500289566815,
+        "ops": 610.8865594900834,
+        "total": 1.3832355400081724,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.layernorm_256]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.layernorm_256]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429f40>]"
+      },
+      "param": "mlx-benchmark.layernorm_256",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0011974579538218677,
+        "max": 0.005092791980132461,
+        "mean": 0.0016794188931170437,
+        "stddev": 0.0010101863166911914,
+        "rounds": 189,
+        "median": 0.0012998750316910446,
+        "iqr": 0.00021326124260667711,
+        "q1": 0.0012467909982660785,
+        "q3": 0.0014600522408727556,
+        "iqr_outliers": 25,
+        "stddev_outliers": 19,
+        "outliers": "19;25",
+        "ld15iqr": 0.0011974579538218677,
+        "hd15iqr": 0.00179629196645692,
+        "ops": 595.4440575239539,
+        "total": 0.31741017079912126,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.layernorm_512]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.layernorm_512]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429fd0>]"
+      },
+      "param": "mlx-benchmark.layernorm_512",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0023103749845176935,
+        "max": 0.009563207975588739,
+        "mean": 0.0036576694469761186,
+        "stddev": 0.0015766784520230793,
+        "rounds": 311,
+        "median": 0.002928915957454592,
+        "iqr": 0.001706280731013976,
+        "q1": 0.0025588337739463896,
+        "q3": 0.004265114504960366,
+        "iqr_outliers": 13,
+        "stddev_outliers": 68,
+        "outliers": "68;13",
+        "ld15iqr": 0.0023103749845176935,
+        "hd15iqr": 0.0069619580172002316,
+        "ops": 273.3981335647275,
+        "total": 1.137535198009573,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_value[mlx-benchmark.layernorm_1024]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_value[mlx-benchmark.layernorm_1024]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d42a060>]"
+      },
+      "param": "mlx-benchmark.layernorm_1024",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.004369332978967577,
+        "max": 0.010002041992265731,
+        "mean": 0.006547068468009557,
+        "stddev": 0.0017583845120805407,
+        "rounds": 199,
+        "median": 0.005616332986392081,
+        "iqr": 0.0034375940304016694,
+        "q1": 0.005061322750407271,
+        "q3": 0.00849891678080894,
+        "iqr_outliers": 0,
+        "stddev_outliers": 89,
+        "outliers": "89;0",
+        "ld15iqr": 0.004369332978967577,
+        "hd15iqr": 0.010002041992265731,
+        "ops": 152.74011641793942,
+        "total": 1.3028666251339018,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.exp_1_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.exp_1_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cf5f8c0>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.exp_1_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 9.834009688347578e-06,
+        "max": 0.00010233401553705335,
+        "mean": 1.6868473425569972e-05,
+        "stddev": 2.5585661877971345e-06,
+        "rounds": 23929,
+        "median": 1.6417005099356174e-05,
+        "iqr": 3.1249946914613247e-06,
+        "q1": 1.4958030078560114e-05,
+        "q3": 1.808302477002144e-05,
+        "iqr_outliers": 513,
+        "stddev_outliers": 3425,
+        "outliers": "3425;513",
+        "ld15iqr": 1.029099803417921e-05,
+        "hd15iqr": 2.279097680002451e-05,
+        "ops": 59282.18723599232,
+        "total": 0.4036457006004639,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.add_1_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.add_1_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cdc3110>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.add_1_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 3.958004526793957e-06,
+        "max": 4.82079922221601e-05,
+        "mean": 4.4557574573942175e-06,
+        "stddev": 5.034493235714497e-07,
+        "rounds": 117647,
+        "median": 4.417030140757561e-06,
+        "iqr": 1.6600824892520905e-07,
+        "q1": 4.334026016294956e-06,
+        "q3": 4.500034265220165e-06,
+        "iqr_outliers": 3316,
+        "stddev_outliers": 1619,
+        "outliers": "1619;3316",
+        "ld15iqr": 4.124944098293781e-06,
+        "hd15iqr": 4.749977961182594e-06,
+        "ops": 224428.73283879602,
+        "total": 0.5242064975900576,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.add_1_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.add_1_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cdc3110>]",
+        "argnum": 1
+      },
+      "param": "cpu-benchmark.add_1_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 4.125002305954695e-06,
+        "max": 5.687499651685357e-05,
+        "mean": 4.509161130185211e-06,
+        "stddev": 5.388097522732428e-07,
+        "rounds": 129033,
+        "median": 4.458008334040642e-06,
+        "iqr": 1.66997779160738e-07,
+        "q1": 4.375004209578037e-06,
+        "q3": 4.542001988738775e-06,
+        "iqr_outliers": 3731,
+        "stddev_outliers": 2044,
+        "outliers": "2044;3731",
+        "ld15iqr": 4.125002305954695e-06,
+        "hd15iqr": 4.832982085645199e-06,
+        "ops": 221770.7398624111,
+        "total": 0.5818305881111883,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.sum_1_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.sum_1_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cdc3890>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.sum_1_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 3.958004526793957e-06,
+        "max": 0.0007117500063031912,
+        "mean": 4.433980802998053e-06,
+        "stddev": 3.3903743537700836e-06,
+        "rounds": 107147,
+        "median": 4.332978278398514e-06,
+        "iqr": 1.66997779160738e-07,
+        "q1": 4.249974153935909e-06,
+        "q3": 4.416971933096647e-06,
+        "iqr_outliers": 3252,
+        "stddev_outliers": 591,
+        "outliers": "591;3252",
+        "ld15iqr": 3.999972250312567e-06,
+        "hd15iqr": 4.707952030003071e-06,
+        "ops": 225530.97192568952,
+        "total": 0.47508774109883234,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.softmax_1_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.softmax_1_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfcdf30>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.softmax_1_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 1.529103610664606e-05,
+        "max": 8.566596079617739e-05,
+        "mean": 2.2847249362940873e-05,
+        "stddev": 2.1192465130477447e-06,
+        "rounds": 30458,
+        "median": 2.2208027075976133e-05,
+        "iqr": 1.4160177670419216e-06,
+        "q1": 2.1792016923427582e-05,
+        "q3": 2.3208034690469503e-05,
+        "iqr_outliers": 3419,
+        "stddev_outliers": 4728,
+        "outliers": "4728;3419",
+        "ld15iqr": 1.9707949832081795e-05,
+        "hd15iqr": 2.5332963559776545e-05,
+        "ops": 43768.94496639228,
+        "total": 0.6958815210964531,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.exp_10_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.exp_10_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfce3f0>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.exp_10_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 2.779200440272689e-05,
+        "max": 0.00010304100578650832,
+        "mean": 3.611914241794001e-05,
+        "stddev": 3.566471917874038e-06,
+        "rounds": 17217,
+        "median": 3.508396912366152e-05,
+        "iqr": 2.125001628883183e-06,
+        "q1": 3.470800584182143e-05,
+        "q3": 3.6833007470704615e-05,
+        "iqr_outliers": 1716,
+        "stddev_outliers": 2459,
+        "outliers": "2459;1716",
+        "ld15iqr": 3.1540985219180584e-05,
+        "hd15iqr": 4.0040991734713316e-05,
+        "ops": 27686.15014246048,
+        "total": 0.6218632750096731,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.add_10_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.add_10_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfe1eb0>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.add_10_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 7.291033398360014e-06,
+        "max": 0.00042441702680662274,
+        "mean": 8.724632575023565e-06,
+        "stddev": 2.35606537368094e-06,
+        "rounds": 83921,
+        "median": 8.540984708815813e-06,
+        "iqr": 8.330098353326321e-07,
+        "q1": 8.207978680729866e-06,
+        "q3": 9.040988516062498e-06,
+        "iqr_outliers": 1793,
+        "stddev_outliers": 790,
+        "outliers": "790;1793",
+        "ld15iqr": 7.291033398360014e-06,
+        "hd15iqr": 1.029099803417921e-05,
+        "ops": 114618.00728007151,
+        "total": 0.7321798903285526,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.add_10_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.add_10_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfe1eb0>]",
+        "argnum": 1
+      },
+      "param": "cpu-benchmark.add_10_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 7.291033398360014e-06,
+        "max": 6.799999391660094e-05,
+        "mean": 8.251396492982478e-06,
+        "stddev": 8.839002811270476e-07,
+        "rounds": 75948,
+        "median": 8.08399636298418e-06,
+        "iqr": 5.84055669605732e-07,
+        "q1": 7.874972652643919e-06,
+        "q3": 8.459028322249651e-06,
+        "iqr_outliers": 2632,
+        "stddev_outliers": 5035,
+        "outliers": "5035;2632",
+        "ld15iqr": 7.291033398360014e-06,
+        "hd15iqr": 9.374984074383974e-06,
+        "ops": 121191.60688138846,
+        "total": 0.6266770608490333,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.sum_10_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.sum_10_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d4668b0>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.sum_10_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 6.916990969330072e-06,
+        "max": 6.033299723640084e-05,
+        "mean": 8.137945302861614e-06,
+        "stddev": 9.225166968062152e-07,
+        "rounds": 75948,
+        "median": 8.083006832748652e-06,
+        "iqr": 7.509952411055565e-07,
+        "q1": 7.707974873483181e-06,
+        "q3": 8.458970114588737e-06,
+        "iqr_outliers": 871,
+        "stddev_outliers": 7766,
+        "outliers": "7766;871",
+        "ld15iqr": 6.916990969330072e-06,
+        "hd15iqr": 9.624985978007317e-06,
+        "ops": 122881.14048251977,
+        "total": 0.6180606698617339,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.softmax_10_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.softmax_10_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d4669c0>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.softmax_10_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 6.591598503291607e-05,
+        "max": 0.002783083007670939,
+        "mean": 8.839265621011298e-05,
+        "stddev": 3.482819957492704e-05,
+        "rounds": 8798,
+        "median": 8.587498450651765e-05,
+        "iqr": 3.125052899122238e-06,
+        "q1": 8.504197467118502e-05,
+        "q3": 8.816702757030725e-05,
+        "iqr_outliers": 929,
+        "stddev_outliers": 73,
+        "outliers": "73;929",
+        "ld15iqr": 8.037500083446503e-05,
+        "hd15iqr": 9.287497960031033e-05,
+        "ops": 11313.157029956863,
+        "total": 0.7776785893365741,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.exp_100_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.exp_100_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d47b550>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.exp_100_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00013283302541822195,
+        "max": 0.00038787495577707887,
+        "mean": 0.00017040261464842214,
+        "stddev": 3.331904311256102e-05,
+        "rounds": 6572,
+        "median": 0.0001609159808140248,
+        "iqr": 1.9291008356958628e-05,
+        "q1": 0.000152749998960644,
+        "q3": 0.00017204100731760263,
+        "iqr_outliers": 724,
+        "stddev_outliers": 752,
+        "outliers": "752;724",
+        "ld15iqr": 0.00013283302541822195,
+        "hd15iqr": 0.00020116602536290884,
+        "ops": 5868.454554310793,
+        "total": 1.1198859834694304,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.add_100_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.add_100_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d47b650>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.add_100_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 3.7416990380734205e-05,
+        "max": 0.005687958037015051,
+        "mean": 7.006653648603995e-05,
+        "stddev": 9.674105399679219e-05,
+        "rounds": 13378,
+        "median": 6.349995965138078e-05,
+        "iqr": 2.08395067602396e-06,
+        "q1": 6.250001024454832e-05,
+        "q3": 6.458396092057228e-05,
+        "iqr_outliers": 2657,
+        "stddev_outliers": 207,
+        "outliers": "207;2657",
+        "ld15iqr": 5.937495734542608e-05,
+        "hd15iqr": 6.77499920129776e-05,
+        "ops": 14272.14830576419,
+        "total": 0.9373501251102425,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.add_100_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.add_100_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d47b650>]",
+        "argnum": 1
+      },
+      "param": "cpu-benchmark.add_100_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 4.545797128230333e-05,
+        "max": 0.00017508299788460135,
+        "mean": 6.320786501572179e-05,
+        "stddev": 3.2210901170192908e-06,
+        "rounds": 13080,
+        "median": 6.320903776213527e-05,
+        "iqr": 1.7079873941838741e-06,
+        "q1": 6.241700612008572e-05,
+        "q3": 6.412499351426959e-05,
+        "iqr_outliers": 1383,
+        "stddev_outliers": 1463,
+        "outliers": "1463;1383",
+        "ld15iqr": 5.987496115267277e-05,
+        "hd15iqr": 6.67079584673047e-05,
+        "ops": 15820.815965723068,
+        "total": 0.8267588744056411,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.sum_100_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.sum_100_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d47cd70>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.sum_100_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 4.641700070351362e-05,
+        "max": 0.0011650830274447799,
+        "mean": 6.388562412503085e-05,
+        "stddev": 1.3452074823414835e-05,
+        "rounds": 13238,
+        "median": 6.320799002423882e-05,
+        "iqr": 2.249958924949169e-06,
+        "q1": 6.212503649294376e-05,
+        "q3": 6.437499541789293e-05,
+        "iqr_outliers": 2450,
+        "stddev_outliers": 446,
+        "outliers": "446;2450",
+        "ld15iqr": 5.8790959883481264e-05,
+        "hd15iqr": 6.77499920129776e-05,
+        "ops": 15652.97379020506,
+        "total": 0.8457178921671584,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.softmax_100_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.softmax_100_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d47ce60>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.softmax_100_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0002937910030595958,
+        "max": 0.0007368749938905239,
+        "mean": 0.0003603849884633388,
+        "stddev": 6.046626994775619e-05,
+        "rounds": 2859,
+        "median": 0.000340582977514714,
+        "iqr": 3.0750001315027475e-05,
+        "q1": 0.00032699998700991273,
+        "q3": 0.0003577499883249402,
+        "iqr_outliers": 375,
+        "stddev_outliers": 336,
+        "outliers": "336;375",
+        "ld15iqr": 0.0002937910030595958,
+        "hd15iqr": 0.00040433299727737904,
+        "ops": 2774.8103611749852,
+        "total": 1.0303406820166856,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.exp_1000_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.exp_1000_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d44e970>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.exp_1000_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.001285750011447817,
+        "max": 0.005568667023908347,
+        "mean": 0.0017633863323917498,
+        "stddev": 0.00036671588651051716,
+        "rounds": 573,
+        "median": 0.0016583329997956753,
+        "iqr": 0.00039142699097283185,
+        "q1": 0.0015173642605077475,
+        "q3": 0.0019087912514805794,
+        "iqr_outliers": 20,
+        "stddev_outliers": 124,
+        "outliers": "124;20",
+        "ld15iqr": 0.001285750011447817,
+        "hd15iqr": 0.0025000839959830046,
+        "ops": 567.0907058940742,
+        "total": 1.0104203684604727,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.add_1000_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.add_1000_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d44ea50>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.add_1000_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00047862494830042124,
+        "max": 0.0009227080154232681,
+        "mean": 0.0005855881282928443,
+        "stddev": 5.153717592197252e-05,
+        "rounds": 1951,
+        "median": 0.0005945420125499368,
+        "iqr": 4.42814634880051e-05,
+        "q1": 0.0005552605289267376,
+        "q3": 0.0005995419924147427,
+        "iqr_outliers": 81,
+        "stddev_outliers": 386,
+        "outliers": "386;81",
+        "ld15iqr": 0.000490417005494237,
+        "hd15iqr": 0.0006669169524684548,
+        "ops": 1707.6848926484968,
+        "total": 1.1424824382993393,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.add_1000_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.add_1000_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d44ea50>]",
+        "argnum": 1
+      },
+      "param": "cpu-benchmark.add_1000_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00048341701040044427,
+        "max": 0.004180290969088674,
+        "mean": 0.0005863404775165983,
+        "stddev": 0.00011627631454480346,
+        "rounds": 1766,
+        "median": 0.000589083501836285,
+        "iqr": 4.5833003241568804e-05,
+        "q1": 0.0005532079958356917,
+        "q3": 0.0005990409990772605,
+        "iqr_outliers": 81,
+        "stddev_outliers": 56,
+        "outliers": "56;81",
+        "ld15iqr": 0.0004860410117544234,
+        "hd15iqr": 0.0006679590442217886,
+        "ops": 1705.4937162711774,
+        "total": 1.0354772832943127,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.sum_1000_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.sum_1000_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfd35f0>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.sum_1000_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0004812920233234763,
+        "max": 0.0008725000079721212,
+        "mean": 0.0005726130871324595,
+        "stddev": 4.402898519175936e-05,
+        "rounds": 1671,
+        "median": 0.0005614580004476011,
+        "iqr": 4.461474600248039e-05,
+        "q1": 0.0005523750005522743,
+        "q3": 0.0005969897465547547,
+        "iqr_outliers": 51,
+        "stddev_outliers": 345,
+        "outliers": "345;51",
+        "ld15iqr": 0.00048687501111999154,
+        "hd15iqr": 0.0006644579698331654,
+        "ops": 1746.3799247198756,
+        "total": 0.9568364685983397,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.softmax_1000_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.softmax_1000_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfe9250>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.softmax_1000_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.004459500021766871,
+        "max": 0.03181366698117927,
+        "mean": 0.006377780933729551,
+        "stddev": 0.003010658033800503,
+        "rounds": 183,
+        "median": 0.005748708033934236,
+        "iqr": 0.0012983120104763657,
+        "q1": 0.00528802075132262,
+        "q3": 0.006586332761798985,
+        "iqr_outliers": 6,
+        "stddev_outliers": 6,
+        "outliers": "6;6",
+        "ld15iqr": 0.004459500021766871,
+        "hd15iqr": 0.012301458045840263,
+        "ops": 156.79434749967612,
+        "total": 1.1671339108725078,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.matmul_1_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.matmul_1_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfe9310>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.matmul_1_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 3.2919924706220627e-06,
+        "max": 6.17089681327343e-05,
+        "mean": 4.193931174930185e-06,
+        "stddev": 7.986071914732991e-07,
+        "rounds": 125000,
+        "median": 4.083034582436085e-06,
+        "iqr": 5.410402081906796e-07,
+        "q1": 3.916968125849962e-06,
+        "q3": 4.458008334040642e-06,
+        "iqr_outliers": 738,
+        "stddev_outliers": 2901,
+        "outliers": "2901;738",
+        "ld15iqr": 3.2919924706220627e-06,
+        "hd15iqr": 5.29095996171236e-06,
+        "ops": 238439.77363711665,
+        "total": 0.5242413968662731,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.matmul_1_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.matmul_1_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfe9310>]",
+        "argnum": 1
+      },
+      "param": "cpu-benchmark.matmul_1_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 3.541994374245405e-06,
+        "max": 0.00037045800127089024,
+        "mean": 4.203536448859453e-06,
+        "stddev": 2.187776297743879e-06,
+        "rounds": 126984,
+        "median": 4.041008651256561e-06,
+        "iqr": 4.5803608372807503e-07,
+        "q1": 3.832974471151829e-06,
+        "q3": 4.291010554879904e-06,
+        "iqr_outliers": 3406,
+        "stddev_outliers": 958,
+        "outliers": "958;3406",
+        "ld15iqr": 3.541994374245405e-06,
+        "hd15iqr": 4.999979864805937e-06,
+        "ops": 237894.92779855174,
+        "total": 0.5337818724219687,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.matmul_10_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.matmul_10_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cf9e780>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.matmul_10_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 4.708999767899513e-06,
+        "max": 7.979199290275574e-05,
+        "mean": 8.164951826369555e-06,
+        "stddev": 1.7598810954318189e-06,
+        "rounds": 46784,
+        "median": 7.833994459360838e-06,
+        "iqr": 9.5803989097476e-07,
+        "q1": 7.499998901039362e-06,
+        "q3": 8.458038792014122e-06,
+        "iqr_outliers": 2238,
+        "stddev_outliers": 2229,
+        "outliers": "2229;2238",
+        "ld15iqr": 6.082991603761911e-06,
+        "hd15iqr": 9.91596607491374e-06,
+        "ops": 122474.69688313369,
+        "total": 0.38198910624487326,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.matmul_10_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.matmul_10_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cf9e780>]",
+        "argnum": 1
+      },
+      "param": "cpu-benchmark.matmul_10_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 5.541020072996616e-06,
+        "max": 5.691696424037218e-05,
+        "mean": 8.708943476470219e-06,
+        "stddev": 1.8418947013126937e-06,
+        "rounds": 48982,
+        "median": 8.333998266607523e-06,
+        "iqr": 1.208973117172718e-06,
+        "q1": 7.791037205606699e-06,
+        "q3": 9.000010322779417e-06,
+        "iqr_outliers": 2587,
+        "stddev_outliers": 3382,
+        "outliers": "3382;2587",
+        "ld15iqr": 6.207963451743126e-06,
+        "hd15iqr": 1.0832969564944506e-05,
+        "ops": 114824.4907894735,
+        "total": 0.4265814693644643,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.matmul_100_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.matmul_100_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cf9e8e0>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.matmul_100_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00012550002429634333,
+        "max": 0.0010280830319970846,
+        "mean": 0.0001805915594934728,
+        "stddev": 3.5200614587756855e-05,
+        "rounds": 5633,
+        "median": 0.0001739170402288437,
+        "iqr": 2.1677231416106224e-05,
+        "q1": 0.0001651250058785081,
+        "q3": 0.00018680223729461432,
+        "iqr_outliers": 301,
+        "stddev_outliers": 388,
+        "outliers": "388;301",
+        "ld15iqr": 0.00013516598846763372,
+        "hd15iqr": 0.0002193329855799675,
+        "ops": 5537.357353825517,
+        "total": 1.0172722546267323,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.matmul_100_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.matmul_100_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cf9e8e0>]",
+        "argnum": 1
+      },
+      "param": "cpu-benchmark.matmul_100_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00030154199339449406,
+        "max": 0.0005991249927319586,
+        "mean": 0.00039989558028600685,
+        "stddev": 5.448056484717884e-05,
+        "rounds": 2358,
+        "median": 0.00040512499981559813,
+        "iqr": 9.866594336926937e-05,
+        "q1": 0.00034854200202971697,
+        "q3": 0.00044720794539898634,
+        "iqr_outliers": 1,
+        "stddev_outliers": 987,
+        "outliers": "987;1",
+        "ld15iqr": 0.00030154199339449406,
+        "hd15iqr": 0.0005991249927319586,
+        "ops": 2500.652793623766,
+        "total": 0.9429537783144042,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.matmul_1000_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.matmul_1000_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d45f2f0>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.matmul_1000_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.23330225003883243,
+        "max": 0.25267541699577123,
+        "mean": 0.24355857500340788,
+        "stddev": 0.008070055962960608,
+        "rounds": 5,
+        "median": 0.24575329199433327,
+        "iqr": 0.013513542246073484,
+        "q1": 0.23626365575182717,
+        "q3": 0.24977719799790066,
+        "iqr_outliers": 0,
+        "stddev_outliers": 2,
+        "outliers": "2;0",
+        "ld15iqr": 0.23330225003883243,
+        "hd15iqr": 0.25267541699577123,
+        "ops": 4.105788515087214,
+        "total": 1.2177928750170395,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.matmul_1000_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.matmul_1000_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d45f2f0>]",
+        "argnum": 1
+      },
+      "param": "cpu-benchmark.matmul_1000_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.294882916030474,
+        "max": 0.3327953750267625,
+        "mean": 0.3033157748053782,
+        "stddev": 0.016513039433704576,
+        "rounds": 5,
+        "median": 0.2966249579912983,
+        "iqr": 0.011236583552090451,
+        "q1": 0.29494485397299286,
+        "q3": 0.3061814375250833,
+        "iqr_outliers": 1,
+        "stddev_outliers": 1,
+        "outliers": "1;1",
+        "ld15iqr": 0.294882916030474,
+        "hd15iqr": 0.3327953750267625,
+        "ops": 3.296894138267776,
+        "total": 1.5165788740268908,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.matmul_batched_8_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.matmul_batched_8_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d45f4d0>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.matmul_batched_8_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 2.8125010430812836e-05,
+        "max": 9.558303281664848e-05,
+        "mean": 3.694824062408663e-05,
+        "stddev": 5.056303087919401e-06,
+        "rounds": 11143,
+        "median": 3.608304541558027e-05,
+        "iqr": 6.125017534941435e-06,
+        "q1": 3.312499029561877e-05,
+        "q3": 3.925000783056021e-05,
+        "iqr_outliers": 209,
+        "stddev_outliers": 3430,
+        "outliers": "3430;209",
+        "ld15iqr": 2.8125010430812836e-05,
+        "hd15iqr": 4.8457994125783443e-05,
+        "ops": 27064.888154595865,
+        "total": 0.4117142452741973,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.matmul_batched_8_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.matmul_batched_8_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d45f4d0>]",
+        "argnum": 1
+      },
+      "param": "cpu-benchmark.matmul_batched_8_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 6.337498780339956e-05,
+        "max": 0.00011108297621831298,
+        "mean": 6.906892157742938e-05,
+        "stddev": 3.4338062515528143e-06,
+        "rounds": 12520,
+        "median": 6.75840419717133e-05,
+        "iqr": 3.874010872095823e-06,
+        "q1": 6.683397805318236e-05,
+        "q3": 7.070798892527819e-05,
+        "iqr_outliers": 486,
+        "stddev_outliers": 2083,
+        "outliers": "2083;486",
+        "ld15iqr": 6.337498780339956e-05,
+        "hd15iqr": 7.654097862541676e-05,
+        "ops": 14478.291786834327,
+        "total": 0.8647428981494159,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.matmul_batched_32_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.matmul_batched_32_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429c70>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.matmul_batched_32_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 4.3707957956939936e-05,
+        "max": 0.009755792038049549,
+        "mean": 7.121109963555783e-05,
+        "stddev": 0.0001118489654033052,
+        "rounds": 11893,
+        "median": 6.083300104364753e-05,
+        "iqr": 6.708025466650724e-06,
+        "q1": 5.837494973093271e-05,
+        "q3": 6.508297519758344e-05,
+        "iqr_outliers": 1108,
+        "stddev_outliers": 261,
+        "outliers": "261;1108",
+        "ld15iqr": 4.841701593250036e-05,
+        "hd15iqr": 7.516698678955436e-05,
+        "ops": 14042.754642433161,
+        "total": 0.8469136079656892,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.matmul_batched_32_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.matmul_batched_32_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429c70>]",
+        "argnum": 1
+      },
+      "param": "cpu-benchmark.matmul_batched_32_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00023216597037389874,
+        "max": 0.0003332499763928354,
+        "mean": 0.00024158208422431722,
+        "stddev": 6.264233289702029e-06,
+        "rounds": 4027,
+        "median": 0.0002406249986961484,
+        "iqr": 6.793008651584387e-06,
+        "q1": 0.00023704097839072347,
+        "q3": 0.00024383398704230785,
+        "iqr_outliers": 165,
+        "stddev_outliers": 660,
+        "outliers": "660;165",
+        "ld15iqr": 0.00023216597037389874,
+        "hd15iqr": 0.00025404099142178893,
+        "ops": 4139.379802152323,
+        "total": 0.9728510531713255,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.matmul_batched_128_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.matmul_batched_128_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429d00>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.matmul_batched_128_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00010470900451764464,
+        "max": 0.0018174999859184027,
+        "mean": 0.00015787003170428932,
+        "stddev": 5.1198703779074664e-05,
+        "rounds": 5934,
+        "median": 0.00014733400894328952,
+        "iqr": 2.4124979972839355e-05,
+        "q1": 0.00013729202328249812,
+        "q3": 0.00016141700325533748,
+        "iqr_outliers": 493,
+        "stddev_outliers": 378,
+        "outliers": "378;493",
+        "ld15iqr": 0.00010470900451764464,
+        "hd15iqr": 0.00019766698824241757,
+        "ops": 6334.324438935487,
+        "total": 0.9368007681332529,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.matmul_batched_128_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.matmul_batched_128_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429d00>]",
+        "argnum": 1
+      },
+      "param": "cpu-benchmark.matmul_batched_128_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0008653749828226864,
+        "max": 0.00101125001674518,
+        "mean": 0.0008855931079996365,
+        "stddev": 1.6561749540590533e-05,
+        "rounds": 1101,
+        "median": 0.0008807919803075492,
+        "iqr": 1.2354037608020008e-05,
+        "q1": 0.000876166726811789,
+        "q3": 0.000888520764419809,
+        "iqr_outliers": 104,
+        "stddev_outliers": 151,
+        "outliers": "151;104",
+        "ld15iqr": 0.0008653749828226864,
+        "hd15iqr": 0.0009073329856619239,
+        "ops": 1129.1867461105064,
+        "total": 0.9750380119075999,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.conv2d_32ch_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.conv2d_32ch_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429d90>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.conv2d_32ch_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00037583301309496164,
+        "max": 0.0035084999981336296,
+        "mean": 0.0005042719141367278,
+        "stddev": 0.00010269261536036073,
+        "rounds": 2218,
+        "median": 0.000489375030156225,
+        "iqr": 5.58749889023602e-05,
+        "q1": 0.0004658749676309526,
+        "q3": 0.0005217499565333128,
+        "iqr_outliers": 118,
+        "stddev_outliers": 142,
+        "outliers": "142;118",
+        "ld15iqr": 0.000382165948394686,
+        "hd15iqr": 0.0006062910542823374,
+        "ops": 1983.0571006753726,
+        "total": 1.1184751055552624,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.conv2d_32ch_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.conv2d_32ch_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429d90>]",
+        "argnum": 1
+      },
+      "param": "cpu-benchmark.conv2d_32ch_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0008950839983299375,
+        "max": 0.001552000001538545,
+        "mean": 0.0010708303761444654,
+        "stddev": 8.040068702571021e-05,
+        "rounds": 674,
+        "median": 0.0010585419950075448,
+        "iqr": 8.158298442140222e-05,
+        "q1": 0.0010245420271530747,
+        "q3": 0.001106125011574477,
+        "iqr_outliers": 28,
+        "stddev_outliers": 160,
+        "outliers": "160;28",
+        "ld15iqr": 0.0009110420360229909,
+        "hd15iqr": 0.00123029196402058,
+        "ops": 933.8547189896772,
+        "total": 0.7217396735213697,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.conv2d_64ch_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.conv2d_64ch_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429e20>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.conv2d_64ch_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0013098749914206564,
+        "max": 0.005339083028957248,
+        "mean": 0.0018020890679223073,
+        "stddev": 0.00028498471948169173,
+        "rounds": 589,
+        "median": 0.001769667025655508,
+        "iqr": 0.000270207499852404,
+        "q1": 0.0016296255344059318,
+        "q3": 0.0018998330342583358,
+        "iqr_outliers": 20,
+        "stddev_outliers": 98,
+        "outliers": "98;20",
+        "ld15iqr": 0.0013098749914206564,
+        "hd15iqr": 0.0023531249607913196,
+        "ops": 554.911528958408,
+        "total": 1.061430461006239,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.conv2d_64ch_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.conv2d_64ch_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429e20>]",
+        "argnum": 1
+      },
+      "param": "cpu-benchmark.conv2d_64ch_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0023110840120352805,
+        "max": 0.0038131250184960663,
+        "mean": 0.00316507384863411,
+        "stddev": 0.00024192962318066348,
+        "rounds": 347,
+        "median": 0.003188208967912942,
+        "iqr": 0.0003146145027130842,
+        "q1": 0.0030051662324694917,
+        "q3": 0.003319780735182576,
+        "iqr_outliers": 6,
+        "stddev_outliers": 107,
+        "outliers": "107;6",
+        "ld15iqr": 0.0025509580154903233,
+        "hd15iqr": 0.0038131250184960663,
+        "ops": 315.94839419988597,
+        "total": 1.0982806254760362,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.conv2d_128ch_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.conv2d_128ch_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429eb0>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.conv2d_128ch_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.005582499958109111,
+        "max": 0.008335250022355467,
+        "mean": 0.00674210653960472,
+        "stddev": 0.0005041256428444204,
+        "rounds": 104,
+        "median": 0.006724938022671267,
+        "iqr": 0.000641040998743847,
+        "q1": 0.006440688011934981,
+        "q3": 0.007081729010678828,
+        "iqr_outliers": 2,
+        "stddev_outliers": 33,
+        "outliers": "33;2",
+        "ld15iqr": 0.005582499958109111,
+        "hd15iqr": 0.008245292003266513,
+        "ops": 148.32159565052328,
+        "total": 0.7011790801188909,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.conv2d_128ch_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.conv2d_128ch_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429eb0>]",
+        "argnum": 1
+      },
+      "param": "cpu-benchmark.conv2d_128ch_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.007251666975207627,
+        "max": 0.009581457998137921,
+        "mean": 0.00824525318701001,
+        "stddev": 0.00040940521779878536,
+        "rounds": 134,
+        "median": 0.008258624991867691,
+        "iqr": 0.00047712400555610657,
+        "q1": 0.008009459008462727,
+        "q3": 0.008486583014018834,
+        "iqr_outliers": 3,
+        "stddev_outliers": 36,
+        "outliers": "36;3",
+        "ld15iqr": 0.007335542002692819,
+        "hd15iqr": 0.009546249988488853,
+        "ops": 121.28190333505475,
+        "total": 1.1048639270593412,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.layernorm_256_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.layernorm_256_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429f40>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.layernorm_256_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0003370000049471855,
+        "max": 0.014928459015209228,
+        "mean": 0.0004960563909186843,
+        "stddev": 0.0005500802051939036,
+        "rounds": 1602,
+        "median": 0.0003870204964186996,
+        "iqr": 0.00010437500895932317,
+        "q1": 0.00035500002559274435,
+        "q3": 0.0004593750345520675,
+        "iqr_outliers": 120,
+        "stddev_outliers": 52,
+        "outliers": "52;120",
+        "ld15iqr": 0.0003370000049471855,
+        "hd15iqr": 0.0006179999909363687,
+        "ops": 2015.8998418466585,
+        "total": 0.7946823382517323,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.layernorm_512_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.layernorm_512_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429fd0>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.layernorm_512_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0005946249584667385,
+        "max": 0.001805374980904162,
+        "mean": 0.0008370970922714282,
+        "stddev": 0.00021185955639664637,
+        "rounds": 936,
+        "median": 0.000756812485633418,
+        "iqr": 0.00033412501215934753,
+        "q1": 0.0006592914869543165,
+        "q3": 0.000993416499113664,
+        "iqr_outliers": 15,
+        "stddev_outliers": 179,
+        "outliers": "179;15",
+        "ld15iqr": 0.0005946249584667385,
+        "hd15iqr": 0.001498459023423493,
+        "ops": 1194.604555711144,
+        "total": 0.7835228783660568,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[cpu-benchmark.layernorm_1024_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[cpu-benchmark.layernorm_1024_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[CpuDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d42a060>]",
+        "argnum": 0
+      },
+      "param": "cpu-benchmark.layernorm_1024_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.001963916001841426,
+        "max": 0.007856332988012582,
+        "mean": 0.0031050485399820786,
+        "stddev": 0.0008774797948564976,
+        "rounds": 443,
+        "median": 0.002916166966315359,
+        "iqr": 0.0011155730026075616,
+        "q1": 0.0024750209850026295,
+        "q3": 0.003590593987610191,
+        "iqr_outliers": 14,
+        "stddev_outliers": 115,
+        "outliers": "115;14",
+        "ld15iqr": 0.001963916001841426,
+        "hd15iqr": 0.005299250013194978,
+        "ops": 322.05615697259657,
+        "total": 1.3755365032120608,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.exp_1_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.exp_1_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cf5f8c0>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.exp_1_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00010312499944120646,
+        "max": 0.005097249988466501,
+        "mean": 0.0002736497669001853,
+        "stddev": 0.0003984684702926609,
+        "rounds": 4788,
+        "median": 0.00016847951337695122,
+        "iqr": 3.383401781320572e-05,
+        "q1": 0.0001552909961901605,
+        "q3": 0.00018912501400336623,
+        "iqr_outliers": 732,
+        "stddev_outliers": 296,
+        "outliers": "296;732",
+        "ld15iqr": 0.00010491703869774938,
+        "hd15iqr": 0.00024016702082008123,
+        "ops": 3654.3060545151257,
+        "total": 1.3102350839180872,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.add_1_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.add_1_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cdc3110>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.add_1_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 4.125002305954695e-06,
+        "max": 9.662500815466046e-05,
+        "mean": 4.5546898892597865e-06,
+        "stddev": 6.702017442234126e-07,
+        "rounds": 121213,
+        "median": 4.499976057559252e-06,
+        "iqr": 1.66997779160738e-07,
+        "q1": 4.415982402861118e-06,
+        "q3": 4.582980182021856e-06,
+        "iqr_outliers": 8070,
+        "stddev_outliers": 3474,
+        "outliers": "3474;8070",
+        "ld15iqr": 4.165980499237776e-06,
+        "hd15iqr": 4.833971615880728e-06,
+        "ops": 219553.915703033,
+        "total": 0.5520876255468465,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.add_1_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.add_1_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cdc3110>]",
+        "argnum": 1
+      },
+      "param": "mlx-benchmark.add_1_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 3.999972250312567e-06,
+        "max": 8.283299393951893e-05,
+        "mean": 4.466630022002192e-06,
+        "stddev": 1.1292674472285245e-06,
+        "rounds": 146328,
+        "median": 4.375004209578037e-06,
+        "iqr": 1.6600824892520905e-07,
+        "q1": 4.292000085115433e-06,
+        "q3": 4.458008334040642e-06,
+        "iqr_outliers": 7962,
+        "stddev_outliers": 1406,
+        "outliers": "1406;7962",
+        "ld15iqr": 4.082976374775171e-06,
+        "hd15iqr": 4.707952030003071e-06,
+        "ops": 223882.4337529851,
+        "total": 0.6535930378595367,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.sum_1_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.sum_1_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cdc3890>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.sum_1_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 3.916968125849962e-06,
+        "max": 0.0006170000415295362,
+        "mean": 4.506994588834912e-06,
+        "stddev": 3.3762365311043507e-06,
+        "rounds": 129033,
+        "median": 4.292000085115433e-06,
+        "iqr": 1.66997779160738e-07,
+        "q1": 4.249974153935909e-06,
+        "q3": 4.416971933096647e-06,
+        "iqr_outliers": 11888,
+        "stddev_outliers": 879,
+        "outliers": "879;11888",
+        "ld15iqr": 3.999972250312567e-06,
+        "hd15iqr": 4.707952030003071e-06,
+        "ops": 221877.34648656557,
+        "total": 0.5815510327811353,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.softmax_1_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.softmax_1_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfcdf30>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.softmax_1_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00017258297884836793,
+        "max": 0.009880665980745107,
+        "mean": 0.00035316281536372236,
+        "stddev": 0.0006144892787936035,
+        "rounds": 3376,
+        "median": 0.00023952050833031535,
+        "iqr": 3.32919298671186e-05,
+        "q1": 0.00022525002714246511,
+        "q3": 0.0002585419570095837,
+        "iqr_outliers": 432,
+        "stddev_outliers": 92,
+        "outliers": "92;432",
+        "ld15iqr": 0.00017725001089274883,
+        "hd15iqr": 0.00030916702235117555,
+        "ops": 2831.555182190118,
+        "total": 1.1922776646679267,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.exp_10_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.exp_10_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfce3f0>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.exp_10_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00015666597755625844,
+        "max": 0.0021632079733535647,
+        "mean": 0.0002779940394834886,
+        "stddev": 0.00033164827649379296,
+        "rounds": 155,
+        "median": 0.0001776250428520143,
+        "iqr": 1.9791230442933738e-05,
+        "q1": 0.00017290672985836864,
+        "q3": 0.00019269796030130237,
+        "iqr_outliers": 24,
+        "stddev_outliers": 11,
+        "outliers": "11;24",
+        "ld15iqr": 0.00015666597755625844,
+        "hd15iqr": 0.000228749995585531,
+        "ops": 3597.1994286567965,
+        "total": 0.04308907611994073,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.add_10_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.add_10_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfe1eb0>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.add_10_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 7.750000804662704e-06,
+        "max": 7.229100447148085e-05,
+        "mean": 8.78612064493574e-06,
+        "stddev": 1.0752264337834442e-06,
+        "rounds": 69566,
+        "median": 8.750008419156075e-06,
+        "iqr": 6.25033862888813e-07,
+        "q1": 8.374976459890604e-06,
+        "q3": 9.000010322779417e-06,
+        "iqr_outliers": 1698,
+        "stddev_outliers": 1878,
+        "outliers": "1878;1698",
+        "ld15iqr": 7.750000804662704e-06,
+        "hd15iqr": 9.957992006093264e-06,
+        "ops": 113815.87396895049,
+        "total": 0.6112152687855996,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.add_10_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.add_10_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfe1eb0>]",
+        "argnum": 1
+      },
+      "param": "mlx-benchmark.add_10_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 7.125025149434805e-06,
+        "max": 5.620799493044615e-05,
+        "mean": 8.156595469329994e-06,
+        "stddev": 9.101393644796601e-07,
+        "rounds": 78174,
+        "median": 8.000002708286047e-06,
+        "iqr": 9.160139597952366e-07,
+        "q1": 7.6249707490205765e-06,
+        "q3": 8.540984708815813e-06,
+        "iqr_outliers": 779,
+        "stddev_outliers": 7097,
+        "outliers": "7097;779",
+        "ld15iqr": 7.125025149434805e-06,
+        "hd15iqr": 9.91596607491374e-06,
+        "ops": 122600.17108365224,
+        "total": 0.637633694219403,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.sum_10_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.sum_10_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d4668b0>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.sum_10_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 6.832997314631939e-06,
+        "max": 0.008098042046185583,
+        "mean": 8.906270114309276e-06,
+        "stddev": 3.2196075889603434e-05,
+        "rounds": 82190,
+        "median": 8.083006832748652e-06,
+        "iqr": 1.08394306153059e-06,
+        "q1": 7.5410353019833565e-06,
+        "q3": 8.624978363513947e-06,
+        "iqr_outliers": 2667,
+        "stddev_outliers": 208,
+        "outliers": "208;2667",
+        "ld15iqr": 6.832997314631939e-06,
+        "hd15iqr": 1.029099803417921e-05,
+        "ops": 112280.44817474691,
+        "total": 0.7320063406950794,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.softmax_10_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.softmax_10_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d4669c0>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.softmax_10_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00019820802845060825,
+        "max": 0.009247791953384876,
+        "mean": 0.00037036649222497097,
+        "stddev": 0.0005538130367622533,
+        "rounds": 2292,
+        "median": 0.0002724585065152496,
+        "iqr": 2.5354005629196763e-05,
+        "q1": 0.00026104151038452983,
+        "q3": 0.0002863955160137266,
+        "iqr_outliers": 302,
+        "stddev_outliers": 51,
+        "outliers": "51;302",
+        "ld15iqr": 0.00023020902881398797,
+        "hd15iqr": 0.000324999971780926,
+        "ops": 2700.028271975997,
+        "total": 0.8488800001796335,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.exp_100_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.exp_100_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d47b550>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.exp_100_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00029141700360924006,
+        "max": 0.010580250003840774,
+        "mean": 0.0005187349319481467,
+        "stddev": 0.0006833136887122857,
+        "rounds": 794,
+        "median": 0.000383478996809572,
+        "iqr": 4.012399585917592e-05,
+        "q1": 0.00036683399230241776,
+        "q3": 0.0004069579881615937,
+        "iqr_outliers": 109,
+        "stddev_outliers": 25,
+        "outliers": "25;109",
+        "ld15iqr": 0.00033720798091962934,
+        "hd15iqr": 0.00046854198444634676,
+        "ops": 1927.766838921812,
+        "total": 0.41187553596682847,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.add_100_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.add_100_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d47b650>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.add_100_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 3.587501123547554e-05,
+        "max": 0.000532458012457937,
+        "mean": 6.400219371362769e-05,
+        "stddev": 1.2904199199174466e-05,
+        "rounds": 13319,
+        "median": 6.325001595541835e-05,
+        "iqr": 2.375978510826826e-06,
+        "q1": 6.208301056176424e-05,
+        "q3": 6.445898907259107e-05,
+        "iqr_outliers": 2533,
+        "stddev_outliers": 575,
+        "outliers": "575;2533",
+        "ld15iqr": 5.854095797985792e-05,
+        "hd15iqr": 6.804097210988402e-05,
+        "ops": 15624.464443741006,
+        "total": 0.8524452180718072,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.add_100_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.add_100_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d47b650>]",
+        "argnum": 1
+      },
+      "param": "mlx-benchmark.add_100_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 4.675000673159957e-05,
+        "max": 9.620800847187638e-05,
+        "mean": 6.321132788980235e-05,
+        "stddev": 3.29637507876722e-06,
+        "rounds": 12546,
+        "median": 6.316701183095574e-05,
+        "iqr": 1.750944647938013e-06,
+        "q1": 6.233301246538758e-05,
+        "q3": 6.40839571133256e-05,
+        "iqr_outliers": 1575,
+        "stddev_outliers": 1652,
+        "outliers": "1652;1575",
+        "ld15iqr": 5.970802158117294e-05,
+        "hd15iqr": 6.674998439848423e-05,
+        "ops": 15819.94926199496,
+        "total": 0.7930493197054602,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.sum_100_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.sum_100_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d47cd70>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.sum_100_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 3.766705049201846e-05,
+        "max": 0.0005165000329725444,
+        "mean": 6.431422188629237e-05,
+        "stddev": 1.126789077861557e-05,
+        "rounds": 12973,
+        "median": 6.350001785904169e-05,
+        "iqr": 2.00001522898674e-06,
+        "q1": 6.254197796806693e-05,
+        "q3": 6.454199319705367e-05,
+        "iqr_outliers": 2383,
+        "stddev_outliers": 758,
+        "outliers": "758;2383",
+        "ld15iqr": 5.954195512458682e-05,
+        "hd15iqr": 6.758299423381686e-05,
+        "ops": 15548.660477740075,
+        "total": 0.834348400530871,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.softmax_100_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.softmax_100_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d47ce60>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.softmax_100_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0009503330220468342,
+        "max": 0.012938875006511807,
+        "mean": 0.0014711863317472093,
+        "stddev": 0.0011995705171894656,
+        "rounds": 850,
+        "median": 0.001051749975886196,
+        "iqr": 0.00021570903481915593,
+        "q1": 0.0010103749809786677,
+        "q3": 0.0012260840157978237,
+        "iqr_outliers": 122,
+        "stddev_outliers": 81,
+        "outliers": "81;122",
+        "ld15iqr": 0.0009503330220468342,
+        "hd15iqr": 0.0015498329885303974,
+        "ops": 679.7235526327795,
+        "total": 1.250508381985128,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.exp_1000_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.exp_1000_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d44e970>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.exp_1000_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.001851750013884157,
+        "max": 0.013183124945499003,
+        "mean": 0.0034496272373498,
+        "stddev": 0.002470338451030346,
+        "rounds": 73,
+        "median": 0.002265541988890618,
+        "iqr": 0.0012079795269528404,
+        "q1": 0.0020170724747003987,
+        "q3": 0.003225052001653239,
+        "iqr_outliers": 15,
+        "stddev_outliers": 14,
+        "outliers": "14;15",
+        "ld15iqr": 0.001851750013884157,
+        "hd15iqr": 0.0057228339719586074,
+        "ops": 289.886393860995,
+        "total": 0.2518227883265354,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.add_1000_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.add_1000_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d44ea50>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.add_1000_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0004859999753534794,
+        "max": 0.002956792013719678,
+        "mean": 0.0005767596003848763,
+        "stddev": 0.00011433889673064497,
+        "rounds": 1117,
+        "median": 0.000555209000594914,
+        "iqr": 3.560476761776954e-05,
+        "q1": 0.0005410417506936938,
+        "q3": 0.0005766465183114633,
+        "iqr_outliers": 115,
+        "stddev_outliers": 79,
+        "outliers": "79;115",
+        "ld15iqr": 0.00048812502063810825,
+        "hd15iqr": 0.0006311670294962823,
+        "ops": 1733.8246287234613,
+        "total": 0.6442404736299068,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.add_1000_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.add_1000_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d44ea50>]",
+        "argnum": 1
+      },
+      "param": "mlx-benchmark.add_1000_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00047575001372024417,
+        "max": 0.0009870840003713965,
+        "mean": 0.0005938122014894611,
+        "stddev": 5.920025134050913e-05,
+        "rounds": 1708,
+        "median": 0.0005926874873694032,
+        "iqr": 5.247900844551623e-05,
+        "q1": 0.0005553750088438392,
+        "q3": 0.0006078540172893554,
+        "iqr_outliers": 120,
+        "stddev_outliers": 347,
+        "outliers": "347;120",
+        "ld15iqr": 0.00048045796575024724,
+        "hd15iqr": 0.0006868329946883023,
+        "ops": 1684.0341062236457,
+        "total": 1.0142312401439995,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.sum_1000_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.sum_1000_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfd35f0>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.sum_1000_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0005013329791836441,
+        "max": 0.009274791984353215,
+        "mean": 0.0007576081357295826,
+        "stddev": 0.0005694429747787551,
+        "rounds": 1112,
+        "median": 0.0006138754833955318,
+        "iqr": 0.00010904096416197717,
+        "q1": 0.0005800420185551047,
+        "q3": 0.0006890829827170819,
+        "iqr_outliers": 129,
+        "stddev_outliers": 63,
+        "outliers": "63;129",
+        "ld15iqr": 0.0005013329791836441,
+        "hd15iqr": 0.0008532080100849271,
+        "ops": 1319.9435867158318,
+        "total": 0.8424602469312958,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.softmax_1000_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.softmax_1000_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfe9250>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.softmax_1000_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.008027291973121464,
+        "max": 0.018479582970030606,
+        "mean": 0.012971012341170405,
+        "stddev": 0.0026774867600149123,
+        "rounds": 112,
+        "median": 0.013154312502592802,
+        "iqr": 0.0034044789790641516,
+        "q1": 0.011698521033395082,
+        "q3": 0.015103000012459233,
+        "iqr_outliers": 0,
+        "stddev_outliers": 44,
+        "outliers": "44;0",
+        "ld15iqr": 0.008027291973121464,
+        "hd15iqr": 0.018479582970030606,
+        "ops": 77.09498485526593,
+        "total": 1.4527533822110854,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.matmul_1_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.matmul_1_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfe9310>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.matmul_1_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0001247500185854733,
+        "max": 0.0037064170464873314,
+        "mean": 0.00030491157918903256,
+        "stddev": 0.0003927073487346689,
+        "rounds": 4565,
+        "median": 0.00020166701870039105,
+        "iqr": 6.863527232781053e-05,
+        "q1": 0.00017382274381816387,
+        "q3": 0.0002424580161459744,
+        "iqr_outliers": 481,
+        "stddev_outliers": 272,
+        "outliers": "272;481",
+        "ld15iqr": 0.0001247500185854733,
+        "hd15iqr": 0.0003463340108282864,
+        "ops": 3279.6393061217314,
+        "total": 1.3919213589979336,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.matmul_1_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.matmul_1_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cfe9310>]",
+        "argnum": 1
+      },
+      "param": "mlx-benchmark.matmul_1_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0001212080242112279,
+        "max": 0.0030234160367399454,
+        "mean": 0.00023269253523334265,
+        "stddev": 0.0002616103573468762,
+        "rounds": 5707,
+        "median": 0.00017220905283465981,
+        "iqr": 2.62079993262887e-05,
+        "q1": 0.0001664169831201434,
+        "q3": 0.00019262498244643211,
+        "iqr_outliers": 655,
+        "stddev_outliers": 218,
+        "outliers": "218;655",
+        "ld15iqr": 0.0001272080116905272,
+        "hd15iqr": 0.0002321670181117952,
+        "ops": 4297.516458777701,
+        "total": 1.3279762985766865,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.matmul_10_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.matmul_10_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cf9e780>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.matmul_10_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00011150003410875797,
+        "max": 0.009008417022414505,
+        "mean": 0.00024606449049917724,
+        "stddev": 0.00032789390058257027,
+        "rounds": 4373,
+        "median": 0.00017304200446233153,
+        "iqr": 2.696929732337594e-05,
+        "q1": 0.00016649998724460602,
+        "q3": 0.00019346928456798196,
+        "iqr_outliers": 568,
+        "stddev_outliers": 181,
+        "outliers": "181;568",
+        "ld15iqr": 0.00012687500566244125,
+        "hd15iqr": 0.00023408298147842288,
+        "ops": 4063.9752528751956,
+        "total": 1.076040016952902,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.matmul_10_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.matmul_10_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cf9e780>]",
+        "argnum": 1
+      },
+      "param": "mlx-benchmark.matmul_10_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0001189160393550992,
+        "max": 0.0041194160003215075,
+        "mean": 0.0002461455416665488,
+        "stddev": 0.00029632647334806937,
+        "rounds": 4062,
+        "median": 0.00017916702199727297,
+        "iqr": 3.21249826811254e-05,
+        "q1": 0.00017216696869581938,
+        "q3": 0.00020429195137694478,
+        "iqr_outliers": 430,
+        "stddev_outliers": 154,
+        "outliers": "154;430",
+        "ld15iqr": 0.00012716703349724412,
+        "hd15iqr": 0.0002525410382077098,
+        "ops": 4062.6370611038374,
+        "total": 0.9998431902495213,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.matmul_100_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.matmul_100_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cf9e8e0>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.matmul_100_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00023362500360235572,
+        "max": 0.007532458985224366,
+        "mean": 0.0003943487138853386,
+        "stddev": 0.0005022924168948353,
+        "rounds": 1509,
+        "median": 0.0002879170351661742,
+        "iqr": 3.420919529162347e-05,
+        "q1": 0.0002759580238489434,
+        "q3": 0.0003101672191405669,
+        "iqr_outliers": 198,
+        "stddev_outliers": 58,
+        "outliers": "58;198",
+        "ld15iqr": 0.00023362500360235572,
+        "hd15iqr": 0.00036170799285173416,
+        "ops": 2535.82670562674,
+        "total": 0.5950722092529759,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.matmul_100_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.matmul_100_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10cf9e8e0>]",
+        "argnum": 1
+      },
+      "param": "mlx-benchmark.matmul_100_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0001937500201165676,
+        "max": 0.003943290968891233,
+        "mean": 0.0003642545651858919,
+        "stddev": 0.0003772195834357935,
+        "rounds": 3661,
+        "median": 0.0002767500118352473,
+        "iqr": 3.362525603733957e-05,
+        "q1": 0.0002652080002008006,
+        "q3": 0.00029883325623814017,
+        "iqr_outliers": 473,
+        "stddev_outliers": 156,
+        "outliers": "156;473",
+        "ld15iqr": 0.00021595897851511836,
+        "hd15iqr": 0.000349292007740587,
+        "ops": 2745.332785299931,
+        "total": 1.3335359631455503,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.matmul_1000_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.matmul_1000_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d45f2f0>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.matmul_1000_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.07077516696881503,
+        "max": 0.1425671250326559,
+        "mean": 0.1169558779297707,
+        "stddev": 0.026909486530823267,
+        "rounds": 15,
+        "median": 0.13376366603188217,
+        "iqr": 0.04451303197129164,
+        "q1": 0.09283785375009757,
+        "q3": 0.1373508857213892,
+        "iqr_outliers": 0,
+        "stddev_outliers": 3,
+        "outliers": "3;0",
+        "ld15iqr": 0.07077516696881503,
+        "hd15iqr": 0.1425671250326559,
+        "ops": 8.550232939985085,
+        "total": 1.7543381689465605,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.matmul_1000_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.matmul_1000_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d45f2f0>]",
+        "argnum": 1
+      },
+      "param": "mlx-benchmark.matmul_1000_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.10545295797055587,
+        "max": 0.17300608399091288,
+        "mean": 0.1448746552659114,
+        "stddev": 0.020985423366686927,
+        "rounds": 11,
+        "median": 0.1533343750052154,
+        "iqr": 0.025354448225698434,
+        "q1": 0.13326377027260605,
+        "q3": 0.1586182184983045,
+        "iqr_outliers": 0,
+        "stddev_outliers": 3,
+        "outliers": "3;0",
+        "ld15iqr": 0.10545295797055587,
+        "hd15iqr": 0.17300608399091288,
+        "ops": 6.902518581766712,
+        "total": 1.5936212079250254,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.matmul_batched_8_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.matmul_batched_8_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d45f4d0>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.matmul_batched_8_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0001591669861227274,
+        "max": 0.002944916021078825,
+        "mean": 0.00032039470100426114,
+        "stddev": 0.00038218767290775315,
+        "rounds": 2000,
+        "median": 0.00021652050781995058,
+        "iqr": 6.222946103662252e-05,
+        "q1": 0.00019116650219075382,
+        "q3": 0.00025339596322737634,
+        "iqr_outliers": 217,
+        "stddev_outliers": 122,
+        "outliers": "122;217",
+        "ld15iqr": 0.0001591669861227274,
+        "hd15iqr": 0.0003486669738776982,
+        "ops": 3121.150246447741,
+        "total": 0.6407894020085223,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.matmul_batched_8_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.matmul_batched_8_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d45f4d0>]",
+        "argnum": 1
+      },
+      "param": "mlx-benchmark.matmul_batched_8_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00011249998351559043,
+        "max": 0.0036823750124312937,
+        "mean": 0.0002513636477585589,
+        "stddev": 0.00028464761082611345,
+        "rounds": 5081,
+        "median": 0.00018624996300786734,
+        "iqr": 2.9666000045835972e-05,
+        "q1": 0.00018029200145974755,
+        "q3": 0.00020995800150558352,
+        "iqr_outliers": 524,
+        "stddev_outliers": 194,
+        "outliers": "194;524",
+        "ld15iqr": 0.0001383339986205101,
+        "hd15iqr": 0.00025450001703575253,
+        "ops": 3978.3000004858495,
+        "total": 1.277178694261238,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.matmul_batched_32_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.matmul_batched_32_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429c70>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.matmul_batched_32_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0001640829723328352,
+        "max": 0.0029323750059120357,
+        "mean": 0.0003030034984348007,
+        "stddev": 0.0003134516721851107,
+        "rounds": 4119,
+        "median": 0.00023037503706291318,
+        "iqr": 2.986453182529658e-05,
+        "q1": 0.0002188332291552797,
+        "q3": 0.0002486977609805763,
+        "iqr_outliers": 491,
+        "stddev_outliers": 179,
+        "outliers": "179;491",
+        "ld15iqr": 0.0001819579629227519,
+        "hd15iqr": 0.0002936249948106706,
+        "ops": 3300.2919278675486,
+        "total": 1.248071410052944,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.matmul_batched_32_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.matmul_batched_32_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429c70>]",
+        "argnum": 1
+      },
+      "param": "mlx-benchmark.matmul_batched_32_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00016229198081418872,
+        "max": 0.003782082989346236,
+        "mean": 0.0003020269029069139,
+        "stddev": 0.00031595760174557417,
+        "rounds": 3981,
+        "median": 0.00022891699336469173,
+        "iqr": 2.9614995582960546e-05,
+        "q1": 0.0002186557394452393,
+        "q3": 0.00024827073502819985,
+        "iqr_outliers": 467,
+        "stddev_outliers": 171,
+        "outliers": "171;467",
+        "ld15iqr": 0.00017458299407735467,
+        "hd15iqr": 0.00029304204508662224,
+        "ops": 3310.963329343561,
+        "total": 1.2023691004724242,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.matmul_batched_128_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.matmul_batched_128_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429d00>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.matmul_batched_128_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00023974996292963624,
+        "max": 0.005911750020459294,
+        "mean": 0.0004172700874710468,
+        "stddev": 0.0006249564703868652,
+        "rounds": 3353,
+        "median": 0.0002996249822899699,
+        "iqr": 3.1802235753275454e-05,
+        "q1": 0.0002872080076485872,
+        "q3": 0.0003190102434018627,
+        "iqr_outliers": 416,
+        "stddev_outliers": 85,
+        "outliers": "85;416",
+        "ld15iqr": 0.00023974996292963624,
+        "hd15iqr": 0.00036704097874462605,
+        "ops": 2396.529322436483,
+        "total": 1.39910660329042,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.matmul_batched_128_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.matmul_batched_128_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429d00>]",
+        "argnum": 1
+      },
+      "param": "mlx-benchmark.matmul_batched_128_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0002448749728500843,
+        "max": 0.006373500043991953,
+        "mean": 0.00040993313403517664,
+        "stddev": 0.000599949755972614,
+        "rounds": 2519,
+        "median": 0.0002942910068668425,
+        "iqr": 3.0458031687885523e-05,
+        "q1": 0.00028429197845980525,
+        "q3": 0.0003147500101476908,
+        "iqr_outliers": 332,
+        "stddev_outliers": 65,
+        "outliers": "65;332",
+        "ld15iqr": 0.0002448749728500843,
+        "hd15iqr": 0.0003606250393204391,
+        "ops": 2439.422230051278,
+        "total": 1.03262156463461,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.conv2d_32ch_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.conv2d_32ch_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429d90>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.conv2d_32ch_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0002560000284574926,
+        "max": 0.010248332982882857,
+        "mean": 0.0005203312843407708,
+        "stddev": 0.0008267701605797545,
+        "rounds": 3131,
+        "median": 0.0003233329625800252,
+        "iqr": 5.5573254940100014e-05,
+        "q1": 0.0003062602481804788,
+        "q3": 0.0003618335031205788,
+        "iqr_outliers": 548,
+        "stddev_outliers": 122,
+        "outliers": "122;548",
+        "ld15iqr": 0.0002560000284574926,
+        "hd15iqr": 0.00044541596435010433,
+        "ops": 1921.8525391317594,
+        "total": 1.6291572512709536,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.conv2d_32ch_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.conv2d_32ch_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429d90>]",
+        "argnum": 1
+      },
+      "param": "mlx-benchmark.conv2d_32ch_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.00229425000725314,
+        "max": 0.010836875007953495,
+        "mean": 0.0043932537228101864,
+        "stddev": 0.002346271117176749,
+        "rounds": 68,
+        "median": 0.0033999170118477196,
+        "iqr": 0.002666520478669554,
+        "q1": 0.0026778750179801136,
+        "q3": 0.005344395496649668,
+        "iqr_outliers": 4,
+        "stddev_outliers": 13,
+        "outliers": "13;4",
+        "ld15iqr": 0.00229425000725314,
+        "hd15iqr": 0.009499749983660877,
+        "ops": 227.62172710579085,
+        "total": 0.2987412531510927,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.conv2d_64ch_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.conv2d_64ch_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429e20>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.conv2d_64ch_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0006512919790111482,
+        "max": 0.011364459001924843,
+        "mean": 0.002020916681921499,
+        "stddev": 0.002179940498592042,
+        "rounds": 1391,
+        "median": 0.0012292909668758512,
+        "iqr": 0.0007745629700366408,
+        "q1": 0.0009050829976331443,
+        "q3": 0.001679645967669785,
+        "iqr_outliers": 185,
+        "stddev_outliers": 169,
+        "outliers": "169;185",
+        "ld15iqr": 0.0006512919790111482,
+        "hd15iqr": 0.002857375016901642,
+        "ops": 494.82495193675885,
+        "total": 2.8110951045528054,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.conv2d_64ch_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.conv2d_64ch_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429e20>]",
+        "argnum": 1
+      },
+      "param": "mlx-benchmark.conv2d_64ch_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.001819249999243766,
+        "max": 0.01045462500769645,
+        "mean": 0.003427365640585391,
+        "stddev": 0.0017635178193319354,
+        "rounds": 151,
+        "median": 0.0028042500489391387,
+        "iqr": 0.0017408759595127776,
+        "q1": 0.0022240620164666325,
+        "q3": 0.00396493797597941,
+        "iqr_outliers": 9,
+        "stddev_outliers": 22,
+        "outliers": "22;9",
+        "ld15iqr": 0.001819249999243766,
+        "hd15iqr": 0.006781750009395182,
+        "ops": 291.7692784681126,
+        "total": 0.517532211728394,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.conv2d_128ch_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.conv2d_128ch_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429eb0>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.conv2d_128ch_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0012459169956855476,
+        "max": 0.00559299997985363,
+        "mean": 0.0018486482670541156,
+        "stddev": 0.000921523797233187,
+        "rounds": 711,
+        "median": 0.0014672910328954458,
+        "iqr": 0.0003080309688812122,
+        "q1": 0.0014002187526784837,
+        "q3": 0.001708249721559696,
+        "iqr_outliers": 118,
+        "stddev_outliers": 89,
+        "outliers": "89;118",
+        "ld15iqr": 0.0012459169956855476,
+        "hd15iqr": 0.0022147910203784704,
+        "ops": 540.9357841735542,
+        "total": 1.3143889178754762,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.conv2d_128ch_grad1]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.conv2d_128ch_grad1]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429eb0>]",
+        "argnum": 1
+      },
+      "param": "mlx-benchmark.conv2d_128ch_grad1",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.005052874970715493,
+        "max": 0.014319416019134223,
+        "mean": 0.008244791450692244,
+        "stddev": 0.0016010389099897714,
+        "rounds": 173,
+        "median": 0.008363083004951477,
+        "iqr": 0.002123250247677788,
+        "q1": 0.007058541523292661,
+        "q3": 0.009181791770970449,
+        "iqr_outliers": 1,
+        "stddev_outliers": 56,
+        "outliers": "56;1",
+        "ld15iqr": 0.005052874970715493,
+        "hd15iqr": 0.014319416019134223,
+        "ops": 121.28869553347388,
+        "total": 1.4263489209697582,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.layernorm_256_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.layernorm_256_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429f40>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.layernorm_256_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0030423339921981096,
+        "max": 0.009259541053324938,
+        "mean": 0.00463452977717866,
+        "stddev": 0.0019501773750025754,
+        "rounds": 312,
+        "median": 0.0035469370195642114,
+        "iqr": 0.0038309585070237517,
+        "q1": 0.003205333516234532,
+        "q3": 0.007036292023258284,
+        "iqr_outliers": 0,
+        "stddev_outliers": 87,
+        "outliers": "87;0",
+        "ld15iqr": 0.0030423339921981096,
+        "hd15iqr": 0.009259541053324938,
+        "ops": 215.77162044015716,
+        "total": 1.445973290479742,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.layernorm_512_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.layernorm_512_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d429fd0>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.layernorm_512_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.006484000012278557,
+        "max": 0.024722457979805768,
+        "mean": 0.013360363479908923,
+        "stddev": 0.003982708455147278,
+        "rounds": 152,
+        "median": 0.013788624986773357,
+        "iqr": 0.005273853981634602,
+        "q1": 0.011118541500763968,
+        "q3": 0.01639239548239857,
+        "iqr_outliers": 1,
+        "stddev_outliers": 50,
+        "outliers": "50;1",
+        "ld15iqr": 0.006484000012278557,
+        "hd15iqr": 0.024722457979805768,
+        "ops": 74.84826303594076,
+        "total": 2.0307752489461564,
+        "iterations": 1
+      }
+    },
+    {
+      "group": null,
+      "name": "test_benchmark_grad[mlx-benchmark.layernorm_1024_grad0]",
+      "fullname": "tests/test_benchmark.py::test_benchmark_grad[mlx-benchmark.layernorm_1024_grad0]",
+      "params": {
+        "device": "UNSERIALIZABLE[MlxDevice(id=0)]",
+        "op_config": "UNSERIALIZABLE[<tests.configs.util.OperationTestConfig object at 0x10d42a060>]",
+        "argnum": 0
+      },
+      "param": "mlx-benchmark.layernorm_1024_grad0",
+      "extra_info": {},
+      "options": {
+        "disable_gc": false,
+        "timer": "perf_counter",
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 5e-06,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.018335333035793155,
+        "max": 0.029124791035428643,
+        "mean": 0.02271543261644609,
+        "stddev": 0.003256981648612041,
+        "rounds": 47,
+        "median": 0.02121183299459517,
+        "iqr": 0.005957655957899988,
+        "q1": 0.020171125521301292,
+        "q3": 0.02612878147920128,
+        "iqr_outliers": 0,
+        "stddev_outliers": 18,
+        "outliers": "18;0",
+        "ld15iqr": 0.018335333035793155,
+        "hd15iqr": 0.029124791035428643,
+        "ops": 44.02293440257858,
+        "total": 1.0676253329729661,
+        "iterations": 1
+      }
+    }
+  ],
+  "datetime": "2026-03-08T18:06:16.206165+00:00",
+  "version": "5.2.3"
+}
