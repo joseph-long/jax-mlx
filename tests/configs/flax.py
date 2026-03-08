@@ -63,8 +63,6 @@ def make_flax_op_configs():
                 grad_transform=_GT,
             ),
             # Depthwise convolution (feature_group_count = in_features)
-            # FIXME: Weight gradients fail on MPS: batch_group_count != 1 not supported.
-            # Need to implement grouped conv weight gradients in conv_ops.mm.
             OperationTestConfig(
                 _call_module,
                 lambda key: nnx.Conv(
@@ -72,12 +70,9 @@ def make_flax_op_configs():
                 ),
                 lambda key: random.normal(key, (2, 28, 28, 16)),
                 name="nnx.Conv(depthwise)",
-                differentiable_argnums=(1,),  # Skip weight gradients
                 grad_transform=_GT,
             ),
             # Grouped convolution
-            # FIXME: Weight gradients fail on MPS: batch_group_count != 1 not supported.
-            # Need to implement grouped conv weight gradients in conv_ops.mm.
             OperationTestConfig(
                 _call_module,
                 lambda key: nnx.Conv(
@@ -85,7 +80,6 @@ def make_flax_op_configs():
                 ),
                 lambda key: random.normal(key, (2, 28, 28, 16)),
                 name="nnx.Conv(grouped)",
-                differentiable_argnums=(1,),  # Skip weight gradients
                 grad_transform=_GT,
             ),
             # Strided + dilated + valid padding combined
@@ -114,8 +108,6 @@ def make_flax_op_configs():
                 name="nnx.Embed",
                 grad_transform=_GT,
             ),
-            # FIXME: 2D indices gradient fails on MPS due to scatter shape limitation
-            # (updates rank > operand rank). Need to implement batched scatter in shape_ops.mm.
             OperationTestConfig(
                 _call_module,
                 lambda key: nnx.Embed(
@@ -123,7 +115,6 @@ def make_flax_op_configs():
                 ),
                 lambda key: random.randint(key, (3, 4), 0, 100),
                 name="nnx.Embed(2d)",
-                differentiable_argnums=(),
                 grad_transform=_GT,
             ),
             # BatchNorm

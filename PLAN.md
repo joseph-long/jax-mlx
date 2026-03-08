@@ -57,72 +57,52 @@ Apple Silicon
   - Shape: reshape, broadcast_in_dim, convert, transpose, iota, copy, concatenate, slice, dynamic_slice, dynamic_update_slice (via `slice_update`), pad
   - Reductions: sum, max, min, prod, any, all, argmax/argmin tuple-reduce pattern
   - Linear algebra: dot_general (via permute+reshape+matmul)
+  - Convolution: `stablehlo.convolution` with full dim_number remapping, feature groups, **batch groups** (used for grouped/depthwise weight gradients)
   - Indexing: expanded gather/scatter support for batched and multi-axis patterns used by numpyro + slice update tests
   - Sorting: `stablehlo.sort` lowering for value and key/value sorts
   - Bitwise: and, or, xor, shift_left, shift_right_arithmetic, shift_right_logical
-  - Other: select, atan2, complex
+  - Control flow: `stablehlo.while`, `stablehlo.if`, `stablehlo.case`, `func.call` (recursive)
+  - Other: select, atan2, complex, next_after (stride-aware)
   - Custom calls: `mhlo.erf`, inverse trig/hyperbolic trig family, `mhlo.topk` (value + index)
-  - Module: func.call (recursive)
-- [x] Non-`nextafter` op test sweep is green:
-  - `JAX_MLX_LIBRARY_PATH=... uv run pytest tests/test_ops.py -k 'not nextafter' --maxfail=1 -q`
-  - Result: `1422 passed, 224 skipped, 8 deselected, 12 xfailed`
-- [x] Benchmarks run successfully:
-  - `JAX_MLX_LIBRARY_PATH=... uv run pytest -m benchmark --benchmark-only`
-  - Result: `144 passed, 1666 deselected`
-- [x] ResNet example runs end-to-end on MLX:
-  - `JAX_PLATFORMS=mlx JAX_MLX_LIBRARY_PATH=... uv run examples/resnet/main.py --steps=5`
-  - Result: completes successfully (final loss observed: `1.849`)
+  - Linalg: Cholesky, triangular solve, QR, eigh, eig, svd, det, slogdet, trace, lgamma
+  - FFT: fft, ifft, rfft, irfft (1D/2D/3D via custom_call)
+- [x] Full test suite is green:
+  - `uv run pytest` → `1430 passed, 224 skipped, 144 deselected, 12 xfailed`
+  - The 12 xfails are zero-sized tensor tests (MLX/Metal platform limitation)
+  - The 224 skips are gradient tests for non-differentiable ops (argmax, bitwise, etc.) — expected
+- [x] Benchmarks run successfully (144 passed); MLX 2–4× faster than CPU on conv2d ≥64ch and matmul ≥1000
+- [x] ResNet example runs end-to-end on MLX
 
 ---
 
 ## Next Steps
 
-### 1. Close remaining failures outside the `not nextafter` slice
+### 1. Performance: `mlx::core::compile()`
 
-The broad non-`nextafter` sweep is green. Remaining work is in:
-1. `nextafter` (explicitly excluded in the current green run)
-2. Any benchmark/example regressions found under broader stress or larger runs
-3. Any remaining full-suite failures once `nextafter` is re-enabled for strict comparison
+Wrap the interpreter execution with `mlx::core::compile()` to cache Metal kernel
+compilation across repeated calls with the same shapes. This is the primary performance
+optimization — analogous to `jax.jit` caching XLA compilation.
 
-### 2. Control flow hardening: `stablehlo.while` and `stablehlo.if`
-
-These require running sub-regions of the MLIR. Implement by factoring out a
-`runRegion(region, carried_values)` helper that calls `interpretFunction` on the
-region's entry block:
+Without it, every call to `Execute` re-traces the MLX graph and recompiles Metal kernels,
+which is why layernorm (5–10×) and softmax (2–4×) are still slower than CPU at medium
+sizes. With `mlx::core::compile()` the compilation cost is amortized.
 
 ```cpp
-// stablehlo.while
-else if (opName == "stablehlo.while") {
-    auto whileOp = mlir::cast<mlir::stablehlo::WhileOp>(op);
-    // carried_values initialized from operands
-    while (true) {
-        auto cond = interpretRegion(whileOp.getCond(), module, carried_values);
-        mx::eval(cond.outputs);
-        if (!cond.outputs[0].item<bool>()) break;
-        auto body = interpretRegion(whileOp.getBody(), module, carried_values);
-        carried_values = body.outputs;
-    }
-    // map while results to carried_values
-}
-
-// stablehlo.if
-else if (opName == "stablehlo.if") {
-    auto ifOp = mlir::cast<mlir::stablehlo::IfOp>(op);
-    mx::eval({operand(0)});
-    auto& branch = operand(0).item<bool>() ? ifOp.getTrueBranch()
-                                            : ifOp.getFalseBranch();
-    auto result = interpretRegion(branch, module, {});
-    // map results
-}
+// In MlxExecutable, cache a compiled function keyed on input shapes:
+compiled_fn_ = mlx::core::compile([this](const std::vector<mx::array>& inputs) {
+    return interpretFunction(entry_func_, *module_, inputs).outputs;
+});
+// Then in Execute: outputs = compiled_fn_(input_arrays);
 ```
 
-The key difference from `func.call`: regions share the parent block's `ValueMap`
-(or operate on explicitly-passed `carried_values`), whereas `func.call` creates a
-fresh scope.
+Key constraints:
+- The compiled function must be pure: same inputs → same outputs, no side effects.
+- Shape/dtype changes require a new compiled function (or the cache key must include shapes).
+- `mx::eval(outputs)` must still be called after `compiled_fn_`.
 
-### 3. Remove old legacy MPSGraph code
+### 2. Remove old legacy MPSGraph code
 
-Once all tests pass on the MLX backend, the following files can be deleted:
+Once confidence is high that the MLX backend is stable, delete:
 
 - `src/pjrt_plugin/mps_buffer.h/.mm`
 - `src/pjrt_plugin/mps_client.h/.mm`
@@ -130,20 +110,18 @@ Once all tests pass on the MLX backend, the following files can be deleted:
 - `src/pjrt_plugin/mps_executable.h/.mm`
 - `src/pjrt_plugin/ops/` (entire directory — all `.mm` files)
 
-### 4. Performance: `mlx::core::compile()`
+These are compiled but never linked in the MLX build, so this is pure cleanup.
 
-Wrap `interpretFunction` with `mlx::core::compile()` to cache Metal kernel
-compilation across calls. This is the primary performance optimization — identical
-to how `jax.jit` caches XLA compilation, but inside the MLX runtime layer.
+### 3. Remaining test gaps
 
-```cpp
-// In MlxExecutable::Execute, on first call:
-compiled_fn_ = mlx::core::compile([this, device](const std::vector<mx::array>& inputs) {
-    return interpretFunction(entry_func_, *module_, inputs).outputs;
-});
-```
+- **Grouped/depthwise conv weight grads** — now fixed via `batch_group_count` loop implementation
+- **`jnp.pad` gradient** — now fixed (was a stale MPS-era FIXME)
+- **`nnx.Embed(2d)` gradient** — now fixed (was a stale MPS-era FIXME)
+- **Zero-sized tensor xfails** (3 tests: cholesky, triangular_solve, batched matmul) — MLX/Metal
+  platform limitation, not actionable without upstream MLX changes
 
-### 5. Accuracy and parity fixes
+### 4. Accuracy and parity investigation
 
-A small number of tests fail with numerical tolerance errors rather than missing ops.
-These should be investigated after the above items are complete.
+The 12 xfailed tests are all zero-sized tensor cases. No numerical tolerance failures
+remain in the current sweep. If regressions appear after `mlx::core::compile()` is added,
+investigate then.

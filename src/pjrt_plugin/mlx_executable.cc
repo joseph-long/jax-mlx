@@ -294,19 +294,55 @@ static mx::array HandleConvolution(mx::array lhs, mx::array rhs,
     }
 
     uint64_t batchGroups = convOp.getBatchGroupCount();
-    if (batchGroups != 1) {
-        throw std::invalid_argument("stablehlo.convolution with batch_group_count != 1");
-    }
+    int featureGroups = static_cast<int>(convOp.getFeatureGroupCount());
 
-    auto outCanonical = mx::conv_general(lhsCanonical,
-                                         rhsCanonical,
-                                         strides,
-                                         padLo,
-                                         padHi,
-                                         rhsDil,
-                                         lhsDil,
-                                         static_cast<int>(convOp.getFeatureGroupCount()),
-                                         flip);
+    mx::array outCanonical = mx::array({});
+    if (batchGroups == 1) {
+        outCanonical = mx::conv_general(lhsCanonical, rhsCanonical,
+                                         strides, padLo, padHi,
+                                         rhsDil, lhsDil, featureGroups, flip);
+    } else {
+        // batch_group_count > 1: used by JAX for weight gradients of grouped/depthwise
+        // convolutions. Split LHS along batch (axis 0) and RHS along output-feature
+        // (axis 0) into batchGroups groups, convolve each pair independently, then
+        // concatenate the results along the output-feature axis (last canonical axis).
+        int64_t G = static_cast<int64_t>(batchGroups);
+        int64_t N = lhsCanonical.shape()[0];
+        int64_t C_out = rhsCanonical.shape()[0];
+        if (N % G != 0 || C_out % G != 0) {
+            throw std::invalid_argument(
+                "stablehlo.convolution batch_group_count does not evenly divide "
+                "batch or output-feature dimension");
+        }
+        int64_t bPerGroup = N / G;
+        int64_t coutPerGroup = C_out / G;
+
+        // Build full-range start/stop helpers for slicing all non-split dims.
+        int rank = lhsCanonical.ndim();
+        auto fullSlice = [&](mx::array arr, int axis, int64_t lo, int64_t hi) {
+            mx::Shape starts(static_cast<size_t>(arr.ndim()), 0);
+            mx::Shape stops;
+            stops.reserve(static_cast<size_t>(arr.ndim()));
+            for (int d = 0; d < arr.ndim(); ++d)
+                stops.push_back(static_cast<int>(arr.shape()[d]));
+            starts[static_cast<size_t>(axis)] = static_cast<int>(lo);
+            stops[static_cast<size_t>(axis)] = static_cast<int>(hi);
+            return mx::slice(arr, starts, stops);
+        };
+
+        std::vector<mx::array> pieces;
+        pieces.reserve(static_cast<size_t>(G));
+        for (int64_t g = 0; g < G; ++g) {
+            auto lhsG = fullSlice(lhsCanonical, 0, g * bPerGroup,   (g + 1) * bPerGroup);
+            auto rhsG = fullSlice(rhsCanonical, 0, g * coutPerGroup, (g + 1) * coutPerGroup);
+            pieces.push_back(mx::conv_general(lhsG, rhsG,
+                                               strides, padLo, padHi,
+                                               rhsDil, lhsDil, featureGroups, flip));
+        }
+        // Each piece: [bPerGroup, spatial..., coutPerGroup]
+        // Concatenate along the output-feature axis (last = rank - 1 in canonical form).
+        outCanonical = mx::concatenate(pieces, rank - 1);
+    }
 
     int outRank = outCanonical.ndim();
     std::vector<int> outPerm(static_cast<size_t>(outRank), 0);

@@ -59,7 +59,5 @@ def make_shape_op_configs():
             OperationTestConfig(
                 lambda x: jnp.pad(x, ((1, 1), (2, 2))),
                 lambda key: random.normal(key, (3, 3)),
-                # Grad crashes with fatal Metal abort (sliceUpdateDataTensor shape mismatch).
-                differentiable_argnums=(),
             ),
         ]

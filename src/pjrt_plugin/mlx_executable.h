@@ -57,6 +57,7 @@ private:
     std::unique_ptr<mlir::MLIRContext> context_;
     mlir::OwningOpRef<mlir::ModuleOp> module_;
     mlir::func::FuncOp entry_func_;
+
 };
 
 }  // namespace jax_mlx
