@@ -12,6 +12,7 @@
 #include <set>
 #include <sstream>
 #include <iostream>
+#include <unordered_set>
 
 #include "llvm/ADT/DenseMap.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
@@ -1340,27 +1341,10 @@ static InterpResult interpretBlock(mlir::Block& entry,
                 return InterpResult::Error(
                     "stablehlo.bitcast_convert: byte-size mismatch");
             }
-            // Generic bitcast fallback via logical-order byte packing.
-            in.eval();
-            void* buf = std::malloc(static_cast<size_t>(outBytes > 0 ? outBytes : 1));
-            if (outBytes > 0) {
-                std::vector<int64_t> dims(in.shape().begin(), in.shape().end());
-                std::vector<int64_t> rawStrides(in.strides().begin(), in.strides().end());
-                auto strides = normalizeStridesToElements(dims,
-                                                          rawStrides,
-                                                          static_cast<int64_t>(in.data_size()),
-                                                          static_cast<size_t>(in.dtype().size()));
-                size_t dstOffset = 0;
-                copyStridedToLinearBytes(in.data<uint8_t>(),
-                                         static_cast<uint8_t*>(buf),
-                                         dims,
-                                         strides,
-                                         static_cast<size_t>(in.dtype().size()),
-                                         0,
-                                         0,
-                                         dstOffset);
-            }
-            set(0, mlxc::array(buf, outShape, outDtype, [](void* p) { std::free(p); }));
+            // Reshape to 1D first to ensure logical row-major byte order (handles
+            // non-contiguous strides lazily), then view, then reshape to output shape.
+            auto flat = mlxc::reshape(in, {static_cast<int>(in.size())});
+            set(0, mlxc::reshape(mlxc::view(flat, outDtype), outShape));
         } else if (opName == "stablehlo.transpose") {
             auto transpOp = mlir::cast<mlir::stablehlo::TransposeOp>(op);
             std::vector<int> perm;
@@ -1454,52 +1438,49 @@ static InterpResult interpretBlock(mlir::Block& entry,
             if (opName == "stablehlo.atan2")
                 set(0, mlxc::arctan2(operand(0), operand(1)));
             else {
+                // Compile-safe next_after via MLX bit manipulation — no eval() calls.
+                // Flatten to 1D first so mlxc::view gets contiguous bytes in logical order.
                 auto x = operand(0);
                 auto y = operand(1);
-                if (x.dtype() != y.dtype() || x.size() != y.size()) {
-                    return InterpResult::Error("chlo.next_after expects same dtype/size operands");
+                if (x.dtype() != y.dtype()) {
+                    return InterpResult::Error("chlo.next_after expects same dtype operands");
                 }
                 if (x.dtype() != mlxc::float32 && x.dtype() != mlxc::float64) {
                     return InterpResult::Error("chlo.next_after only supports f32/f64");
                 }
-                x.eval();
-                y.eval();
-                std::vector<int64_t> xDims(x.shape().begin(), x.shape().end());
-                std::vector<int64_t> yDims(y.shape().begin(), y.shape().end());
-                std::vector<int64_t> xRaw(x.strides().begin(), x.strides().end());
-                std::vector<int64_t> yRaw(y.strides().begin(), y.strides().end());
-                auto xStrides = normalizeStridesToElements(
-                    xDims, xRaw, static_cast<int64_t>(x.data_size()),
-                    static_cast<size_t>(x.dtype().size()));
-                auto yStrides = normalizeStridesToElements(
-                    yDims, yRaw, static_cast<int64_t>(y.data_size()),
-                    static_cast<size_t>(y.dtype().size()));
-
-                auto apply = [&](const auto* xp, const auto* yp) -> mlxc::array {
-                    using T = std::decay_t<decltype(*xp)>;
-                    std::vector<T> xData(static_cast<size_t>(x.size()));
-                    std::vector<T> yData(static_cast<size_t>(y.size()));
-                    std::vector<T> out(static_cast<size_t>(x.size()));
-                    size_t xOff = 0;
-                    copyStridedToLinearBytes(reinterpret_cast<const uint8_t*>(xp),
-                                             reinterpret_cast<uint8_t*>(xData.data()),
-                                             xDims, xStrides, sizeof(T), 0, 0, xOff);
-                    size_t yOff = 0;
-                    copyStridedToLinearBytes(reinterpret_cast<const uint8_t*>(yp),
-                                             reinterpret_cast<uint8_t*>(yData.data()),
-                                             yDims, yStrides, sizeof(T), 0, 0, yOff);
-                    for (size_t i = 0; i < out.size(); ++i)
-                        out[i] = std::nextafter(xData[i], yData[i]);
-                    size_t nbytes = out.size() * sizeof(T);
-                    void* buf = std::malloc(nbytes > 0 ? nbytes : 1);
-                    if (nbytes > 0) std::memcpy(buf, out.data(), nbytes);
-                    return mlxc::array(buf, x.shape(), x.dtype(), [](void* p) { std::free(p); });
-                };
-
-                if (x.dtype() == mlxc::float32)
-                    set(0, apply(x.data<float>(), y.data<float>()));
-                else
-                    set(0, apply(x.data<double>(), y.data<double>()));
+                bool isF32 = (x.dtype() == mlxc::float32);
+                auto itype  = isF32 ? mlxc::int32  : mlxc::int64;
+                auto shape  = x.shape();
+                auto xFlat  = mlxc::reshape(x, {static_cast<int>(x.size())});
+                auto yFlat  = mlxc::reshape(y, {static_cast<int>(y.size())});
+                auto x_bits = mlxc::view(xFlat, itype);
+                auto y_bits = mlxc::view(yFlat, itype);
+                auto zero_f = mlxc::zeros_like(xFlat);
+                auto zero_i = mlxc::zeros_like(x_bits);
+                auto one_i  = mlxc::ones_like(x_bits);
+                auto neg1_i = mlxc::full(x_bits.shape(), -1, itype);
+                auto x_eq_y    = mlxc::equal(xFlat, yFlat);
+                auto x_is_0    = mlxc::equal(xFlat, zero_f);
+                auto x_pos     = mlxc::greater_equal(x_bits, zero_i);
+                auto y_pos     = mlxc::greater_equal(y_bits, zero_i);
+                auto towards_y = mlxc::greater(yFlat, xFlat);
+                auto dir       = mlxc::where(towards_y, one_i, neg1_i);
+                // Same sign: increment bits; opposite sign (crossing zero): decrement.
+                auto same_sign = mlxc::equal(x_pos, y_pos);
+                auto nz_bits   = mlxc::where(same_sign,
+                                             mlxc::add(x_bits, dir),
+                                             mlxc::subtract(x_bits, dir));
+                // x == 0: return smallest subnormal with sign of y.
+                // f32: +subnormal = 0x00000001, -subnormal = 0x80000001
+                // f64: +subnormal = 0x0000000000000001, -subnormal = 0x8000000000000001
+                auto min_pos = mlxc::full(x_bits.shape(), 1, itype);
+                auto min_neg = isF32
+                    ? mlxc::full(x_bits.shape(), static_cast<int>(-2147483647),  itype)
+                    : mlxc::full(x_bits.shape(), (long long)-9223372036854775807LL, itype);
+                auto min_sub  = mlxc::where(y_pos, min_pos, min_neg);
+                auto res_bits = mlxc::where(x_is_0, min_sub, nz_bits);
+                res_bits      = mlxc::where(x_eq_y, y_bits, res_bits);
+                set(0, mlxc::reshape(mlxc::view(res_bits, x.dtype()), shape));
             }
         }
 
@@ -1561,39 +1542,64 @@ static InterpResult interpretBlock(mlir::Block& entry,
         }
 
         // --- Dynamic slice ---
+        // Compile-safe: use arange + take instead of item<>() to avoid eval barriers.
         else if (opName == "stablehlo.dynamic_slice") {
             auto dsOp = mlir::cast<mlir::stablehlo::DynamicSliceOp>(op);
-            int rank = operand(0).ndim();
-            mlxc::Shape starts(rank), stops(rank), strides(rank, 1);
+            auto result = operand(0);
             int szi = 0;
             for (int64_t sz : dsOp.getSliceSizes()) {
-                auto startArr = vm.at(valKey(op.getOperand(1 + szi)));
-                startArr.eval();
-                int s = (startArr.dtype() == mlxc::int32) ? startArr.item<int32_t>()
-                                                        : static_cast<int>(startArr.item<int64_t>());
-                starts[szi] = s;
-                stops[szi] = s + static_cast<int>(sz);
+                auto startArr =
+                    mlxc::astype(vm.at(valKey(op.getOperand(1 + szi))), mlxc::int32);
+                auto idx = mlxc::add(
+                    mlxc::arange(0.0, static_cast<double>(sz), 1.0, mlxc::int32),
+                    startArr);
+                result = mlxc::take(result, idx, szi);
                 szi++;
             }
-            set(0, mlxc::slice(operand(0), starts, stops, strides));
+            set(0, result);
         }
 
         // --- Dynamic update slice ---
+        // Compile-safe: build N-D linear indices via broadcasting, use put_along_axis
+        // on the flattened base instead of materializing scalar start indices.
         else if (opName == "stablehlo.dynamic_update_slice") {
-            auto& base = operand(0);
-            auto& update = operand(1);
-            int rank = base.ndim();
+            auto base   = operand(0);
+            auto update = operand(1);
+            int rank    = base.ndim();
 
-            mlxc::Shape starts(rank), stops(rank);
-            for (int i = 0; i < rank; i++) {
-                auto si = vm.at(valKey(op.getOperand(2 + i)));
-                si.eval();
-                int start = (si.dtype() == mlxc::int32) ? si.item<int32_t>()
-                                                      : static_cast<int>(si.item<int64_t>());
-                starts[i] = start;
-                stops[i] = start + update.shape()[i];
+            // Row-major strides for base.
+            std::vector<int> rowStrides(static_cast<size_t>(rank), 1);
+            for (int d = rank - 2; d >= 0; --d)
+                rowStrides[static_cast<size_t>(d)] =
+                    rowStrides[static_cast<size_t>(d + 1)] * base.shape()[d + 1];
+
+            // Accumulate N-D linear index array via broadcasting:
+            // linear[i0,i1,...] = sum_d ((arange(ud) + start_d) * rowStride_d)
+            mlxc::array linear = mlxc::zeros({1}, mlxc::int32);
+            for (int d = 0; d < rank; ++d) {
+                int ud = update.shape()[d];
+                auto start =
+                    mlxc::astype(vm.at(valKey(op.getOperand(2 + d))), mlxc::int32);
+                auto arange_d =
+                    mlxc::arange(0.0, static_cast<double>(ud), 1.0, mlxc::int32);
+                auto idx_d = mlxc::add(arange_d, start);  // shape [ud]
+                // Reshape for broadcast at axis d: [1,...,1,ud,1,...,1]
+                mlxc::Shape bshape(static_cast<size_t>(rank), 1);
+                bshape[static_cast<size_t>(d)] = ud;
+                idx_d = mlxc::reshape(idx_d, bshape);
+                linear = mlxc::add(
+                    linear,
+                    mlxc::multiply(idx_d,
+                                   mlxc::full({1}, rowStrides[static_cast<size_t>(d)],
+                                              mlxc::int32)));
             }
-            set(0, mlxc::slice_update(base, update, starts, stops));
+            // linear shape: [u0, u1, ..., uR-1] via broadcasting.
+            int totalUpdate = static_cast<int>(update.size());
+            auto flatBase   = mlxc::reshape(base,   {static_cast<int>(base.size())});
+            auto flatLinear = mlxc::reshape(linear, {totalUpdate});
+            auto flatUpdate = mlxc::reshape(update, {totalUpdate});
+            auto outFlat = mlxc::put_along_axis(flatBase, flatLinear, flatUpdate, 0);
+            set(0, mlxc::reshape(outFlat, base.shape()));
         }
 
         // --- Pad ---
@@ -2011,9 +2017,81 @@ MlxExecutable::MlxExecutable(MlxClient* client, mps::ParsedModule module)
 
 MlxExecutable::~MlxExecutable() {}
 
+// Returns true if the module contains any op whose interpreter handler calls
+// eval() on intermediate arrays — these cannot be wrapped in mlxc::compile().
+// Walks all functions in the module so func.call targets are also covered.
+// Note: while/if/case require eval() on condition scalars for branch decisions
+// and while loops would be incorrectly unrolled by compile(); they are barriers
+// even though their data arrays are not materialized by our handlers.
+static bool HasHardEvalBarrier(mlir::ModuleOp module) {
+    static const std::unordered_set<std::string_view> kBarriers = {
+        "stablehlo.cholesky",
+        "stablehlo.triangular_solve",
+        "chlo.lgamma",
+        "stablehlo.while",
+        "stablehlo.if",
+        "stablehlo.case",
+    };
+    bool found = false;
+    module.walk([&](mlir::Operation* op) -> mlir::WalkResult {
+        if (kBarriers.count(op->getName().getStringRef())) {
+            found = true;
+            return mlir::WalkResult::interrupt();
+        }
+        return mlir::WalkResult::advance();
+    });
+    return found;
+}
+
 ExecutionResult MlxExecutable::Execute(const std::vector<MlxBuffer*>& inputs,
                                         MlxDevice* device) {
     if (!valid_) return ExecutionResult::Error("Executable is not valid: " + error_);
+
+    // Lazy compile on first call: wrap interpretFunction in mlxc::compile() so
+    // MLX can cache the Metal kernel graph and fuse operations across calls.
+    if (!compiled_fn_.has_value()) {
+        if (HasHardEvalBarrier(*module_)) {
+            // Sentinel: empty std::function means "use interpreter".
+            compiled_fn_ = CompiledFn{};
+        } else {
+            mlir::func::FuncOp func = entry_func_;
+            mlir::ModuleOp mod = *module_;
+            compiled_fn_ = mlxc::compile(
+                CompiledFn([func, mod](const std::vector<mlxc::array>& in) {
+                    auto r = interpretFunction(func, mod, in);
+                    if (!r.ok()) throw std::runtime_error(r.error);
+                    return r.outputs;
+                }));
+        }
+    }
+
+    const auto& fn = *compiled_fn_;
+    if (fn) {
+        // Compiled path.  Catch Metal kernel compilation failures (e.g. MLX 0.31.0
+        // ternary_ops `nan` issue) on first eval and fall back permanently.
+        try {
+            std::vector<mlxc::array> arrays;
+            arrays.reserve(inputs.size());
+            for (auto* buf : inputs) arrays.push_back(buf->array());
+            auto outputs = fn(arrays);
+            mlxc::eval(outputs);
+            ExecutionResult result;
+            for (auto& arr : outputs) {
+                int pjrt_dtype = MlxDtypeToPjrt(arr.dtype());
+                std::vector<int64_t> dims;
+                for (int d : arr.shape()) dims.push_back(static_cast<int64_t>(d));
+                result.buffers.push_back(
+                    std::make_unique<MlxBuffer>(device, std::move(arr), pjrt_dtype, dims));
+            }
+            return result;
+        } catch (const std::exception& e) {
+            fprintf(stderr, "[jax-mlx] mlxc::compile eval failed (%s); falling back to interpreter\n",
+                    e.what());
+            compiled_fn_ = CompiledFn{};  // sentinel: use interpreter for this executable
+        }
+    }
+
+    // Interpreter fallback (module has eval barriers, or compile failed above).
     return runFunction(entry_func_, *module_, inputs, device);
 }
 

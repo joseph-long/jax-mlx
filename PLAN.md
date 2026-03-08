@@ -37,7 +37,7 @@ Apple Silicon
 ## Status
 
 **Branch**: `claude-mps-to-mlx`
-**Last updated**: March 8, 2026
+**Last updated**: March 8, 2026 (MPS cleanup done; compile() refactor Phases A–C complete)
 
 ### Done
 
@@ -54,7 +54,7 @@ Apple Silicon
   - Unary math: abs, neg, sign, exp, expm1, sqrt, rsqrt, cbrt, log, log1p, logistic, sin, cos, tan, tanh, floor, ceil, round, is_finite, real, imag, popcnt, count_leading_zeros, not
   - CHLO: asin, acos, atan, asinh, acosh, atanh, sinh, cosh, erf, erf_inv
   - Comparisons: eq, ne, lt, le, gt, ge
-  - Shape: reshape, broadcast_in_dim, convert, transpose, iota, copy, concatenate, slice, dynamic_slice, dynamic_update_slice (via `slice_update`), pad
+  - Shape: reshape, broadcast_in_dim, convert, transpose, iota, copy, concatenate, slice, dynamic_slice (compile-safe via `arange+take`), dynamic_update_slice (compile-safe via broadcast linear index), pad
   - Reductions: sum, max, min, prod, any, all, argmax/argmin tuple-reduce pattern
   - Linear algebra: dot_general (via permute+reshape+matmul)
   - Convolution: `stablehlo.convolution` with full dim_number remapping, feature groups, **batch groups** (used for grouped/depthwise weight gradients)
@@ -62,7 +62,7 @@ Apple Silicon
   - Sorting: `stablehlo.sort` lowering for value and key/value sorts
   - Bitwise: and, or, xor, shift_left, shift_right_arithmetic, shift_right_logical
   - Control flow: `stablehlo.while`, `stablehlo.if`, `stablehlo.case`, `func.call` (recursive)
-  - Other: select, atan2, complex, next_after (stride-aware)
+  - Other: select, atan2, complex, next_after (compile-safe via MLX bit manipulation), bitcast_convert (compile-safe via `mlxc::view`)
   - Custom calls: `mhlo.erf`, inverse trig/hyperbolic trig family, `mhlo.topk` (value + index)
   - Linalg: Cholesky, triangular solve, QR, eigh, eig, svd, det, slogdet, trace, lgamma
   - FFT: fft, ifft, rfft, irfft (1D/2D/3D via custom_call)
@@ -72,6 +72,9 @@ Apple Silicon
   - The 224 skips are gradient tests for non-differentiable ops (argmax, bitwise, etc.) — expected
 - [x] Benchmarks run successfully (144 passed); MLX 2–4× faster than CPU on conv2d ≥64ch and matmul ≥1000
 - [x] ResNet example runs end-to-end on MLX
+- [x] Legacy MPS-era files removed; `MpsDevice` → `MlxDevice` rename complete
+- [x] `mlx::core::compile()` Phases A–C: all eval barriers eliminated for common ML ops;
+  `Execute()` lazily wraps compilable functions; graceful fallback on Metal kernel failures
 
 ---
 
@@ -234,31 +237,34 @@ appear in the FASTER column with no regressions in the SLOWER column.
 
 ---
 
-#### Phase D (future) — Segment compilation for linalg models
+### 2. Targeted performance improvements
 
-For functions that mix compilable regions with hard barriers (`cholesky`,
-`triangular_solve`, `lgamma`), a segment-compilation pass could split the function at
-each barrier, compile each inter-barrier segment independently, and execute them as:
+The goal is to find ops that are slower on MLX than CPU for typical ML workloads,
+not just raw microbenchmarks, and prioritize investigation accordingly.
 
-```
-compiled_prefix → host_barrier_1 → compiled_middle → host_barrier_2 → compiled_suffix
-```
+#### Approach
 
-This requires a pre-pass that identifies segments, extracts them as sub-functions, and
-compiles each independently.  Implementation is more complex and the benefit is only felt
-on linalg-heavy models — defer until Phase C is validated.
+1. **Profile ResNet training**: Get StableHLO representation of the main 
+   `train_step` function in `examples/resnet/main.py` and write a script to count
+   occurrences of different operations. Use this to identify the top-10 most-called
+   JAX ops. Compare their per-call time on MLX vs CPU using the existing
+   microbenchmarks or new ones.
 
-### 2. Remove old legacy MPSGraph code
+2. **Cross-reference benchmarks**: Run `bash scripts/benchmark.sh` and look at the
+   SLOWER column relative to CPU — any op that is slower on MLX than CPU for typical
+   sizes warrants investigation.
 
-Once confidence is high that the MLX backend is stable, delete:
+3. **Known candidates from current benchmarks**:
+   - `layernorm` — currently 5–10× slower on MLX than CPU (small batch sizes likely
+     don't amortize kernel launch overhead; investigate whether fusing norm+scale+shift
+     via a custom MLX primitive or `mx::compile()` makes a difference)
+   - Small matmuls / element-wise ops below the crossover point — check whether
+     `mx::compile()` (Phase C) eliminates dispatch overhead and brings these into
+     parity
 
-- `src/pjrt_plugin/mps_buffer.h/.mm`
-- `src/pjrt_plugin/mps_client.h/.mm`
-- `src/pjrt_plugin/mps_device.h/.mm`
-- `src/pjrt_plugin/mps_executable.h/.mm`
-- `src/pjrt_plugin/ops/` (entire directory — all `.mm` files)
-
-These are compiled but never linked in the MLX build, so this is pure cleanup.
+4. **For each flagged op**: write a targeted microbenchmark, profile, and either
+   implement a better lowering or document why MLX is fundamentally slower for that
+   op/size regime.
 
 ### 3. Remaining test gaps
 
@@ -273,3 +279,17 @@ These are compiled but never linked in the MLX build, so this is pure cleanup.
 The 12 xfailed tests are all zero-sized tensor cases. No numerical tolerance failures
 remain in the current sweep. If regressions appear after `mlx::core::compile()` is added,
 investigate then.
+
+### 5. Segment compilation for linalg models (future)
+
+For functions that mix compilable regions with hard barriers (`cholesky`,
+`triangular_solve`, `lgamma`), a segment-compilation pass could split the function at
+each barrier, compile each inter-barrier segment independently, and execute them as:
+
+```
+compiled_prefix → host_barrier_1 → compiled_middle → host_barrier_2 → compiled_suffix
+```
+
+This requires a pre-pass that identifies segments, extracts them as sub-functions, and
+compiles each independently.  Implementation is more complex and the benefit is only felt
+on linalg-heavy models — defer until Phase C is validated.

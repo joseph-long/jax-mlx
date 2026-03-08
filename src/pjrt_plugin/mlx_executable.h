@@ -1,6 +1,8 @@
 #pragma once
 
+#include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -8,6 +10,7 @@
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/OwningOpRef.h"
+#include "mlx/array.h"
 #include "pjrt_plugin/mlx_buffer.h"
 
 namespace mps {
@@ -57,6 +60,14 @@ private:
     std::unique_ptr<mlir::MLIRContext> context_;
     mlir::OwningOpRef<mlir::ModuleOp> module_;
     mlir::func::FuncOp entry_func_;
+
+    // Lazily-initialized compiled function. Set on first Execute():
+    //   empty optional  → not yet initialized
+    //   has_value() && !value() → has eval barriers; use interpreter
+    //   has_value() && value()  → compiled path
+    using CompiledFn =
+        std::function<std::vector<mlx::core::array>(const std::vector<mlx::core::array>&)>;
+    std::optional<CompiledFn> compiled_fn_;
 
 };
 
