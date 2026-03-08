@@ -36,7 +36,8 @@ Apple Silicon
 
 ## Status
 
-**Branch**: `claude-mlx-backend`
+**Branch**: `claude-mps-to-mlx`
+**Last updated**: March 8, 2026
 
 ### Done
 
@@ -48,64 +49,42 @@ Apple Silicon
 - [x] Deps path: `~/.local/jax-mlx-deps` (setup_deps.sh, CMakeLists.txt, CI)
 - [x] Namespace: `jax_mps` → `jax_mlx` in all actively compiled files
 - [x] `issue_url.h` namespace updated to `jax_mlx`
-- [x] StableHLO interpreter in `mlx_executable.cc` (~60 ops):
+- [x] StableHLO interpreter in `mlx_executable.cc` substantially expanded:
   - Elementwise: add, subtract, multiply, divide, power, remainder, max, min
   - Unary math: abs, neg, sign, exp, expm1, sqrt, rsqrt, cbrt, log, log1p, logistic, sin, cos, tan, tanh, floor, ceil, round, is_finite, real, imag, popcnt, count_leading_zeros, not
   - CHLO: asin, acos, atan, asinh, acosh, atanh, sinh, cosh, erf, erf_inv
   - Comparisons: eq, ne, lt, le, gt, ge
-  - Shape: reshape, broadcast_in_dim, convert, transpose, iota, copy, concatenate, slice, dynamic_slice, dynamic_update_slice, pad
-  - Reductions: sum, max, min, prod, any, all
+  - Shape: reshape, broadcast_in_dim, convert, transpose, iota, copy, concatenate, slice, dynamic_slice, dynamic_update_slice (via `slice_update`), pad
+  - Reductions: sum, max, min, prod, any, all, argmax/argmin tuple-reduce pattern
   - Linear algebra: dot_general (via permute+reshape+matmul)
+  - Indexing: expanded gather/scatter support for batched and multi-axis patterns used by numpyro + slice update tests
+  - Sorting: `stablehlo.sort` lowering for value and key/value sorts
   - Bitwise: and, or, xor, shift_left, shift_right_arithmetic, shift_right_logical
   - Other: select, atan2, complex
+  - Custom calls: `mhlo.erf`, inverse trig/hyperbolic trig family, `mhlo.topk` (value + index)
   - Module: func.call (recursive)
-- [x] `uv run pytest`: 96 tests passing, 226 skipped
-
-### Remaining failures (1341 total)
-
-| Error | Count | Notes |
-|---|---|---|
-| `stablehlo.custom_call` | ~1189 | PRNG, sorting keys, other JAX internals |
-| `stablehlo.scatter` | ~56 | Index-update ops, scatter accumulation |
-| `stablehlo.while` | unknown | Control flow (loops) |
-| `stablehlo.if` | unknown | Control flow (conditionals) |
-| Accuracy | ~15 | Numerical tolerance failures |
+- [x] Non-`nextafter` op test sweep is green:
+  - `JAX_MLX_LIBRARY_PATH=... uv run pytest tests/test_ops.py -k 'not nextafter' --maxfail=1 -q`
+  - Result: `1422 passed, 224 skipped, 8 deselected, 12 xfailed`
+- [x] Benchmarks run successfully:
+  - `JAX_MLX_LIBRARY_PATH=... uv run pytest -m benchmark --benchmark-only`
+  - Result: `144 passed, 1666 deselected`
+- [x] ResNet example runs end-to-end on MLX:
+  - `JAX_PLATFORMS=mlx JAX_MLX_LIBRARY_PATH=... uv run examples/resnet/main.py --steps=5`
+  - Result: completes successfully (final loss observed: `1.849`)
 
 ---
 
 ## Next Steps
 
-### 1. `stablehlo.custom_call` (highest impact: ~1189 failures)
+### 1. Close remaining failures outside the `not nextafter` slice
 
-JAX dispatches PRNG (`threefry2x32`), sort-with-keys, and other ops as
-`stablehlo.custom_call` with a `call_target_name` attribute.
+The broad non-`nextafter` sweep is green. Remaining work is in:
+1. `nextafter` (explicitly excluded in the current green run)
+2. Any benchmark/example regressions found under broader stress or larger runs
+3. Any remaining full-suite failures once `nextafter` is re-enabled for strict comparison
 
-Approach: inspect `call_target_name` and dispatch to MLX:
-
-```cpp
-else if (opName == "stablehlo.custom_call") {
-    auto ccOp = mlir::cast<mlir::stablehlo::CustomCallOp>(op);
-    auto target = ccOp.getCallTargetName();
-    if (target == "mhlo.threefry2x32") {
-        // Implement Threefry PRNG ...
-    } else {
-        return InterpResult::Error(jax_mlx::UnsupportedOpsMessage({target.str()}));
-    }
-}
-```
-
-Key targets to identify by running: `JAX_TRACEBACK_FILTERING=off uv run pytest tests/ -q 2>&1 | grep "custom_call" | sort -u`
-
-### 2. `stablehlo.scatter` (~56 failures)
-
-MLX has `mlx::core::scatter` but with a different signature than StableHLO scatter.
-StableHLO scatter has a scatter body region (can be add, multiply, max, etc.).
-
-Approach:
-1. Inspect the scatter body region to determine the scatter kind (add, update, etc.)
-2. Map to the appropriate `mlx::core::scatter` / `mlx::core::scatter_add` etc.
-
-### 3. Control flow: `stablehlo.while` and `stablehlo.if`
+### 2. Control flow hardening: `stablehlo.while` and `stablehlo.if`
 
 These require running sub-regions of the MLIR. Implement by factoring out a
 `runRegion(region, carried_values)` helper that calls `interpretFunction` on the
@@ -141,7 +120,7 @@ The key difference from `func.call`: regions share the parent block's `ValueMap`
 (or operate on explicitly-passed `carried_values`), whereas `func.call` creates a
 fresh scope.
 
-### 4. Remove old legacy MPSGraph code
+### 3. Remove old legacy MPSGraph code
 
 Once all tests pass on the MLX backend, the following files can be deleted:
 
@@ -151,7 +130,7 @@ Once all tests pass on the MLX backend, the following files can be deleted:
 - `src/pjrt_plugin/mps_executable.h/.mm`
 - `src/pjrt_plugin/ops/` (entire directory — all `.mm` files)
 
-### 5. Performance: `mlx::core::compile()`
+### 4. Performance: `mlx::core::compile()`
 
 Wrap `interpretFunction` with `mlx::core::compile()` to cache Metal kernel
 compilation across calls. This is the primary performance optimization — identical
@@ -164,12 +143,12 @@ compiled_fn_ = mlx::core::compile([this, device](const std::vector<mx::array>& i
 });
 ```
 
-### 6. Accuracy fixes
+### 5. Accuracy and parity fixes
 
 A small number of tests fail with numerical tolerance errors rather than missing ops.
 These should be investigated after the above items are complete.
 
-### 7. Remove avoidable `next_after` materialization
+### 6. Remove avoidable `next_after` materialization
 
 Current `next_after` fallback uses a contiguous-realization path before host-side
 `std::nextafter`. This is acceptable short-term for correctness, but should be
