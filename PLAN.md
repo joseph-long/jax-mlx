@@ -81,7 +81,7 @@ Apple Silicon
 
 #### Why naive wrapping fails
 
-`mx::compile()` traces a function with placeholder arrays and records MLX operations
+`mlxc::compile()` traces a function with placeholder arrays and records MLX operations
 without executing them. Any `eval()` / `item<T>()` / `data<T>()` call on an intermediate
 array during tracing throws:
 
@@ -94,7 +94,7 @@ into three categories:
 
 | Category | Ops | Eval site | Replaceable? |
 |----------|-----|-----------|-------------|
-| **Index extraction** | `dynamic_slice`, `dynamic_update_slice` | `item<>()` to get integer start indices for `mx::slice` | **Yes — Phase A** |
+| **Index extraction** | `dynamic_slice`, `dynamic_update_slice` | `item<>()` to get integer start indices for `mlxc::slice` | **Yes — Phase A** |
 | **Bit reinterpretation** | `bitcast_convert` | `data<uint8_t>()` to copy bytes | **Yes — Phase A** |
 | **Host-side math** | `next_after` | `data<T>()` for `std::nextafter` loop | **Yes — Phase B** |
 | **Host-side math** | `lgamma` | `data<T>()` for `std::lgamma` loop | No — MLX has no native lgamma |
@@ -109,29 +109,29 @@ diffusion, etc.). Those models become fully compilable.
 #### Phase A — Eliminate index and bitcast barriers
 
 **A1. `stablehlo.dynamic_slice`**: Replace `item<>()` index extraction with
-`arange + add + take` per dimension. Verified to work inside `mx::compile`:
+`arange + add + take` per dimension. Verified to work inside `mlxc::compile`:
 
 ```cpp
 // Before (breaks compile):
 int start = ScalarToInt64(startArr);
-mx::slice(operand, {start, ...}, {start + size, ...});
+mlxc::slice(operand, {start, ...}, {start + size, ...});
 
 // After (compile-safe):
 // For each spatial dimension d with static size S[d] and lazy start S_d:
-auto idx_d = mx::add(mx::arange(S[d], mx::int32),
-                     mx::astype(start_d, mx::int32));
-// Apply all dimensions via sequential mx::take calls:
+auto idx_d = mlxc::add(mlxc::arange(S[d], mlxc::int32),
+                     mlxc::astype(start_d, mlxc::int32));
+// Apply all dimensions via sequential mlxc::take calls:
 auto result = operand;
-for each dim d: result = mx::take(result, idx_d, d);
+for each dim d: result = mlxc::take(result, idx_d, d);
 ```
 
 **A2. `stablehlo.dynamic_update_slice`**: Same approach — construct index arrays per
-dimension and use `mx::scatter` / `mx::put_along_axis` rather than
-`mx::slice_update(operand, update, {materialized_starts})`.
+dimension and use `mlxc::scatter` / `mlxc::put_along_axis` rather than
+`mlxc::slice_update(operand, update, {materialized_starts})`.
 
 **A3. `stablehlo.bitcast_convert`**: Replace the `eval + copyStridedToLinearBytes +
-malloc/memcpy` path with `mx::view(operand, target_dtype)`.  `mx::view` is already
-verified to work inside `mx::compile` and handles the reinterpret-cast semantics
+malloc/memcpy` path with `mlxc::view(operand, target_dtype)`.  `mlxc::view` is already
+verified to work inside `mlxc::compile` and handles the reinterpret-cast semantics
 correctly (changes shape along last axis when element sizes differ).
 
 **Verification gate**: After A1–A3, all slice/scatter/bitcast tests must still pass.
@@ -147,26 +147,26 @@ compile-safe:
 
 ```cpp
 // next_after(x, y) for float32 — no eval needed:
-auto x_bits   = mx::view(x, mx::int32);
-auto y_bits   = mx::view(y, mx::int32);
-auto zero_i   = mx::zeros_like(x_bits);
-auto one_i    = mx::ones_like(x_bits);
-auto x_eq_y   = mx::equal(x, y);
-auto x_is_0   = mx::equal(x, mx::zeros_like(x));
-auto x_pos    = mx::greater_equal(x_bits, zero_i);
-auto towards_y = mx::greater(y, x);
-auto dir      = mx::where(towards_y, one_i, mx::full(x_bits.shape(), -1, mx::int32));
+auto x_bits   = mlxc::view(x, mlxc::int32);
+auto y_bits   = mlxc::view(y, mlxc::int32);
+auto zero_i   = mlxc::zeros_like(x_bits);
+auto one_i    = mlxc::ones_like(x_bits);
+auto x_eq_y   = mlxc::equal(x, y);
+auto x_is_0   = mlxc::equal(x, mlxc::zeros_like(x));
+auto x_pos    = mlxc::greater_equal(x_bits, zero_i);
+auto towards_y = mlxc::greater(y, x);
+auto dir      = mlxc::where(towards_y, one_i, mlxc::full(x_bits.shape(), -1, mlxc::int32));
 // same-sign branch: add direction; different-sign branch: subtract direction
-auto y_pos    = mx::greater_equal(y_bits, zero_i);
-auto same_sign = mx::equal(x_pos, y_pos);
-auto nz_bits  = mx::where(same_sign, mx::add(x_bits, dir), mx::subtract(x_bits, dir));
+auto y_pos    = mlxc::greater_equal(y_bits, zero_i);
+auto same_sign = mlxc::equal(x_pos, y_pos);
+auto nz_bits  = mlxc::where(same_sign, mlxc::add(x_bits, dir), mlxc::subtract(x_bits, dir));
 // zero input: return smallest subnormal with sign of y
-auto min_sub  = mx::where(y_pos,
-                    mx::full(x_bits.shape(), 1,           mx::int32),
-                    mx::full(x_bits.shape(), 0x80000001u, mx::int32));
-auto res_bits = mx::where(x_is_0, min_sub, nz_bits);
-res_bits      = mx::where(x_eq_y, y_bits, res_bits);
-return mx::view(res_bits, mx::float32);
+auto min_sub  = mlxc::where(y_pos,
+                    mlxc::full(x_bits.shape(), 1,           mlxc::int32),
+                    mlxc::full(x_bits.shape(), 0x80000001u, mlxc::int32));
+auto res_bits = mlxc::where(x_is_0, min_sub, nz_bits);
+res_bits      = mlxc::where(x_eq_y, y_bits, res_bits);
+return mlxc::view(res_bits, mlxc::float32);
 // For float64: same structure with int64 / uint64 bit types.
 ```
 
@@ -209,8 +209,8 @@ if (!compiled_fn_.has_value()) {
     if (HasHardEvalBarrier(entry_func_)) {
         compiled_fn_ = CompiledFn{};  // sentinel: fall back to interpreted
     } else {
-        compiled_fn_ = mx::compile(CompiledFn{
-            [this](const std::vector<mx::array>& in) {
+        compiled_fn_ = mlxc::compile(CompiledFn{
+            [this](const std::vector<mlxc::array>& in) {
                 auto r = interpretFunction(entry_func_, *module_, in);
                 if (!r.ok()) throw std::runtime_error(r.error);
                 return r.outputs;
@@ -220,10 +220,10 @@ if (!compiled_fn_.has_value()) {
 ```
 
 Note: `stablehlo.while`, `stablehlo.if`, and `stablehlo.case` do NOT need to be in
-`kBarriers` — those ops call `mx::eval()` on the condition/predicate scalars to decide
+`kBarriers` — those ops call `mlxc::eval()` on the condition/predicate scalars to decide
 which branch to take, but they do so as part of interpreter dispatch logic, not as
 intermediate-array materialization.  Wrapping a function that contains `while` with
-`mx::compile()` would unroll the loop for the first execution's iteration count, which
+`mlxc::compile()` would unroll the loop for the first execution's iteration count, which
 is wrong for variable-trip-count loops.  Therefore, these must remain in the barrier set
 even though they don't call `eval()` on data arrays.  Update `kBarriers` accordingly.
 

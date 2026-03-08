@@ -46,13 +46,13 @@ Check `mlx::core` free functions in the MLX headers. The `mps_ops/` directory li
 Open `src/pjrt_plugin/mlx_executable.cc` and find the interpreter's op dispatch block. For a simple unary op:
 
 ```cpp
-else if (opName == "stablehlo.cosine") set(0, mx::cos(operand(0)));
+else if (opName == "stablehlo.cosine") set(0, mlxc::cos(operand(0)));
 ```
 
 For ops that need attribute access or multi-step lowering, write a static helper above `runFunction`:
 
 ```cpp
-static mx::array myHelper(mx::array a, ...) { ... }
+static mlxc::array myHelper(mlxc::array a, ...) { ... }
 // then in the dispatch block:
 else if (opName == "stablehlo.my_op") {
     auto myOp = mlir::cast<mlir::stablehlo::MyOp>(op);
