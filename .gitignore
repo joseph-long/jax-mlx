@@ -12,3 +12,4 @@ playground/
 third_party/
 tickets/
 wheels/
+.agent-context
