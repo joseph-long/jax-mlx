@@ -168,16 +168,19 @@ class OperationTestConfig:
         args_key, kwargs_key = random.split(key)
         args = self.get_args(args_key)
         kwargs = self.get_kwargs(kwargs_key)
-        args = [
-            jax.device_put(arg, device)
-            if isinstance(arg, (jax.Array, nnx.Module))
-            else arg
-            for arg in args
-        ]
-        kwargs = {
-            k: (jax.device_put(v, device) if isinstance(v, (jax.Array, nnx.Module)) else v)
-            for k, v in kwargs.items()
-        }
+        if device is not None:
+            args = jax.tree.map(
+                lambda v: jax.device_put(v, device)
+                if isinstance(v, (jax.Array, nnx.Module))
+                else v,
+                args,
+            )
+            kwargs = jax.tree.map(
+                lambda v: jax.device_put(v, device)
+                if isinstance(v, (jax.Array, nnx.Module))
+                else v,
+                kwargs,
+            )
         lowered = None
         func = self.func
         if jit:
@@ -206,16 +209,19 @@ class OperationTestConfig:
         args_key, kwargs_key = random.split(key)
         args = self.get_args(args_key)
         kwargs = self.get_kwargs(kwargs_key)
-        args = [
-            jax.device_put(arg, device)
-            if isinstance(arg, (jax.Array, nnx.Module))
-            else arg
-            for arg in args
-        ]
-        kwargs = {
-            k: (jax.device_put(v, device) if isinstance(v, (jax.Array, nnx.Module)) else v)
-            for k, v in kwargs.items()
-        }
+        if device is not None:
+            args = jax.tree.map(
+                lambda v: jax.device_put(v, device)
+                if isinstance(v, (jax.Array, nnx.Module))
+                else v,
+                args,
+            )
+            kwargs = jax.tree.map(
+                lambda v: jax.device_put(v, device)
+                if isinstance(v, (jax.Array, nnx.Module))
+                else v,
+                kwargs,
+            )
 
         func = self.func
         result = func(*args, **kwargs)

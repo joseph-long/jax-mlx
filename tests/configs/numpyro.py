@@ -3,7 +3,7 @@ from jax import numpy as jnp
 from jax import random
 from numpyro import distributions as dists
 
-from .util import OperationTestConfig, xfail_match
+from .util import OperationTestConfig
 
 
 class NumpyroDistributionTestConfig(OperationTestConfig):
@@ -99,30 +99,20 @@ def make_numpyro_op_configs():
                     differentiable_argnums=(1,),
                     name="Bernoulli",
                 ),
-                pytest.param(
-                    NumpyroDistributionTestConfig(
-                        dists.BinomialProbs,
-                        lambda key, bs=batch_shape: random.uniform(
-                            key, bs, minval=0.1, maxval=0.9
-                        ),
-                        10,  # total_count (not differentiable)
-                        differentiable_argnums=(1,),
-                        name="Binomial",
+                NumpyroDistributionTestConfig(
+                    dists.BinomialProbs,
+                    lambda key, bs=batch_shape: random.uniform(
+                        key, bs, minval=0.1, maxval=0.9
                     ),
-                    marks=[xfail_match("gather:.+unsupported gather pattern")],
+                    10,  # total_count (not differentiable)
+                    differentiable_argnums=(1,),
+                    name="Binomial",
                 ),
-                pytest.param(
-                    NumpyroDistributionTestConfig(
-                        dists.CategoricalProbs,
-                        lambda key, bs=batch_shape: random.dirichlet(
-                            key, jnp.ones(5), bs
-                        ),
-                        differentiable_argnums=(1,),
-                        name="Categorical",
-                    ),
-                    marks=[
-                        xfail_match("Unsupported operation.+stablehlo.reduce_window")
-                    ],
+                NumpyroDistributionTestConfig(
+                    dists.CategoricalProbs,
+                    lambda key, bs=batch_shape: random.dirichlet(key, jnp.ones(5), bs),
+                    differentiable_argnums=(1,),
+                    name="Categorical",
                 ),
                 NumpyroDistributionTestConfig(
                     dists.Poisson,
@@ -145,19 +135,12 @@ def make_numpyro_op_configs():
                     ),  # concentration
                     differentiable_argnums=(1, 2),
                 ),
-                pytest.param(
-                    NumpyroDistributionTestConfig(
-                        dists.MultinomialProbs,
-                        lambda key, bs=batch_shape: random.dirichlet(
-                            key, jnp.ones(5), bs
-                        ),
-                        10,  # total_count (not differentiable)
-                        differentiable_argnums=(1,),
-                        name="Multinomial",
-                    ),
-                    marks=[
-                        xfail_match("Unsupported operation.+stablehlo.reduce_window")
-                    ],
+                NumpyroDistributionTestConfig(
+                    dists.MultinomialProbs,
+                    lambda key, bs=batch_shape: random.dirichlet(key, jnp.ones(5), bs),
+                    10,  # total_count (not differentiable)
+                    differentiable_argnums=(1,),
+                    name="Multinomial",
                 ),
                 # Additional continuous distributions.
                 NumpyroDistributionTestConfig(
@@ -203,35 +186,21 @@ def make_numpyro_op_configs():
                     ),  # concentration
                 ),
                 # Multivariate distributions.
-                pytest.param(
-                    NumpyroDistributionTestConfig(
-                        dists.MultivariateNormal,
-                        lambda key, bs=batch_shape: random.normal(
-                            key, bs + (4,)
-                        ),  # loc
-                        None,  # covariance_matrix
-                        None,  # precision_matrix
-                        lambda key: jnp.linalg.cholesky(jnp.eye(4) + jnp.ones((4, 4))),
-                    ),
-                    marks=[
-                        xfail_match(
-                            "gather:.+unsupported gather pattern|Native op handler returned nil"
-                        )
-                    ],
+                NumpyroDistributionTestConfig(
+                    dists.MultivariateNormal,
+                    lambda key, bs=batch_shape: random.normal(key, bs + (4,)),  # loc
+                    None,  # covariance_matrix
+                    None,  # precision_matrix
+                    lambda key: jnp.linalg.cholesky(jnp.eye(4) + jnp.ones((4, 4))),
                 ),
-                pytest.param(
-                    NumpyroDistributionTestConfig(
-                        dists.LowRankMultivariateNormal,
-                        lambda key, bs=batch_shape: random.normal(
-                            key, bs + (4,)
-                        ),  # loc
-                        lambda key, bs=batch_shape: random.normal(
-                            key, bs + (4, 2)
-                        ),  # cov_factor
-                        lambda key, bs=batch_shape: random.gamma(
-                            key, 5.0, bs + (4,)
-                        ),  # cov_diag
-                    ),
-                    marks=[xfail_match("scatter:.+unsupported scatter pattern")],
+                NumpyroDistributionTestConfig(
+                    dists.LowRankMultivariateNormal,
+                    lambda key, bs=batch_shape: random.normal(key, bs + (4,)),  # loc
+                    lambda key, bs=batch_shape: random.normal(
+                        key, bs + (4, 2)
+                    ),  # cov_factor
+                    lambda key, bs=batch_shape: random.gamma(
+                        key, 5.0, bs + (4,)
+                    ),  # cov_diag
                 ),
             ]
