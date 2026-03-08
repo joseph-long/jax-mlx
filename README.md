@@ -2,11 +2,11 @@
 
 <!-- [![GitHub Action Badge](https://github.com/tillahoffmann/jax-mlx/actions/workflows/build.yml/badge.svg)](https://github.com/tillahoffmann/jax-mlx/actions/workflows/build.yml) [![PyPI](https://img.shields.io/pypi/v/jax-mlx)](https://pypi.org/project/jax-mlx/) -->
 
-A JAX backend for Apple Metal Performance Shaders (MPS), enabling GPU-accelerated JAX computations on Apple Silicon.
+A JAX backend piggybacking on implementations for Metal/Apple Silicon in Apple MLX, enabling GPU-accelerated JAX computations on Apple Silicon.
 
 ## Example
 
-jax-mlx achieves a modest 3x speed-up over the CPU backend when training a simple ResNet18 model on CIFAR-10 using an M4 MacBook Air.
+jax-mlx achieves a modest 3x speed-up (TODO: revise) over the CPU backend when training a simple ResNet18 model on CIFAR-10 using an M4 MacBook Air.
 
 ```bash
 $ JAX_PLATFORMS=cpu uv run examples/resnet/main.py --steps=30
@@ -29,17 +29,13 @@ jax-mlx requires macOS on Apple Silicon and Python 3.13. Install it with pip:
 pip install -e .
 ```
 
-The plugin registers itself with JAX automatically and is enabled by default. Set `JAX_PLATFORMS=mlx` to select the MPS backend explicitly.
+The plugin registers itself with JAX automatically and is enabled by default. Set `JAX_PLATFORMS=mlx` to select the MLX backend explicitly.
 
 jax-mlx is built against the StableHLO bytecode format matching jaxlib 0.9.x. Using a different jaxlib version will likely cause deserialization failures at JIT compile time. See [Version Pinning](#version-pinning) for details.
 
 ## Architecture
 
-This project implements a [PJRT plugin](https://openxla.org/xla/pjrt) to offload evaluation of JAX expressions to a [Metal Performance Shaders Graph](https://developer.apple.com/documentation/metalperformanceshadersgraph). The evaluation proceeds in several stages:
-
-1. The JAX program is lowered to [StableHLO](https://openxla.org/stablehlo), a set of high-level operations for machine learning applications.
-2. The plugin parses the StableHLO representation of the program and builds the corresponding MPS graph. The graph is cached to avoid re-construction on invocation of the same program, e.g., repeated training steps.
-3. The MPS graph is executed, using native [MPS operations](./mlx_ops/) where possible, and the results are returned to the caller.
+This project implements a [PJRT plugin](https://openxla.org/xla/pjrt) to dispatch StableHLO operations to the C++ MLX implementations.
 
 ## Building
 
@@ -99,14 +95,6 @@ jax-mlx/
 PJRT (Portable JAX Runtime) is JAX's abstraction for hardware backends. The plugin implements:
 
 - `PJRT_Client_Create` - Initialize Metal device
-- `PJRT_Client_Compile` - Parse HLO and prepare MPSGraph
+- `PJRT_Client_Compile` - Parse HLO and prepare MLXGraph
 - `PJRT_Client_BufferFromHostBuffer` - Transfer data to GPU
 - `PJRT_LoadedExecutable_Execute` - Run computation on GPU
-
-### MPSGraph Execution
-
-Operations are mapped to MPSGraph equivalents, e.g.,:
-
-- `add` → `additionWithPrimaryTensor:secondaryTensor:`
-- `dot` → `matrixMultiplicationWithPrimaryTensor:secondaryTensor:`
-- `tanh` → `tanhWithTensor:`
