@@ -53,9 +53,46 @@ JAX_MLX_LIBRARY_PATH="$LATEST_DYLIB" uv run pytest
 
 # Benchmarks
 
-Benchmarks are excluded from normal test runs. To run them:
+Benchmarks are excluded from normal test runs.
+
+## Running and saving results
+
+Use the benchmark script to run benchmarks and save a timestamped JSON file to
+`.benchmarks/`:
+
+```bash
+bash scripts/benchmark.sh
+# Saves to .benchmarks/<ISO8601>_<githash>[_dirty].json
+```
+
+Files with `_dirty` in the name were produced from an uncommitted working tree and
+should not be used as baselines. Commit your changes before benchmarking to get a
+clean baseline.
+
+## Comparing results
+
+After a refactor, run benchmarks again and compare to the previous clean baseline:
+
+```bash
+# Compare most recent file against the most recent clean baseline automatically:
+uv run scripts/benchmark_compare.py
+
+# Or name files explicitly:
+uv run scripts/benchmark_compare.py .benchmarks/new.json .benchmarks/old.json
+
+# Adjust significance threshold (default 1σ):
+uv run scripts/benchmark_compare.py .benchmarks/new.json --threshold 2.0
+```
+
+The comparison reports which benchmarks changed by more than `threshold` standard
+deviations of the baseline mean. A performance refactor is only confirmed to be
+beneficial if benchmarks it was designed to improve show up in the FASTER column.
+Anything in SLOWER is a regression and must be investigated.
+
+## Running benchmarks directly (without saving)
 
 ```bash
 # Run benchmarks (compares CPU vs MLX performance)
-uv run pytest -m benchmark --benchmark-only
+LATEST_DYLIB="$(ls -t build/*/lib/libpjrt_plugin_mlx.dylib | head -n 1)"
+JAX_MLX_LIBRARY_PATH="$LATEST_DYLIB" uv run pytest -m benchmark --benchmark-only
 ```

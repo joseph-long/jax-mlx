@@ -98,3 +98,35 @@ PJRT (Portable JAX Runtime) is JAX's abstraction for hardware backends. The plug
 - `PJRT_Client_Compile` - Parse HLO and prepare MLXGraph
 - `PJRT_Client_BufferFromHostBuffer` - Transfer data to GPU
 - `PJRT_LoadedExecutable_Execute` - Run computation on GPU
+
+## Benchmarking
+
+Microbenchmarks compare CPU and MLX performance across a range of ops and sizes.
+
+### Running benchmarks
+
+```bash
+# Run and save a timestamped result file to .benchmarks/:
+bash scripts/benchmark.sh
+
+# Run without saving (quick look):
+LATEST_DYLIB="$(ls -t build/*/lib/libpjrt_plugin_mlx.dylib | head -n 1)"
+JAX_MLX_LIBRARY_PATH="$LATEST_DYLIB" uv run pytest -m benchmark --benchmark-only
+```
+
+### Comparing before/after a change
+
+```bash
+# Save a clean baseline before your change, then after:
+git stash           # or commit first
+bash scripts/benchmark.sh                        # saves .benchmarks/<ts>_<hash>.json
+git stash pop       # apply your change
+uv pip install -e . # rebuild
+bash scripts/benchmark.sh                        # saves a new result
+
+# Compare the two (auto-selects most recent vs previous clean baseline):
+uv run scripts/benchmark_compare.py
+```
+
+The comparison reports benchmarks that changed by more than 1 standard deviation of
+the baseline mean. Pass `--threshold 2.0` for a stricter filter.

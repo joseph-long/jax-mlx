@@ -228,6 +228,9 @@ is wrong for variable-trip-count loops.  Therefore, these must remain in the bar
 even though they don't call `eval()` on data arrays.  Update `kBarriers` accordingly.
 
 **Verification gate**: Full test suite (`uv run pytest`) still 1430 passed.
+Run `bash scripts/benchmark.sh` before and after Phase C; run
+`uv run scripts/benchmark_compare.py` to confirm the ops targeted by compilation
+appear in the FASTER column with no regressions in the SLOWER column.
 
 ---
 
