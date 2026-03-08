@@ -11,6 +11,7 @@
 #include <numeric>
 #include <set>
 #include <sstream>
+#include <iostream>
 
 #include "llvm/ADT/DenseMap.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
@@ -126,11 +127,27 @@ static mx::array makeConstant(mlir::stablehlo::ConstantOp op) {
         return mx::array(data.data(), shape, mx::bool_);
     }
 
-    // All other types: copy raw bytes and hand ownership to MLX
+    // All other types: copy raw bytes (or expand splats) and hand ownership to MLX.
     auto rawData = denseAttr.getRawData();
+    int64_t numElems = tensorType.getNumElements();
+    size_t elemBytes = static_cast<size_t>(dtype.size());
     size_t nbytes = rawData.size();
+    if (denseAttr.isSplat() && numElems > 0) {
+        nbytes = static_cast<size_t>(numElems) * elemBytes;
+    }
     void* buf = std::malloc(nbytes > 0 ? nbytes : 1);
-    if (nbytes > 0) std::memcpy(buf, rawData.data(), nbytes);
+    if (nbytes > 0) {
+        if (denseAttr.isSplat() && numElems > 0) {
+            const char* one = rawData.data();
+            for (int64_t i = 0; i < numElems; ++i) {
+                std::memcpy(static_cast<char*>(buf) + static_cast<size_t>(i) * elemBytes,
+                            one,
+                            elemBytes);
+            }
+        } else {
+            std::memcpy(buf, rawData.data(), nbytes);
+        }
+    }
     return mx::array(buf, shape, dtype, [](void* p) { std::free(p); });
 }
 
@@ -696,6 +713,41 @@ static mx::array HandleFft(mx::array input, mlir::stablehlo::FftOp fftOp) {
     }
 }
 
+static mx::array HandleLgamma(mx::array x) {
+    if (x.dtype() != mx::float32 && x.dtype() != mx::float64) {
+        throw std::invalid_argument("chlo.lgamma only supports f32/f64");
+    }
+    x.eval();
+    std::vector<int64_t> dims(x.shape().begin(), x.shape().end());
+    std::vector<int64_t> rawStrides(x.strides().begin(), x.strides().end());
+    auto strides = normalizeStridesToElements(
+        dims, rawStrides, static_cast<int64_t>(x.data_size()),
+        static_cast<size_t>(x.dtype().size()));
+
+    auto apply = [&](const auto* inPtr) -> mx::array {
+        using T = std::decay_t<decltype(*inPtr)>;
+        std::vector<T> in(static_cast<size_t>(x.size()));
+        std::vector<T> out(static_cast<size_t>(x.size()));
+        size_t off = 0;
+        copyStridedToLinearBytes(reinterpret_cast<const uint8_t*>(inPtr),
+                                 reinterpret_cast<uint8_t*>(in.data()),
+                                 dims,
+                                 strides,
+                                 sizeof(T),
+                                 0,
+                                 0,
+                                 off);
+        for (size_t i = 0; i < out.size(); ++i) out[i] = static_cast<T>(std::lgamma(in[i]));
+        size_t nbytes = out.size() * sizeof(T);
+        void* buf = std::malloc(nbytes > 0 ? nbytes : 1);
+        if (nbytes > 0) std::memcpy(buf, out.data(), nbytes);
+        return mx::array(buf, x.shape(), x.dtype(), [](void* p) { std::free(p); });
+    };
+
+    if (x.dtype() == mx::float32) return apply(x.data<float>());
+    return apply(x.data<double>());
+}
+
 // Inspect reduction body to find the operation name
 static std::string reductionOpName(mlir::Region& body) {
     for (auto& op : body.front()) {
@@ -895,9 +947,11 @@ static InterpResult interpretBlock(mlir::Block& entry,
                                     mlir::ModuleOp module,
                                     ValueMap vm) {
     std::vector<mx::array> outputs;
+    bool traceOps = std::getenv("JAX_MLX_TRACE_OPS") != nullptr;
 
     for (auto& op : entry) {
         auto opName = op.getName().getStringRef();
+        if (traceOps) std::cerr << "[mlx-op] " << opName.str() << "\n";
 
         // Helper: get the i-th operand array
         auto operand = [&](unsigned i) -> mx::array& {
@@ -1042,6 +1096,7 @@ static InterpResult interpretBlock(mlir::Block& entry,
         else if (opName == "chlo.cosh")    set(0, mx::cosh(operand(0)));
         else if (opName == "chlo.erf")     set(0, mx::erf(operand(0)));
         else if (opName == "chlo.erf_inv") set(0, mx::erfinv(operand(0)));
+        else if (opName == "chlo.lgamma")  set(0, HandleLgamma(operand(0)));
 
         // --- Binary arithmetic ---
         else if (opName == "stablehlo.add")       set(0, mx::add(operand(0), operand(1)));

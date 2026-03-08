@@ -189,6 +189,11 @@ class OperationTestConfig:
         if lowered and get_device_placement(result) == MLX_DEVICE:
             stablehlo_text = str(lowered.compiler_ir(dialect="stablehlo"))
             self.EXERCISED_STABLEHLO_OPS.update(STABLEHLO_OP_RE.findall(stablehlo_text))
+        if device is not None:
+            result = jax.tree.map(
+                lambda v: jax.device_put(v, device) if isinstance(v, jax.Array) else v,
+                result,
+            )
         return result
 
     def evaluate_grad(
@@ -248,7 +253,13 @@ class OperationTestConfig:
             if jit:
                 grad_func = jax.jit(grad_func, static_argnums=self.static_argnums)
                 lowered = grad_func.lower(*args)
-            grad_vals.append(grad_func(*args))
+            grad_val = grad_func(*args)
+            if device is not None:
+                grad_val = jax.tree.map(
+                    lambda v: jax.device_put(v, device) if isinstance(v, jax.Array) else v,
+                    grad_val,
+                )
+            grad_vals.append(grad_val)
 
             # Only mark ops as exercised if the operation succeeded on MPS.
             if lowered and get_device_placement(result) == MLX_DEVICE:

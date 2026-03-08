@@ -102,16 +102,15 @@ def test_op_value(op_config: OperationTestConfig, jit: bool) -> None:
     results = []
     for platform in platforms:
         device = jax.devices(platform)[0]
-        with jax.default_device(device):
-            result = op_config.evaluate_value(jit, device)
-            jax.tree.map_with_path(
-                lambda path, value: fassert(
-                    value.device == device,
-                    f"Value at '{path}' is on device {value.device}; expected {device}.",
-                ),
-                result,
-            )
-            results.append(result)
+        result = op_config.evaluate_value(jit, device)
+        jax.tree.map_with_path(
+            lambda path, value: fassert(
+                value.device == device,
+                f"Value at '{path}' is on device {value.device}; expected {device}.",
+            ),
+            result,
+        )
+        results.append(result)
 
     if len(results) == 2:
         jax.tree.map_with_path(assert_allclose_with_path, *results)
@@ -127,16 +126,15 @@ def test_op_grad(op_config: OperationTestConfig, jit: bool) -> None:
         results = []
         for platform in platforms:
             device = jax.devices(platform)[0]
-            with jax.default_device(device):
-                result = op_config.evaluate_grad(argnum, jit, device)
-                jax.tree.map_with_path(
-                    lambda path, value: fassert(
-                        value.device == device,
-                        f"Value at '{path}' is on device {value.device}; expected {device}.",
-                    ),
-                    result,
-                )
-                results.append(result)
+            result = op_config.evaluate_grad(argnum, jit, device)
+            jax.tree.map_with_path(
+                lambda path, value: fassert(
+                    value.device == device,
+                    f"Value at '{path}' is on device {value.device}; expected {device}.",
+                ),
+                result,
+            )
+            results.append(result)
 
         if len(results) == 2:
             jax.tree.map_with_path(assert_allclose_with_path, *results)
