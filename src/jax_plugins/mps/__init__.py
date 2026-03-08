@@ -80,7 +80,7 @@ def _check_jaxlib_version():
         installed = (int(parts[0]), int(parts[1]))
         if installed != _BUILT_FOR_JAXLIB:
             warnings.warn(
-                f"jax-mps was built for jaxlib {_BUILT_FOR_JAXLIB[0]}.{_BUILT_FOR_JAXLIB[1]}.x, "
+                f"jax-mlx was built for jaxlib {_BUILT_FOR_JAXLIB[0]}.{_BUILT_FOR_JAXLIB[1]}.x, "
                 f"but jaxlib {version_str} is installed. This may cause compatibility "
                 f"issues with StableHLO bytecode parsing. Consider installing jaxlib "
                 f">={_BUILT_FOR_JAXLIB[0]}.{_BUILT_FOR_JAXLIB[1]}.0,"
@@ -129,6 +129,22 @@ def initialize():
             stacklevel=2,
         )
 
+    # Preload libmlx.dylib into the global linker namespace so that our
+    # PJRT plugin (which links against it) can dlopen successfully regardless
+    # of where libmlx.dylib lives on this system.
+    try:
+        import ctypes
+        import importlib.util
+
+        mlx_spec = importlib.util.find_spec("mlx")
+        if mlx_spec and mlx_spec.submodule_search_locations:
+            mlx_pkg_dir = Path(mlx_spec.submodule_search_locations[0])
+            mlx_dylib = mlx_pkg_dir / "lib" / "libmlx.dylib"
+            if mlx_dylib.exists():
+                ctypes.CDLL(str(mlx_dylib), ctypes.RTLD_GLOBAL)
+    except Exception:
+        pass  # If preloading fails, dlopen may still succeed via RPATH
+
     # Register the plugin using JAX's xla_bridge API
     try:
         from jax._src import xla_bridge as xb
@@ -141,7 +157,7 @@ def initialize():
     try:
         xb.register_plugin(
             "mps",
-            priority=500,  # Higher than CPU (0) but lower than GPU (1000)
+            priority=-1,  # Below CPU (0) so CPU is the default device during dev stub phase
             library_path=library_path,
             options=None,
         )

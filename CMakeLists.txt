@@ -1,13 +1,11 @@
 cmake_minimum_required(VERSION 3.20)
-project(jax_mps LANGUAGES C CXX OBJCXX)
+project(jax_mps LANGUAGES C CXX)
 
 # Add default path for MLIR/StableHLO dependencies
 list(APPEND CMAKE_PREFIX_PATH "$ENV{HOME}/.local/jax-mps-deps")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_OBJCXX_STANDARD 17)
-set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
 
 # Export compile commands for clang-tidy
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -23,11 +21,21 @@ execute_process(
 )
 add_compile_options(-isysroot ${MACOS_SDK_PATH})
 
-# Find required Apple frameworks
-find_library(METAL_FRAMEWORK Metal REQUIRED)
-find_library(MPS_FRAMEWORK MetalPerformanceShaders REQUIRED)
-find_library(MPSGRAPH_FRAMEWORK MetalPerformanceShadersGraph REQUIRED)
-find_library(FOUNDATION_FRAMEWORK Foundation REQUIRED)
+# Find MLX from Python package
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+execute_process(
+    COMMAND ${Python3_EXECUTABLE} -c
+        "import mlx.core, os; print(os.path.dirname(os.path.abspath(mlx.core.__file__)))"
+    OUTPUT_VARIABLE MLX_PYTHON_DIR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    RESULT_VARIABLE MLX_PYTHON_RESULT
+)
+if(NOT MLX_PYTHON_RESULT EQUAL 0 OR NOT MLX_PYTHON_DIR)
+    message(FATAL_ERROR "Could not find MLX Python package. Run: uv add mlx")
+endif()
+list(APPEND CMAKE_PREFIX_PATH "${MLX_PYTHON_DIR}")
+find_package(MLX REQUIRED CONFIG)
+message(STATUS "Found MLX: ${MLX_PYTHON_DIR}")
 
 # XLA PJRT headers (installed by setup_deps.sh)
 find_path(XLA_INCLUDE_DIR
@@ -116,23 +124,12 @@ set(PJRT_SOURCES
     src/pjrt_plugin/pjrt_executable.cc
     src/pjrt_plugin/pjrt_event.cc
     src/pjrt_plugin/pjrt_topology.cc
-    src/pjrt_plugin/mps_client.mm
-    src/pjrt_plugin/mps_device.mm
-    src/pjrt_plugin/mps_buffer.mm
-    src/pjrt_plugin/mps_executable.mm
-    src/pjrt_plugin/stablehlo_parser.mm
-    src/pjrt_plugin/type_utils.mm
-    src/pjrt_plugin/ops/binary_ops.mm
-    src/pjrt_plugin/ops/unary_ops.mm
-    src/pjrt_plugin/ops/shape_ops.mm
-    src/pjrt_plugin/ops/bitwise_ops.mm
-    src/pjrt_plugin/ops/fft_ops.mm
-    src/pjrt_plugin/ops/tensor_creation_ops.mm
-    src/pjrt_plugin/ops/convolution_ops.mm
-    src/pjrt_plugin/ops/reduction_ops.mm
-    src/pjrt_plugin/ops/control_flow_ops.mm
-    src/pjrt_plugin/ops/sort_ops.mm
-    src/pjrt_plugin/ops/linalg_ops.mm
+    src/pjrt_plugin/mlx_client.cc
+    src/pjrt_plugin/mlx_device.cc
+    src/pjrt_plugin/mlx_buffer.cc
+    src/pjrt_plugin/mlx_executable.cc
+    src/pjrt_plugin/mlx_type_utils.cc
+    src/pjrt_plugin/stablehlo_parser.cc
     ${PROTO_SRCS}
 )
 
@@ -146,6 +143,7 @@ target_include_directories(pjrt_plugin_mps PRIVATE
     ${STABLEHLO_INCLUDE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}  # For generated proto headers
     ${Protobuf_INCLUDE_DIRS}
+    ${MLX_INCLUDE_DIRS}
 )
 
 # Debug logging level (0=error, 1=warn, 2=info, 3=debug)
@@ -239,10 +237,7 @@ if(UTF8_VALIDITY_LIB)
 endif()
 
 target_link_libraries(pjrt_plugin_mps PRIVATE
-    ${METAL_FRAMEWORK}
-    ${MPS_FRAMEWORK}
-    ${MPSGRAPH_FRAMEWORK}
-    ${FOUNDATION_FRAMEWORK}
+    mlx
     ${STABLEHLO_LIBS}
     ${MLIR_LIBS}
     protobuf::libprotobuf

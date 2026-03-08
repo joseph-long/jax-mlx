@@ -25,7 +25,7 @@ PJRT_Client* GetOrCreateDefaultClient() {
         return g_default_client;
 
     MPS_LOG_INFO("Creating default client\n");
-    auto mps_client = jax_mps::MpsClient::Create();
+    auto mps_client = jax_mlx::MlxClient::Create();
     if (!mps_client) {
         MPS_LOG_ERROR("Failed to create MPS client\n");
         return nullptr;

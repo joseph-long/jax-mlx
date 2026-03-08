@@ -7,10 +7,10 @@
 #include <string>
 #include <vector>
 
-#include "pjrt_plugin/mps_buffer.h"
-#include "pjrt_plugin/mps_client.h"
-#include "pjrt_plugin/mps_device.h"
-#include "pjrt_plugin/mps_executable.h"
+#include "pjrt_plugin/mlx_buffer.h"
+#include "pjrt_plugin/mlx_client.h"
+#include "pjrt_plugin/mlx_device.h"
+#include "pjrt_plugin/mlx_executable.h"
 
 // ============================================================================
 // Forward declarations
@@ -25,14 +25,14 @@ struct PJRT_Memory;
 // ============================================================================
 
 struct PJRT_Client {
-    std::unique_ptr<jax_mps::MpsClient> client;
+    std::unique_ptr<jax_mlx::MlxClient> client;
     std::vector<PJRT_Device*> devices;
     std::vector<PJRT_Memory*> memories;
     PJRT_TopologyDescription* topology;
 };
 
 struct PJRT_Device {
-    jax_mps::MpsDevice* device;
+    jax_mlx::MlxDevice* device;
     PJRT_Client* client;
     PJRT_DeviceDescription* description;  // Each device owns its description
     PJRT_Memory* default_memory;          // Default memory for the device
@@ -53,12 +53,12 @@ struct PJRT_TopologyDescription {
 };
 
 struct PJRT_Buffer {
-    std::unique_ptr<jax_mps::MpsBuffer> buffer;
+    std::unique_ptr<jax_mlx::MlxBuffer> buffer;
     PJRT_Client* client;
 };
 
 struct PJRT_Executable {
-    std::unique_ptr<jax_mps::MpsExecutable> executable;
+    std::unique_ptr<jax_mlx::MlxExecutable> executable;
     PJRT_Client* client;
 
     // Ownership flag: when true, this executable is owned by a PJRT_LoadedExecutable

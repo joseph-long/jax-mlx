@@ -193,7 +193,7 @@ PJRT_Error* MPS_LoadedExecutable_Execute(PJRT_LoadedExecutable_Execute_Args* arg
         return MakeError("No executable to execute");
     }
 
-    std::vector<jax_mps::MpsBuffer*> inputs;
+    std::vector<jax_mlx::MlxBuffer*> inputs;
     for (size_t i = 0; i < args->num_args; i++) {
         if (args->argument_lists[0][i]) {
             inputs.push_back(args->argument_lists[0][i]->buffer.get());
@@ -206,7 +206,7 @@ PJRT_Error* MPS_LoadedExecutable_Execute(PJRT_LoadedExecutable_Execute_Args* arg
                   args->num_args);
 
     PJRT_Client* client = args->executable->client;
-    jax_mps::MpsDevice* device =
+    jax_mlx::MlxDevice* device =
         client && !client->devices.empty() ? client->devices[0]->device : nullptr;
 
     auto exec_result = args->executable->executable->executable->Execute(inputs, device);

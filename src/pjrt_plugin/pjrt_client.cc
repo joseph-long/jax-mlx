@@ -159,11 +159,7 @@ PJRT_Error* MPS_Client_Compile(PJRT_Client_Compile_Args* args) {
 
     PJRT_Client* client = GetClient(args->client);
     if (!client || !client->client) {
-        return MakeError("No MPS client available for compilation. Metal GPU may not be present.");
-    }
-    if (!client->client->metal_device()) {
-        return MakeError(
-            "No Metal GPU device available. MPS backend requires Apple Silicon or AMD GPU.");
+        return MakeError("No MLX client available for compilation.");
     }
 
     // Get the program from the args
@@ -246,11 +242,7 @@ PJRT_Error* MPS_Client_BufferFromHostBuffer(PJRT_Client_BufferFromHostBuffer_Arg
 
     PJRT_Client* client = GetClient(args->client);
     if (!client || !client->client) {
-        return MakeError("No MPS client available. Metal GPU may not be present.");
-    }
-    if (!client->client->metal_device()) {
-        return MakeError(
-            "No Metal GPU device available. MPS backend requires Apple Silicon or AMD GPU.");
+        return MakeError("No MLX client available.");
     }
     if (!args->data) {
         return MakeError("Cannot create buffer: null data pointer provided");

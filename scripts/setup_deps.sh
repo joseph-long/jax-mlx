@@ -1,23 +1,23 @@
 #!/bin/bash
-# Setup script for jax-mps dependencies (LLVM/MLIR + StableHLO)
+# Setup script for jax-mlx dependencies (LLVM/MLIR + StableHLO)
 # These are built once and installed to a prefix directory.
 #
 # Usage:
 #   ./scripts/setup_deps.sh [--prefix /path/to/install] [--force]
 #
 # Options:
-#   --prefix PATH   Install location (default: $HOME/.local/jax-mps-deps)
+#   --prefix PATH   Install location (default: $HOME/.local/jax-mlx-deps)
 #   --jobs N        Number of parallel jobs (default: number of CPUs)
 #   --force         Force rebuild even if already installed
 #
-# Default prefix: $HOME/.local/jax-mps-deps
+# Default prefix: $HOME/.local/jax-mlx-deps
 
 set -e
 
 # Configuration
-PREFIX="${PREFIX:-$HOME/.local/jax-mps-deps}"
+PREFIX="${PREFIX:-$HOME/.local/jax-mlx-deps}"
 JOBS="${JOBS:-$(sysctl -n hw.ncpu 2>/dev/null || nproc)}"
-BUILD_DIR="${BUILD_DIR:-/tmp/jax-mps-deps-build}"
+BUILD_DIR="${BUILD_DIR:-/tmp/jax-mlx-deps-build}"
 
 # Pin to versions matching jaxlib 0.9.0 for bytecode compatibility
 # These are extracted from XLA commit bb760b047bdbfeff962f0366ad5cc782c98657e0
@@ -62,7 +62,7 @@ if [ "$FORCE_REBUILD" = true ]; then
     rm -rf "$BUILD_DIR/abseil-build" "$BUILD_DIR/protobuf-build"
 fi
 
-echo "=== jax-mps dependency setup ==="
+echo "=== jax-mlx dependency setup ==="
 echo "Prefix:       $PREFIX"
 echo "Jobs:         $JOBS"
 echo "Build dir:    $BUILD_DIR"
@@ -287,7 +287,7 @@ echo "=== Setup complete ==="
 echo ""
 echo "Dependencies installed to: $PREFIX"
 echo ""
-echo "To build jax-mps, use:"
+echo "To build jax-mlx, use:"
 echo "  cmake -B build -DCMAKE_PREFIX_PATH=$PREFIX"
 echo "  cmake --build build"
 echo ""
