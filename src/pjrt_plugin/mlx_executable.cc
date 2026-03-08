@@ -1423,40 +1423,47 @@ static InterpResult interpretBlock(mlir::Block& entry,
                 if (x.dtype() != y.dtype() || x.size() != y.size()) {
                     return InterpResult::Error("chlo.next_after expects same dtype/size operands");
                 }
-                mx::Shape shape(x.shape().begin(), x.shape().end());
-                if (x.dtype() == mx::float32) {
-                    auto xFlat = mx::reshape(
-                        mx::add(mx::zeros(x.shape(), x.dtype()), x), {static_cast<int>(x.size())});
-                    auto yFlat = mx::reshape(
-                        mx::add(mx::zeros(y.shape(), y.dtype()), y), {static_cast<int>(y.size())});
-                    xFlat.eval();
-                    yFlat.eval();
-                    std::vector<float> out(static_cast<size_t>(x.size()));
-                    auto* xp = xFlat.data<float>();
-                    auto* yp = yFlat.data<float>();
-                    for (size_t i = 0; i < out.size(); ++i) out[i] = std::nextafter(xp[i], yp[i]);
-                    size_t nbytes = out.size() * sizeof(float);
-                    void* buf = std::malloc(nbytes > 0 ? nbytes : 1);
-                    if (nbytes > 0) std::memcpy(buf, out.data(), nbytes);
-                    set(0, mx::array(buf, shape, mx::float32, [](void* p) { std::free(p); }));
-                } else if (x.dtype() == mx::float64) {
-                    auto xFlat = mx::reshape(
-                        mx::add(mx::zeros(x.shape(), x.dtype()), x), {static_cast<int>(x.size())});
-                    auto yFlat = mx::reshape(
-                        mx::add(mx::zeros(y.shape(), y.dtype()), y), {static_cast<int>(y.size())});
-                    xFlat.eval();
-                    yFlat.eval();
-                    std::vector<double> out(static_cast<size_t>(x.size()));
-                    auto* xp = xFlat.data<double>();
-                    auto* yp = yFlat.data<double>();
-                    for (size_t i = 0; i < out.size(); ++i) out[i] = std::nextafter(xp[i], yp[i]);
-                    size_t nbytes = out.size() * sizeof(double);
-                    void* buf = std::malloc(nbytes > 0 ? nbytes : 1);
-                    if (nbytes > 0) std::memcpy(buf, out.data(), nbytes);
-                    set(0, mx::array(buf, shape, mx::float64, [](void* p) { std::free(p); }));
-                } else {
+                if (x.dtype() != mx::float32 && x.dtype() != mx::float64) {
                     return InterpResult::Error("chlo.next_after only supports f32/f64");
                 }
+                x.eval();
+                y.eval();
+                std::vector<int64_t> xDims(x.shape().begin(), x.shape().end());
+                std::vector<int64_t> yDims(y.shape().begin(), y.shape().end());
+                std::vector<int64_t> xRaw(x.strides().begin(), x.strides().end());
+                std::vector<int64_t> yRaw(y.strides().begin(), y.strides().end());
+                auto xStrides = normalizeStridesToElements(
+                    xDims, xRaw, static_cast<int64_t>(x.data_size()),
+                    static_cast<size_t>(x.dtype().size()));
+                auto yStrides = normalizeStridesToElements(
+                    yDims, yRaw, static_cast<int64_t>(y.data_size()),
+                    static_cast<size_t>(y.dtype().size()));
+
+                auto apply = [&](const auto* xp, const auto* yp) -> mx::array {
+                    using T = std::decay_t<decltype(*xp)>;
+                    std::vector<T> xData(static_cast<size_t>(x.size()));
+                    std::vector<T> yData(static_cast<size_t>(y.size()));
+                    std::vector<T> out(static_cast<size_t>(x.size()));
+                    size_t xOff = 0;
+                    copyStridedToLinearBytes(reinterpret_cast<const uint8_t*>(xp),
+                                             reinterpret_cast<uint8_t*>(xData.data()),
+                                             xDims, xStrides, sizeof(T), 0, 0, xOff);
+                    size_t yOff = 0;
+                    copyStridedToLinearBytes(reinterpret_cast<const uint8_t*>(yp),
+                                             reinterpret_cast<uint8_t*>(yData.data()),
+                                             yDims, yStrides, sizeof(T), 0, 0, yOff);
+                    for (size_t i = 0; i < out.size(); ++i)
+                        out[i] = std::nextafter(xData[i], yData[i]);
+                    size_t nbytes = out.size() * sizeof(T);
+                    void* buf = std::malloc(nbytes > 0 ? nbytes : 1);
+                    if (nbytes > 0) std::memcpy(buf, out.data(), nbytes);
+                    return mx::array(buf, x.shape(), x.dtype(), [](void* p) { std::free(p); });
+                };
+
+                if (x.dtype() == mx::float32)
+                    set(0, apply(x.data<float>(), y.data<float>()));
+                else
+                    set(0, apply(x.data<double>(), y.data<double>()));
             }
         }
 
