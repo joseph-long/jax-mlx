@@ -149,6 +149,62 @@ static mlxc::array makeConstant(mlir::stablehlo::ConstantOp op) {
             std::memcpy(buf, rawData.data(), nbytes);
         }
     }
+
+    // For float types that contain non-finite values (NaN / inf), route through
+    // integer bit patterns + mlxc::view so that mlxc::compile() never embeds
+    // `nan` or `inf` as float literals in generated Metal kernels.  Metal
+    // doesn't define `nan` as an identifier, which causes compilation failures
+    // like "Unable to build metal library from source".  Integer literals are
+    // always valid in Metal.  We only pay the extra view overhead for constants
+    // that actually contain non-finite values.
+    //
+    // Use raw bytes (not getValues<T>()) so splat constants are O(1) to check
+    // (rawData only holds one element for splats) and dense constants are
+    // checked without MLIR value iterator overhead.
+    if (dtype == mlxc::float16 || dtype == mlxc::bfloat16 ||
+        dtype == mlxc::float32 || dtype == mlxc::float64) {
+        // rawData covers exactly one element for splats, all elements otherwise.
+        bool hasNonFinite = false;
+        const char* raw = rawData.data();
+        size_t nraw = rawData.size();  // bytes of one element (splat) or all
+        if (dtype == mlxc::float32) {
+            for (size_t i = 0; i + 4 <= nraw; i += 4) {
+                uint32_t bits;
+                std::memcpy(&bits, raw + i, 4);
+                if ((bits & 0x7F800000U) == 0x7F800000U) { hasNonFinite = true; break; }
+            }
+        } else if (dtype == mlxc::float64) {
+            for (size_t i = 0; i + 8 <= nraw; i += 8) {
+                uint64_t bits;
+                std::memcpy(&bits, raw + i, 8);
+                if ((bits & 0x7FF0000000000000ULL) == 0x7FF0000000000000ULL) {
+                    hasNonFinite = true; break;
+                }
+            }
+        } else {
+            // float16: exp mask 0x7C00; bfloat16: exp mask 0x7F80
+            uint16_t expMask = (dtype == mlxc::float16) ? 0x7C00U : 0x7F80U;
+            for (size_t i = 0; i + 2 <= nraw; i += 2) {
+                uint16_t bits;
+                std::memcpy(&bits, raw + i, 2);
+                if ((bits & expMask) == expMask) { hasNonFinite = true; break; }
+            }
+        }
+        if (hasNonFinite) {
+            mlxc::Dtype intType = (dtype == mlxc::float16 || dtype == mlxc::bfloat16)
+                ? mlxc::int16
+                : (dtype == mlxc::float32 ? mlxc::int32 : mlxc::int64);
+            // Build as integer (same bytes, no float literal in Metal), then
+            // reinterpret as float so NaN/inf bits are preserved.
+            auto intArr = mlxc::array(buf, shape, intType,
+                                      [](void* p) { std::free(p); });
+            int n1d = static_cast<int>(numElems > 0 ? numElems : 1);
+            auto flat = mlxc::reshape(intArr, {n1d});
+            auto floatFlat = mlxc::view(flat, dtype);
+            return mlxc::reshape(floatFlat, shape);
+        }
+    }
+
     return mlxc::array(buf, shape, dtype, [](void* p) { std::free(p); });
 }
 
