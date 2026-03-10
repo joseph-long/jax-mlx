@@ -1,4 +1,5 @@
 import os
+import math
 
 import jax
 import pytest
@@ -14,6 +15,15 @@ BENCH_AMORTIZED_ITERS = int(
 )
 if BENCH_AMORTIZED_ITERS < 1:
     raise ValueError("JAX_BENCH_ITERS must be >= 1")
+
+
+def _zeros_from_shape_dtype(struct):
+    return jax.tree.map(lambda x: jax.numpy.zeros(x.shape, x.dtype), struct)
+
+
+def _dynamic_rounds(benchmark: BenchmarkFixture, amortized_iters: int) -> int:
+    min_rounds = getattr(benchmark, "_min_rounds", 5)
+    return max(math.ceil(min_rounds / amortized_iters), 1)
 
 OPERATION_TEST_CONFIGS = list(make_benchmark_op_configs())
 GRAD_TEST_CONFIGS = []
@@ -65,12 +75,12 @@ def test_benchmark_value(
 
         @jax.jit
         def run_amortized():
-            init = run_once()
+            init = _zeros_from_shape_dtype(jax.eval_shape(run_once))
 
             def body(_i, _carry):
                 return run_once()
 
-            return jax.lax.fori_loop(1, amortized_iters, body, init)
+            return jax.lax.fori_loop(0, amortized_iters, body, init)
 
         def run():
             return run_amortized().block_until_ready()
@@ -82,12 +92,11 @@ def test_benchmark_value(
 
     benchmark.extra_info["amortized_iterations"] = amortized_iters
 
-    # Run once for jit-compile and once for safety.
-    run()
+    # One warmup pass to pay JIT compile cost before timing.
     run()
 
-    # Then benchmark.
-    benchmark(run)
+    rounds = _dynamic_rounds(benchmark, amortized_iters)
+    benchmark.pedantic(run, rounds=rounds, iterations=1)
 
 
 @pytest.mark.parametrize(
@@ -137,12 +146,12 @@ def test_benchmark_grad(
 
         @jax.jit
         def run_amortized():
-            init = run_once()
+            init = _zeros_from_shape_dtype(jax.eval_shape(run_once))
 
             def body(_i, _carry):
                 return run_once()
 
-            return jax.lax.fori_loop(1, amortized_iters, body, init)
+            return jax.lax.fori_loop(0, amortized_iters, body, init)
 
         def run():
             result = run_amortized()
@@ -158,9 +167,8 @@ def test_benchmark_grad(
 
     benchmark.extra_info["amortized_iterations"] = amortized_iters
 
-    # Run once for jit-compile and once for safety.
-    run()
+    # One warmup pass to pay JIT compile cost before timing.
     run()
 
-    # Then benchmark.
-    benchmark(run)
+    rounds = _dynamic_rounds(benchmark, amortized_iters)
+    benchmark.pedantic(run, rounds=rounds, iterations=1)
