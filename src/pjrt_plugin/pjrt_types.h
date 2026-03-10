@@ -76,7 +76,9 @@ struct PJRT_Executable {
     void initOutputMetadata() const {
         if (output_metadata_initialized)
             return;
-        size_t num_outputs = executable ? executable->num_outputs() : 1;
+        // Unknown executables must not assume one output: some internal JAX
+        // compilations are token/no-output and require zero-length metadata.
+        size_t num_outputs = executable ? executable->num_outputs() : 0;
         output_memory_kinds.resize(num_outputs, "device");
         output_memory_kind_sizes.resize(num_outputs, 6);  // strlen("device")
         output_types.resize(num_outputs, PJRT_Buffer_Type_F32);

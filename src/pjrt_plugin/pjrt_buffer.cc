@@ -4,6 +4,9 @@
 #include "pjrt_plugin/mlx_buffer.h"
 #include "pjrt_plugin/pjrt_types.h"
 
+#include <cstring>
+#include <vector>
+
 // ============================================================================
 // Buffer API
 // ============================================================================
@@ -115,6 +118,27 @@ PJRT_Error* MPS_Buffer_CopyToDevice(PJRT_Buffer_CopyToDevice_Args* args) {
     return nullptr;
 }
 
+PJRT_Error* MPS_Buffer_CopyToMemory(PJRT_Buffer_CopyToMemory_Args* args) {
+    if (!args || !args->buffer || !args->buffer->buffer) {
+        return MakeError("CopyToMemory: null source buffer",
+                         PJRT_Error_Code_INVALID_ARGUMENT);
+    }
+    if (!args->dst_memory || !args->dst_memory->device) {
+        return MakeError("CopyToMemory: null destination memory/device",
+                         PJRT_Error_Code_INVALID_ARGUMENT);
+    }
+
+    // Unified-memory architecture: memory-to-memory copy on the same device is
+    // equivalent to creating another buffer view/copy-on-write handle.
+    auto* src = args->buffer->buffer.get();
+    auto* dst = new PJRT_Buffer();
+    dst->buffer = std::make_unique<jax_mlx::MlxBuffer>(
+        src->device(), src->array(), src->dtype(), src->dimensions());
+    dst->client = args->buffer->client;
+    args->dst_buffer = dst;
+    return nullptr;
+}
+
 PJRT_Error* MPS_Buffer_ToHostBuffer(PJRT_Buffer_ToHostBuffer_Args* args) {
     if (args->src && args->src->buffer && args->dst) {
         args->src->buffer->ToHostBuffer(args->dst, nullptr);
@@ -124,6 +148,38 @@ PJRT_Error* MPS_Buffer_ToHostBuffer(PJRT_Buffer_ToHostBuffer_Args* args) {
     event->ready = true;
     args->event = event;
 
+    return nullptr;
+}
+
+PJRT_Error* MPS_Buffer_CopyRawToHost(PJRT_Buffer_CopyRawToHost_Args* args) {
+    if (!args || !args->buffer || !args->buffer->buffer || !args->dst) {
+        return MakeError("CopyRawToHost: invalid arguments",
+                         PJRT_Error_Code_INVALID_ARGUMENT);
+    }
+
+    size_t total = args->buffer->buffer->byte_size();
+    if (args->offset < 0 || args->transfer_size < 0) {
+        return MakeError("CopyRawToHost: negative offset or size",
+                         PJRT_Error_Code_INVALID_ARGUMENT);
+    }
+    size_t offset = static_cast<size_t>(args->offset);
+    size_t size = static_cast<size_t>(args->transfer_size);
+    if (offset + size > total) {
+        return MakeError("CopyRawToHost: requested range out of bounds",
+                         PJRT_Error_Code_INVALID_ARGUMENT);
+    }
+
+    if (offset == 0 && size == total) {
+        args->buffer->buffer->ToHostBuffer(args->dst, nullptr);
+    } else {
+        std::vector<uint8_t> tmp(total);
+        args->buffer->buffer->ToHostBuffer(tmp.data(), nullptr);
+        std::memcpy(args->dst, tmp.data() + offset, size);
+    }
+
+    auto* event = new PJRT_Event();
+    event->ready = true;
+    args->event = event;
     return nullptr;
 }
 

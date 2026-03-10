@@ -19,6 +19,11 @@ PJRT_Error* MPS_Memory_Kind(PJRT_Memory_Kind_Args* args) {
     return nullptr;
 }
 
+PJRT_Error* MPS_Memory_Kind_Id(PJRT_Memory_Kind_Id_Args* args) {
+    args->kind_id = 0;
+    return nullptr;
+}
+
 PJRT_Error* MPS_Memory_DebugString(PJRT_Memory_DebugString_Args* args) {
     static const char* str = "MPS Memory";
     args->debug_string = str;

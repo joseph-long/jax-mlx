@@ -113,6 +113,10 @@ PJRT_Error* MPS_Client_AddressableMemories(PJRT_Client_AddressableMemories_Args*
 PJRT_Error* MPS_Client_Compile(PJRT_Client_Compile_Args* args);
 PJRT_Error* MPS_Client_DefaultDeviceAssignment(PJRT_Client_DefaultDeviceAssignment_Args* args);
 PJRT_Error* MPS_Client_BufferFromHostBuffer(PJRT_Client_BufferFromHostBuffer_Args* args);
+PJRT_Error* MPS_Client_CreateViewOfDeviceBuffer(PJRT_Client_CreateViewOfDeviceBuffer_Args* args);
+PJRT_Error* MPS_Client_CreateUninitializedBuffer(
+    PJRT_Client_CreateUninitializedBuffer_Args* args);
+PJRT_Error* MPS_Client_CreateErrorBuffer(PJRT_Client_CreateErrorBuffer_Args* args);
 
 // Device Description API (pjrt_device.cc)
 PJRT_Error* MPS_DeviceDescription_Id(PJRT_DeviceDescription_Id_Args* args);
@@ -133,6 +137,7 @@ PJRT_Error* MPS_Device_MemoryStats(PJRT_Device_MemoryStats_Args* args);
 // Memory API (pjrt_memory.cc)
 PJRT_Error* MPS_Memory_Id(PJRT_Memory_Id_Args* args);
 PJRT_Error* MPS_Memory_Kind(PJRT_Memory_Kind_Args* args);
+PJRT_Error* MPS_Memory_Kind_Id(PJRT_Memory_Kind_Id_Args* args);
 PJRT_Error* MPS_Memory_DebugString(PJRT_Memory_DebugString_Args* args);
 PJRT_Error* MPS_Memory_ToString(PJRT_Memory_ToString_Args* args);
 PJRT_Error* MPS_Memory_AddressableByDevices(PJRT_Memory_AddressableByDevices_Args* args);
@@ -179,7 +184,9 @@ PJRT_Error* MPS_Buffer_Memory(PJRT_Buffer_Memory_Args* args);
 PJRT_Error* MPS_Buffer_Delete(PJRT_Buffer_Delete_Args* args);
 PJRT_Error* MPS_Buffer_IsDeleted(PJRT_Buffer_IsDeleted_Args* args);
 PJRT_Error* MPS_Buffer_CopyToDevice(PJRT_Buffer_CopyToDevice_Args* args);
+PJRT_Error* MPS_Buffer_CopyToMemory(PJRT_Buffer_CopyToMemory_Args* args);
 PJRT_Error* MPS_Buffer_ToHostBuffer(PJRT_Buffer_ToHostBuffer_Args* args);
+PJRT_Error* MPS_Buffer_CopyRawToHost(PJRT_Buffer_CopyRawToHost_Args* args);
 PJRT_Error* MPS_Buffer_IsOnCpu(PJRT_Buffer_IsOnCpu_Args* args);
 PJRT_Error* MPS_Buffer_ReadyEvent(PJRT_Buffer_ReadyEvent_Args* args);
 PJRT_Error* MPS_Buffer_UnsafePointer(PJRT_Buffer_UnsafePointer_Args* args);
@@ -334,15 +341,15 @@ static const PJRT_Api pjrt_api = {
     // Output type/dimension information
     .PJRT_Executable_OutputElementTypes = MPS_Executable_OutputElementTypes,
     .PJRT_Executable_OutputDimensions = MPS_Executable_OutputDimensions,
-    .PJRT_Buffer_CopyToMemory = nullptr,
-    .PJRT_Client_CreateViewOfDeviceBuffer = nullptr,
+    .PJRT_Buffer_CopyToMemory = MPS_Buffer_CopyToMemory,
+    .PJRT_Client_CreateViewOfDeviceBuffer = MPS_Client_CreateViewOfDeviceBuffer,
     .PJRT_Executable_Fingerprint = MPS_Executable_Fingerprint,
     .PJRT_Client_TopologyDescription = MPS_Client_TopologyDescription,
     .PJRT_Executable_GetCompiledMemoryStats = nullptr,
-    .PJRT_Memory_Kind_Id = nullptr,
+    .PJRT_Memory_Kind_Id = MPS_Memory_Kind_Id,
     .PJRT_ExecuteContext_Create = nullptr,
     .PJRT_ExecuteContext_Destroy = nullptr,
-    .PJRT_Buffer_CopyRawToHost = nullptr,
+    .PJRT_Buffer_CopyRawToHost = MPS_Buffer_CopyRawToHost,
     .PJRT_AsyncHostToDeviceTransferManager_Destroy = nullptr,
     .PJRT_AsyncHostToDeviceTransferManager_TransferData = nullptr,
     .PJRT_Client_CreateBuffersForAsyncHostToDevice = nullptr,
@@ -354,13 +361,13 @@ static const PJRT_Api pjrt_api = {
     .PJRT_AsyncHostToDeviceTransferManager_AddMetadata = nullptr,
     .PJRT_Client_DmaMap = nullptr,
     .PJRT_Client_DmaUnmap = nullptr,
-    .PJRT_Client_CreateUninitializedBuffer = nullptr,
+    .PJRT_Client_CreateUninitializedBuffer = MPS_Client_CreateUninitializedBuffer,
     .PJRT_Client_UpdateGlobalProcessInfo = nullptr,
     .PJRT_TopologyDescription_Deserialize = nullptr,
     .PJRT_Client_CreateAliasBuffer = nullptr,
     .PJRT_Client_FulfillAliasBuffer = nullptr,
     .PJRT_LoadedExecutable_GetDeviceAssignment = MPS_LoadedExecutable_GetDeviceAssignment,
-    .PJRT_Client_CreateErrorBuffer = nullptr,
+    .PJRT_Client_CreateErrorBuffer = MPS_Client_CreateErrorBuffer,
     .PJRT_AsyncHostToDeviceTransferManager_TransferLiteral = nullptr,
     .PJRT_Buffer_CopyRawToHostFuture = nullptr,
     .PJRT_Device_PoisonExecution = nullptr,

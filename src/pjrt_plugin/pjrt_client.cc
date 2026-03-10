@@ -293,6 +293,26 @@ PJRT_Error* MPS_Client_BufferFromHostBuffer(PJRT_Client_BufferFromHostBuffer_Arg
     return nullptr;
 }
 
+PJRT_Error* MPS_Client_CreateViewOfDeviceBuffer(PJRT_Client_CreateViewOfDeviceBuffer_Args* args) {
+    // Keep this as an explicit runtime error rather than a null API callback so
+    // callers fail gracefully instead of segfaulting.
+    if (args) args->buffer = nullptr;
+    return MakeError("CreateViewOfDeviceBuffer not implemented",
+                     PJRT_Error_Code_UNIMPLEMENTED);
+}
+
+PJRT_Error* MPS_Client_CreateUninitializedBuffer(PJRT_Client_CreateUninitializedBuffer_Args* args) {
+    if (args) args->buffer = nullptr;
+    return MakeError("CreateUninitializedBuffer not implemented",
+                     PJRT_Error_Code_UNIMPLEMENTED);
+}
+
+PJRT_Error* MPS_Client_CreateErrorBuffer(PJRT_Client_CreateErrorBuffer_Args* args) {
+    if (args) args->buffer = nullptr;
+    return MakeError("CreateErrorBuffer not implemented",
+                     PJRT_Error_Code_UNIMPLEMENTED);
+}
+
 // ============================================================================
 // Compile API
 // ============================================================================
