@@ -133,7 +133,7 @@ JAX_TEST_FILES="tests/lax_numpy_test.py" bash scripts/jax_tests.sh -q --tb=no
 NO_PULL=1 bash scripts/jax_tests.sh -q --tb=no
 ```
 
-The script automatically sets `JAX_PLATFORMS=mlx` and uses the freshest built
+The script automatically sets `JAX_PLATFORMS=mlx,cpu` and uses the freshest built
 dylib.  See `AGENTS.md` for the current pass-rate breakdown and top failure
 categories.
 
