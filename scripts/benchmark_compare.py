@@ -148,6 +148,48 @@ def compare(
               + (" ..." if len(only_base) > 3 else ""))
     print()
 
+    # Report MLX speedup vs CPU for matching benchmarks in the same new run.
+    pair_rows = []
+    for name, mlx_stats in sorted(new_data.items()):
+        if "[mlx-benchmark." not in name:
+            continue
+        cpu_name = name.replace("[mlx-benchmark.", "[cpu-benchmark.")
+        cpu_stats = new_data.get(cpu_name)
+        if cpu_stats is None:
+            continue
+        mlx_mean = mlx_stats["mean"]
+        cpu_mean = cpu_stats["mean"]
+        if mlx_mean <= 0 or cpu_mean <= 0:
+            continue
+        speedup = cpu_mean / mlx_mean
+        pair_rows.append(
+            {
+                "name": name,
+                "mlx_mean": mlx_mean,
+                "cpu_mean": cpu_mean,
+                "speedup": speedup,
+            }
+        )
+
+    if pair_rows:
+        pair_rows.sort(key=lambda e: e["speedup"], reverse=True)
+        print(f"{'─' * 72}")
+        print(
+            "  MLX VS CPU (same run; speedup = CPU mean / MLX mean)"
+            f" ({len(pair_rows)} benchmarks)"
+        )
+        print(f"{'─' * 72}")
+        for e in pair_rows:
+            if e["speedup"] >= 1:
+                tag = f"{e['speedup']:.2f}x faster"
+            else:
+                tag = f"{(1.0 / e['speedup']):.2f}x slower"
+            print(f"  {e['name']}")
+            print(
+                f"    {tag:18s}  MLX {human_time(e['mlx_mean'])}  |  CPU {human_time(e['cpu_mean'])}"
+            )
+        print()
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
