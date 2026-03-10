@@ -97,21 +97,45 @@ Apple Silicon
 
 ### Current Upstream Failure Profile (`tests/lax_control_flow_test.py`)
 
-Latest run (`.benchmarks/jax_tests_2026-03-10T07-27-04_2de5b8b07`):
-- `484 passed / 122 failed / 483 skipped`
+Latest run (`.benchmarks/jax_tests_2026-03-10T09-25-40_2de5b8b07`):
+- `487 passed / 119 failed / 483 skipped`
 - Previous runs:
   - `.benchmarks/jax_tests_2026-03-10T07-27-04_2de5b8b07`: `483 / 123 / 483`
   - Baseline before these fixes: `481 / 125 / 483`
-- Net progress: 3 failures removed (all_reduce category eliminated; cpu-backend harness issue fixed)
+- Net progress: 6 failures removed (all_reduce category eliminated; cpu-backend harness issue fixed; associative-scan solving regressions fixed)
 
 Remaining high-impact categories:
-1. `stablehlo.gather` associative-scan forms
-   - Failing selectors: `testAssociativeScanSolvingRegressionTest_{2,43,100}`
-   - Root cause: unsupported gather index-map pattern in `HandleGather`.
+1. `stablehlo.gather` / `stablehlo.scatter` generalization (remaining forms)
+   - `testAssociativeScanSolvingRegressionTest_{2,43,100}` is now fixed.
+   - Remaining gather/scatter work is broader indexing/scan combinations, not this specific regression.
 2. Large scan numerics/assertion cluster (`impl=unroll0` dominant)
    - Root cause still unresolved; likely semantic mismatch in control-flow/indexing path used by scan lowering.
 3. Broad scan/associative-scan assertion mismatches (`impl=unroll0`, many vmap combinations)
    - Requires deeper semantic debugging in control-flow/indexing lowering paths beyond backend/harness fixes.
+
+### Notes From Current Iteration (March 10, 2026)
+
+Tried and observed:
+1. Added scalar index-vector gather handling for:
+   - `operand_rank=3`
+   - `start_indices_rank=1`
+   - `index_vector_dim=0`
+   - `start_index_map=[1,2]`
+   - `collapsed_slice_dims=[]`
+   - `slice_sizes=[1,2,1]`
+   - Result: gather no longer fails in associative-scan solve path.
+2. Added batched gather rank normalization for one-axis gathers:
+   - allow `indices.ndim == operand.ndim() - 1` by appending a trailing singleton dim
+   - validate/broadcast non-axis dims before `take_along_axis`
+3. Added rank-3 axis-scatter fallback:
+   - normalize axis to a common layout
+   - apply per-slice 2D `scatter_add_axis` / `put_along_axis`
+   - transpose back
+   - Result: `testAssociativeScanSolvingRegressionTest_{2,43,100}` now passes.
+
+Conclusion from iteration:
+- This path confirms the correctness-first strategy works: add narrow fast paths where possible, then normalize shape/layout before MLX primitive calls.
+- Next attempt should continue generalizing gather/scatter through explicit normalization/fallbacks for the remaining associative-scan unstructured and scan-vmap assertion clusters.
 
 ### 1. Performance: `mlx::core::compile()` — Incremental Refactor Plan
 

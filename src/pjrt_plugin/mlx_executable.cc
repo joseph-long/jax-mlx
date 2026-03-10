@@ -561,8 +561,24 @@ static mlxc::array HandleGather(mlxc::array operand, mlxc::array startIndices,
             }
 
             if (indices.ndim() != operand.ndim()) {
-                throw std::invalid_argument("batched gather indices rank mismatch");
+                if (indices.ndim() == operand.ndim() - 1) {
+                    indices =
+                        mlxc::expand_dims(indices, {static_cast<int>(indices.ndim())});
+                } else {
+                    throw std::invalid_argument("batched gather indices rank mismatch");
+                }
             }
+            mlxc::Shape targetShape(operand.shape().begin(), operand.shape().end());
+            targetShape[static_cast<size_t>(axis)] = indices.shape()[axis];
+            for (int d = 0; d < operand.ndim(); ++d) {
+                if (d == axis) continue;
+                int idxDim = indices.shape()[d];
+                int want = targetShape[static_cast<size_t>(d)];
+                if (idxDim != want && idxDim != 1) {
+                    throw std::invalid_argument("batched gather indices shape mismatch");
+                }
+            }
+            indices = mlxc::broadcast_to(indices, targetShape);
             return mlxc::take_along_axis(operand, indices, axis);
         }
 
@@ -627,7 +643,56 @@ static mlxc::array HandleGather(mlxc::array operand, mlxc::array startIndices,
         }
     }
 
-    throw std::invalid_argument("unsupported gather pattern");
+    // Scalar index-vector gather (no batching, no collapsed dims): clamped
+    // dynamic-slice with static slice_sizes.
+    if (operandBatchingDims.empty() && startIndicesBatchingDims.empty() &&
+        collapsedSliceDims.empty() && startIndices.ndim() == 1 &&
+        indexVectorDim == 0 &&
+        static_cast<size_t>(startIndices.shape()[0]) == startIndexMap.size()) {
+        int rank = operand.ndim();
+        mlxc::Shape starts(static_cast<size_t>(rank), 0);
+        mlxc::Shape stops(static_cast<size_t>(rank), 0);
+        mlxc::Shape strides(static_cast<size_t>(rank), 1);
+        for (int d = 0; d < rank; ++d) {
+            stops[static_cast<size_t>(d)] =
+                static_cast<int>(sliceSizes[static_cast<size_t>(d)]);
+        }
+        auto idx64 = mlxc::astype(startIndices, mlxc::int64);
+        for (size_t k = 0; k < startIndexMap.size(); ++k) {
+            int axis = static_cast<int>(startIndexMap[k]);
+            int64_t rawStart = mlxc::take(idx64, static_cast<int>(k), 0).item<int64_t>();
+            int64_t maxStart =
+                static_cast<int64_t>(operand.shape()[axis]) -
+                static_cast<int64_t>(sliceSizes[static_cast<size_t>(axis)]);
+            if (maxStart < 0) maxStart = 0;
+            int64_t clampedStart = std::clamp<int64_t>(rawStart, 0, maxStart);
+            starts[static_cast<size_t>(axis)] = static_cast<int>(clampedStart);
+            stops[static_cast<size_t>(axis)] =
+                static_cast<int>(clampedStart + sliceSizes[static_cast<size_t>(axis)]);
+        }
+        return mlxc::slice(operand, starts, stops, strides);
+    }
+
+    auto vecToString = [](auto vals) {
+        std::string s = "[";
+        bool first = true;
+        for (auto v : vals) {
+            if (!first) s += ",";
+            first = false;
+            s += std::to_string(static_cast<int64_t>(v));
+        }
+        s += "]";
+        return s;
+    };
+    throw std::invalid_argument(
+        "unsupported gather pattern: operand_rank=" + std::to_string(operand.ndim()) +
+        " start_indices_rank=" + std::to_string(startIndices.ndim()) +
+        " index_vector_dim=" + std::to_string(indexVectorDim) +
+        " start_index_map=" + vecToString(startIndexMap) +
+        " collapsed_slice_dims=" + vecToString(collapsedSliceDims) +
+        " operand_batching_dims=" + vecToString(operandBatchingDims) +
+        " start_indices_batching_dims=" + vecToString(startIndicesBatchingDims) +
+        " slice_sizes=" + vecToString(sliceSizes));
 }
 
 static mlxc::array HandlePadWithInterior(mlxc::array input,
@@ -683,6 +748,15 @@ static mlxc::array HandlePadWithInterior(mlxc::array input,
 
 static mlxc::array HandleScatter(mlxc::array operand, mlxc::array scatterIndices, mlxc::array updates,
                                mlir::stablehlo::ScatterOp scatterOp) {
+    auto shapeToString = [](const mlxc::Shape& shape) {
+        std::string s = "[";
+        for (size_t i = 0; i < shape.size(); ++i) {
+            if (i) s += ",";
+            s += std::to_string(shape[i]);
+        }
+        s += "]";
+        return s;
+    };
     // MLX Metal atomic operations don't support complex types; reject early to
     // avoid a Metal shader compilation failure that would crash the background thread.
     if (operand.dtype().val() == mlxc::Dtype::Val::complex64) {
@@ -759,11 +833,66 @@ static mlxc::array HandleScatter(mlxc::array operand, mlxc::array scatterIndices
         insertedWindowDims[0] == scatterDimsToOperandDims[0] && idx.shape().back() == 1) {
         int axis = static_cast<int>(scatterDimsToOperandDims[0]);
         auto idxAxis = mlxc::squeeze(idx, {static_cast<int>(idx.ndim() - 1)});
-        if (updates.ndim() == idxAxis.ndim()) {
-            if (scatterFn == "stablehlo.add") {
-                return mlxc::scatter_add_axis(operand, idxAxis, updates, axis);
+        if (operand.ndim() == 3 && idxAxis.ndim() == 2 && updates.ndim() == 3) {
+            auto opNorm = operand;
+            auto updNorm = updates;
+            auto idxNorm = idxAxis;
+            int normAxis = axis;
+            if (axis == 0) {
+                opNorm = mlxc::transpose(opNorm, {1, 0, 2});
+                updNorm = mlxc::transpose(updNorm, {1, 0, 2});
+                idxNorm = mlxc::transpose(idxNorm, {1, 0});
+                normAxis = 1;
+            } else if (axis == 2) {
+                opNorm = mlxc::transpose(opNorm, {0, 2, 1});
+                updNorm = mlxc::transpose(updNorm, {0, 2, 1});
+                normAxis = 1;
             }
-            return mlxc::put_along_axis(operand, idxAxis, updates, axis);
+
+            try {
+                int trailing = updNorm.shape()[2];
+                std::vector<mlxc::array> slices;
+                slices.reserve(static_cast<size_t>(trailing));
+                for (int t = 0; t < trailing; ++t) {
+                    auto opSlice = mlxc::take(opNorm, t, 2);
+                    auto updSlice = mlxc::take(updNorm, t, 2);
+                    if (scatterFn == "stablehlo.add") {
+                        slices.push_back(
+                            mlxc::scatter_add_axis(opSlice, idxNorm, updSlice, normAxis));
+                    } else {
+                        slices.push_back(
+                            mlxc::put_along_axis(opSlice, idxNorm, updSlice, normAxis));
+                    }
+                }
+                auto outNorm = mlxc::stack(slices, 2);
+                if (axis == 0) return mlxc::transpose(outNorm, {1, 0, 2});
+                if (axis == 2) return mlxc::transpose(outNorm, {0, 2, 1});
+                return outNorm;
+            } catch (const std::exception& ex) {
+                throw std::invalid_argument(
+                    std::string("rank3 axis scatter fallback failed: fn=") + scatterFn +
+                    " axis=" + std::to_string(axis) +
+                    " operand=" + shapeToString(operand.shape()) +
+                    " idx=" + shapeToString(idxAxis.shape()) +
+                    " updates=" + shapeToString(updates.shape()) +
+                    " err=" + ex.what());
+            }
+        }
+        if (updates.ndim() == idxAxis.ndim()) {
+            try {
+                if (scatterFn == "stablehlo.add") {
+                    return mlxc::scatter_add_axis(operand, idxAxis, updates, axis);
+                }
+                return mlxc::put_along_axis(operand, idxAxis, updates, axis);
+            } catch (const std::exception& ex) {
+                throw std::invalid_argument(
+                    std::string("axis scatter failed: fn=") + scatterFn +
+                    " axis=" + std::to_string(axis) +
+                    " operand=" + shapeToString(operand.shape()) +
+                    " idx=" + shapeToString(idxAxis.shape()) +
+                    " updates=" + shapeToString(updates.shape()) +
+                    " err=" + ex.what());
+            }
         }
     }
 
