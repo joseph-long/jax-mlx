@@ -156,8 +156,8 @@ Verification from this iteration:
   - Conclusion: launch-overhead amortization and larger shapes help, but dense matmul still needs deeper kernel/dispatch investigation.
  - Root-cause + fix for benchmark amortization distortion:
    - Root cause: amortization used a jitted `fori_loop` wrapper over closed-over constants; XLA could optimize/rewrite this path in ways that produced unrealistically small per-iteration timings.
-   - Fix: switched amortization in `tests/test_benchmark.py` to a Python-level repeat loop over the already-jitted op/grad function, with a single terminal `block_until_ready()`.
-   - Validation: same focused suite compared at `JAX_BENCH_ITERS=16` vs `JAX_BENCH_ITERS=1` reports `6 unchanged` after per-iteration normalization (`scripts/benchmark_compare.py --include-cpu`), confirming normalization parity across amortization settings.
+   - Follow-up fix: switched value-path amortization to `lax.scan` over per-step input variants (so each step contributes a distinct output fingerprint), and switched grad-path amortization to per-step varied-input execution to avoid degenerate repeated-call collapse for some grads.
+   - Validation: focused `JAX_BENCH_ITERS=16` vs `JAX_BENCH_ITERS=1` comparisons preserve expected MLX/CPU ordering on large kernels (matmul/conv). There is still variance for lightweight softmax at single-round settings, so further tuning of rounds/inputs may be needed for tighter parity.
    - Updated focused same-run speedups after fix:
      - `matmul_1000`: MLX ~`4.22x` faster than CPU (per-iter ~`57.8 ms` vs `244.1 ms`)
      - `conv2d_128ch`: MLX ~`3.33x` faster (per-iter ~`1.5 ms` vs `5.1 ms`)
