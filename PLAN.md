@@ -87,6 +87,9 @@ Apple Silicon
   this unblocked `lax_control_flow` grad/checkpoint tests that return no values.
 - [x] Implemented `stablehlo.all_reduce` for single-device MLX semantics (identity over one
   replica), clearing prior `Unsupported operation(s): stablehlo.all_reduce` failures.
+- [x] Updated upstream harness (`scripts/jax_tests.sh`) to use `JAX_PLATFORM_NAME=mlx`
+  instead of `JAX_PLATFORMS=mlx`, so MLX remains the default backend while explicit
+  `backend='cpu'` requests inside upstream tests continue to work.
 
 ---
 
@@ -95,9 +98,11 @@ Apple Silicon
 ### Current Upstream Failure Profile (`tests/lax_control_flow_test.py`)
 
 Latest run (`.benchmarks/jax_tests_2026-03-10T07-27-04_2de5b8b07`):
-- `483 passed / 123 failed / 483 skipped`
-- Previously: `481 passed / 125 failed / 483 skipped`
-- Net progress: 2 failures removed (`all_reduce` category eliminated)
+- `484 passed / 122 failed / 483 skipped`
+- Previous runs:
+  - `.benchmarks/jax_tests_2026-03-10T07-27-04_2de5b8b07`: `483 / 123 / 483`
+  - Baseline before these fixes: `481 / 125 / 483`
+- Net progress: 3 failures removed (all_reduce category eliminated; cpu-backend harness issue fixed)
 
 Remaining high-impact categories:
 1. `stablehlo.gather` associative-scan forms
@@ -105,9 +110,8 @@ Remaining high-impact categories:
    - Root cause: unsupported gather index-map pattern in `HandleGather`.
 2. Large scan numerics/assertion cluster (`impl=unroll0` dominant)
    - Root cause still unresolved; likely semantic mismatch in control-flow/indexing path used by scan lowering.
-3. `Unknown backend cpu` in `testForiLoopIssue8152`
-   - Test harness currently exports `JAX_PLATFORMS=mlx`, which hides CPU backend.
-   - Need to switch to a default-mlx setting that still allows explicit `backend="cpu"` tests.
+3. Broad scan/associative-scan assertion mismatches (`impl=unroll0`, many vmap combinations)
+   - Requires deeper semantic debugging in control-flow/indexing lowering paths beyond backend/harness fixes.
 
 ### 1. Performance: `mlx::core::compile()` — Incremental Refactor Plan
 

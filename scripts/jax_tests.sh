@@ -86,7 +86,7 @@ for test_file in "${TEST_FILES_ARR[@]}"; do
   echo "=== pytest $test_file ===" >&2
   set +e
   env \
-    JAX_PLATFORMS=mlx \
+    JAX_PLATFORM_NAME=mlx \
     JAX_MLX_LIBRARY_PATH="$LATEST_DYLIB" \
     COLUMNS=200 \
     uv run --project "$REPO_ROOT" python -m pytest \
