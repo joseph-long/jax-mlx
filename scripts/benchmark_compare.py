@@ -8,7 +8,7 @@ Usage:
     # Compare two specific files:
     uv run scripts/benchmark_compare.py path/to/new.json path/to/baseline.json
 
-    # Set the significance threshold (default: 1.0 std-dev of baseline):
+    # Set the significance threshold (default: 2.0 std-dev of baseline):
     uv run scripts/benchmark_compare.py new.json --threshold 1.5
 
 Output: benchmarks that changed by more than `threshold` standard deviations of the
@@ -67,18 +67,30 @@ def human_time(seconds: float) -> str:
     return f"{seconds:.3f} s"
 
 
-def compare(new_path: Path, baseline_path: Path, threshold: float) -> None:
+def compare(
+    new_path: Path, baseline_path: Path, threshold: float, include_cpu: bool
+) -> None:
     new_data = load(new_path)
     base_data = load(baseline_path)
 
     print(f"New:      {new_path.name}")
     print(f"Baseline: {baseline_path.name}")
     print(f"Threshold: {threshold:.1f}σ of baseline")
+    if not include_cpu:
+        print("Filter:   excluding CPU benchmark entries")
     print()
 
     common = sorted(set(new_data) & set(base_data))
     only_new = sorted(set(new_data) - set(base_data))
     only_base = sorted(set(base_data) - set(new_data))
+
+    if not include_cpu:
+        def is_cpu_name(name: str) -> bool:
+            return "[cpu-benchmark." in name
+
+        common = [name for name in common if not is_cpu_name(name)]
+        only_new = [name for name in only_new if not is_cpu_name(name)]
+        only_base = [name for name in only_base if not is_cpu_name(name)]
 
     faster = []
     slower = []
@@ -170,8 +182,13 @@ def main() -> None:
     parser.add_argument(
         "--threshold",
         type=float,
-        default=1.0,
-        help="Minimum change in baseline σ units to report (default: 1.0)",
+        default=2.0,
+        help="Minimum change in baseline σ units to report (default: 2.0)",
+    )
+    parser.add_argument(
+        "--include-cpu",
+        action="store_true",
+        help="Include CPU benchmark entries in comparison output",
     )
     args = parser.parse_args()
 
@@ -204,7 +221,7 @@ def main() -> None:
     else:
         baseline_path = args.baseline
 
-    compare(new_path, baseline_path, args.threshold)
+    compare(new_path, baseline_path, args.threshold, include_cpu=args.include_cpu)
 
 
 if __name__ == "__main__":
