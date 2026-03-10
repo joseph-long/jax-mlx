@@ -2437,7 +2437,6 @@ MlxExecutable::MlxExecutable(MlxClient* client, mps::ParsedModule module)
 
     auto func_type = module.entry_func.getFunctionType();
     num_outputs_ = static_cast<int>(func_type.getNumResults());
-    if (num_outputs_ == 0) num_outputs_ = 1;
 
     context_ = std::move(module.context);
     module_ = std::move(module.module);
