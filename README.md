@@ -152,6 +152,19 @@ LATEST_DYLIB="$(ls -t build/*/lib/libpjrt_plugin_mlx.dylib | head -n 1)"
 JAX_MLX_LIBRARY_PATH="$LATEST_DYLIB" uv run pytest -m benchmark --benchmark-only
 ```
 
+To amortize per-call overhead during benchmark timing, set `JAX_BENCH_ITERS`
+(default: `16`). This repeats each benchmarked operation `N` times per timed
+call on both CPU and MLX:
+
+```bash
+# Example: use 8 amortized iterations per timed benchmark call
+JAX_BENCH_ITERS=8 bash scripts/benchmark.sh
+```
+
+Benchmark comparison normalizes results back to per-iteration units using the
+recorded amortization factor, so files with the same `JAX_BENCH_ITERS` setting
+remain directly comparable.
+
 ### Comparing before/after a change
 
 ```bash
@@ -162,9 +175,11 @@ git stash pop       # apply your change
 uv pip install -e . # rebuild
 bash scripts/benchmark.sh                        # saves a new result
 
-# Compare the two (auto-selects most recent vs previous clean baseline):
+# Compare the two (auto-selects most recent vs oldest clean baseline):
 uv run scripts/benchmark_compare.py
 ```
 
-The comparison reports benchmarks that changed by more than 1 standard deviation of
-the baseline mean. Pass `--threshold 2.0` for a stricter filter.
+By default, comparison:
+- excludes CPU benchmark entries from baseline delta reporting,
+- uses a `2σ` significance threshold,
+- and includes a final section showing MLX-vs-CPU speedup from the same run.

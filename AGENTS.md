@@ -65,6 +65,17 @@ bash scripts/benchmark.sh
 # Saves to .benchmarks/<ISO8601>_<githash>[_dirty].json
 ```
 
+You can amortize per-call timing overhead by setting `JAX_BENCH_ITERS`
+(default: `16`). This applies to both CPU and MLX benchmark timings:
+
+```bash
+JAX_BENCH_ITERS=8 bash scripts/benchmark.sh
+```
+
+The benchmark JSON records the amortization factor, and
+`scripts/benchmark_compare.py` normalizes timings back to per-iteration units
+before reporting deltas.
+
 Files with `_dirty` in the name were produced from an uncommitted working tree and
 should not be used as baselines. Commit your changes before benchmarking to get a
 clean baseline.
@@ -80,7 +91,7 @@ uv run scripts/benchmark_compare.py
 # Or name files explicitly:
 uv run scripts/benchmark_compare.py .benchmarks/new.json .benchmarks/old.json
 
-# Adjust significance threshold (default 1σ):
+# Adjust significance threshold (default 2σ):
 uv run scripts/benchmark_compare.py .benchmarks/new.json --threshold 2.0
 ```
 
@@ -88,6 +99,10 @@ The comparison reports which benchmarks changed by more than `threshold` standar
 deviations of the baseline mean. A performance refactor is only confirmed to be
 beneficial if benchmarks it was designed to improve show up in the FASTER column.
 Anything in SLOWER is a regression and must be investigated.
+
+By default, comparison excludes CPU entries from baseline-delta reporting and
+adds a final MLX-vs-CPU speedup section computed from matching benchmarks in
+the same run.
 
 ## Running benchmarks directly (without saving)
 
