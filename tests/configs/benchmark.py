@@ -1,3 +1,4 @@
+import os
 from typing import Generator
 
 import jax
@@ -8,10 +9,29 @@ from .util import OperationTestConfig
 
 
 def make_benchmark_op_configs() -> Generator[OperationTestConfig]:
+    profile = os.environ.get("JAX_BENCH_PROFILE", "default").lower()
+    if profile not in {"default", "throughput"}:
+        raise ValueError(
+            f"Invalid JAX_BENCH_PROFILE={profile!r}; expected 'default' or 'throughput'."
+        )
+
+    if profile == "throughput":
+        element_scales = [100, 1000, 2000]
+        matmul_scales = [100, 1000, 2000]
+        batched_sizes = [32, 128, 256]
+        conv_channels = [64, 128, 256]
+        layernorm_hidden = [512, 1024, 2048]
+    else:
+        element_scales = [1, 10, 100, 1000]
+        matmul_scales = [1, 10, 100, 1000]
+        batched_sizes = [8, 32, 128]
+        conv_channels = [32, 64, 128]
+        layernorm_hidden = [256, 512, 1024]
+
     with OperationTestConfig.module_name("benchmark"):
         # Elementwise ops: use 1D arrays to avoid quadratic memory growth.
         # scale -> total elements: 1->10K, 10->100K, 100->1M, 1000->10M
-        for scale in [1, 10, 100, 1000]:
+        for scale in element_scales:
             n = scale * 10_000  # Total element count
 
             # Unary elementwise (dispatch overhead + compute).
@@ -46,7 +66,7 @@ def make_benchmark_op_configs() -> Generator[OperationTestConfig]:
 
         # Matmul: scale controls matrix dimensions.
         # scale -> shape: 1->(4,5)@(5,3), 10->(40,50)@(50,30), etc.
-        for scale in [1, 10, 100, 1000]:
+        for scale in matmul_scales:
             yield OperationTestConfig(
                 jnp.matmul,
                 lambda key, s=scale: random.normal(key, (s * 4, s * 5)),
@@ -55,7 +75,7 @@ def make_benchmark_op_configs() -> Generator[OperationTestConfig]:
             )
 
         # Batched matmul (transformer-style).
-        for batch in [8, 32, 128]:
+        for batch in batched_sizes:
             yield OperationTestConfig(
                 jnp.matmul,
                 lambda key, b=batch: random.normal(key, (b, 64, 64)),
@@ -65,7 +85,7 @@ def make_benchmark_op_configs() -> Generator[OperationTestConfig]:
 
         # Conv2D: vision model workloads.
         # Shape: (batch, height, width, channels) with NHWC layout.
-        for channels in [32, 64, 128]:
+        for channels in conv_channels:
             yield OperationTestConfig(
                 lambda x, w: jax.lax.conv_general_dilated(
                     x,
@@ -85,7 +105,7 @@ def make_benchmark_op_configs() -> Generator[OperationTestConfig]:
             var = jnp.var(x, axis=-1, keepdims=True)
             return (x - mean) / jnp.sqrt(var + 1e-5)
 
-        for hidden in [256, 512, 1024]:
+        for hidden in layernorm_hidden:
             yield OperationTestConfig(
                 layer_norm,
                 lambda key, h=hidden: random.normal(key, (32, 128, h)),

@@ -41,7 +41,7 @@ uv run pytest \
 
 # Strip the per-round raw sample arrays (stats.data) to keep file size small.
 # The comparison script only needs min/mean/stddev/rounds; raw data can be GBs.
-python3 - "$OUTFILE" <<'PYEOF'
+uv run python - "$OUTFILE" <<'PYEOF'
 import json, sys
 path = sys.argv[1]
 with open(path) as f:

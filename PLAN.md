@@ -147,6 +147,13 @@ Verification from this iteration:
 - Focused selector: `.benchmarks/jax_tests_2026-03-10T10-59-08_2de5b8b07` → `3 passed / 0 failed / 0 skipped`
 - Full control-flow: `.benchmarks/jax_tests_2026-03-10T10-59-17_2de5b8b07` → `540 passed / 66 failed / 483 skipped`
 - In-tree regression: `uv run pytest -q` → `1442 passed / 224 skipped / 144 deselected`
+- Throughput benchmark probe (`JAX_BENCH_PROFILE=throughput`, `JAX_BENCH_ITERS=16`, focused value subset):
+  - `test_benchmark_value[mlx-benchmark.conv2d_128ch]`: ~`1.28x` faster than CPU
+  - `test_benchmark_value[mlx-benchmark.softmax_2000]`: ~`1.12x` faster than CPU
+  - `test_benchmark_value[mlx-benchmark.matmul_1000]`: near parity (`~1.01x` faster)
+  - `test_benchmark_value[mlx-benchmark.layernorm_2048]`: slight regression (`~1.03x` slower)
+  - `test_benchmark_value[mlx-benchmark.matmul_2000]`: MLX slower (`~1.12x`)
+  - Conclusion: launch-overhead amortization and larger shapes help, but dense matmul still needs deeper kernel/dispatch investigation.
 
 Conclusion from iteration:
 - Unsupported-op failures in the associative-scan solving regressions are resolved again in the full control-flow run.

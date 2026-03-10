@@ -15,6 +15,11 @@ BENCH_AMORTIZED_ITERS = int(
 )
 if BENCH_AMORTIZED_ITERS < 1:
     raise ValueError("JAX_BENCH_ITERS must be >= 1")
+BENCH_PROFILE = os.environ.get("JAX_BENCH_PROFILE", "default").lower()
+if BENCH_PROFILE not in {"default", "throughput"}:
+    raise ValueError(
+        f"Invalid JAX_BENCH_PROFILE={BENCH_PROFILE!r}; expected 'default' or 'throughput'."
+    )
 
 
 def _zeros_from_shape_dtype(struct):
@@ -91,6 +96,7 @@ def test_benchmark_value(
             return run_once().block_until_ready()
 
     benchmark.extra_info["amortized_iterations"] = amortized_iters
+    benchmark.extra_info["profile"] = BENCH_PROFILE
 
     # One warmup pass to pay JIT compile cost before timing.
     run()
@@ -166,6 +172,7 @@ def test_benchmark_grad(
             return result
 
     benchmark.extra_info["amortized_iterations"] = amortized_iters
+    benchmark.extra_info["profile"] = BENCH_PROFILE
 
     # One warmup pass to pay JIT compile cost before timing.
     run()

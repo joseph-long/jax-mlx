@@ -161,6 +161,14 @@ call on both CPU and MLX:
 JAX_BENCH_ITERS=8 bash scripts/benchmark.sh
 ```
 
+To bias the suite toward larger, throughput-oriented shapes, set
+`JAX_BENCH_PROFILE=throughput` (default: `default`):
+
+```bash
+# Example: larger shapes to make compute throughput dominate launch overhead
+JAX_BENCH_PROFILE=throughput JAX_BENCH_ITERS=8 bash scripts/benchmark.sh
+```
+
 Benchmark comparison normalizes results back to per-iteration units using the
 recorded amortization factor, so files with the same `JAX_BENCH_ITERS` setting
 remain directly comparable.

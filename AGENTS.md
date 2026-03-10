@@ -72,6 +72,13 @@ You can amortize per-call timing overhead by setting `JAX_BENCH_ITERS`
 JAX_BENCH_ITERS=8 bash scripts/benchmark.sh
 ```
 
+To use larger, throughput-oriented benchmark shapes (instead of the default
+mixed-size microbench profile), set `JAX_BENCH_PROFILE=throughput`:
+
+```bash
+JAX_BENCH_PROFILE=throughput JAX_BENCH_ITERS=8 bash scripts/benchmark.sh
+```
+
 The benchmark JSON records the amortization factor, and
 `scripts/benchmark_compare.py` normalizes timings back to per-iteration units
 before reporting deltas.
