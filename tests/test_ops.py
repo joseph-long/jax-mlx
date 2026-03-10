@@ -64,9 +64,24 @@ OPERATION_TEST_CONFIGS = [
     *make_unary_op_configs(),
 ]
 
+# Pre-filter grad-test params so we don't parametrize non-differentiable ops
+# only to skip them at runtime.
+GRAD_OPERATION_TEST_CONFIGS = [
+    op_config
+    for op_config in OPERATION_TEST_CONFIGS
+    if op_config.get_differentiable_argnums()
+]
+
 
 @pytest.fixture(params=OPERATION_TEST_CONFIGS, ids=lambda op_config: op_config.name)
 def op_config(request: pytest.FixtureRequest):
+    return request.param
+
+
+@pytest.fixture(
+    params=GRAD_OPERATION_TEST_CONFIGS, ids=lambda op_config: op_config.name
+)
+def grad_op_config(request: pytest.FixtureRequest):
     return request.param
 
 
@@ -116,17 +131,15 @@ def test_op_value(op_config: OperationTestConfig, jit: bool) -> None:
         jax.tree.map_with_path(assert_allclose_with_path, *results)
 
 
-def test_op_grad(op_config: OperationTestConfig, jit: bool) -> None:
-    argnums = op_config.get_differentiable_argnums()
-    if not argnums:
-        pytest.skip(f"No differentiable arguments for operation '{op_config.func}'.")
+def test_op_grad(grad_op_config: OperationTestConfig, jit: bool) -> None:
+    argnums = grad_op_config.get_differentiable_argnums()
 
     platforms = get_test_platforms()
     for argnum in argnums:
         results = []
         for platform in platforms:
             device = jax.devices(platform)[0]
-            result = op_config.evaluate_grad(argnum, jit, device)
+            result = grad_op_config.evaluate_grad(argnum, jit, device)
             jax.tree.map_with_path(
                 lambda path, value: fassert(
                     value.device == device,
