@@ -2,7 +2,7 @@
 """Compare two pytest-benchmark JSON result files.
 
 Usage:
-    # Compare a specific file against the most recent clean baseline:
+    # Compare a specific file against the oldest clean baseline:
     uv run scripts/benchmark_compare.py path/to/new.json
 
     # Compare two specific files:
@@ -31,20 +31,6 @@ def load(path: Path) -> dict[str, dict]:
     with open(path) as f:
         data = json.load(f)
     return {b["name"]: b["stats"] for b in data["benchmarks"]}
-
-
-def find_baseline() -> Path:
-    """Return the most recent non-dirty benchmark file."""
-    candidates = sorted(
-        (p for p in BENCHMARKS_DIR.glob("*.json") if "_dirty" not in p.name),
-        reverse=True,
-    )
-    if not candidates:
-        sys.exit(
-            f"No clean baseline found in {BENCHMARKS_DIR}. "
-            "Run scripts/benchmark.sh on a clean commit first."
-        )
-    return candidates[0]
 
 
 def sigfig(x: float, n: int = 3) -> str:
@@ -177,7 +163,7 @@ def main() -> None:
         "baseline",
         nargs="?",
         type=Path,
-        help="Baseline JSON to compare against (default: most recent clean file)",
+        help="Baseline JSON to compare against (default: oldest clean file)",
     )
     parser.add_argument(
         "--threshold",
@@ -203,14 +189,13 @@ def main() -> None:
 
     # Resolve baseline.
     if args.baseline is None:
-        # Most recent clean file that is not the new file itself.
+        # Oldest clean file that is not the new file itself.
         candidates = sorted(
             (
                 p
                 for p in BENCHMARKS_DIR.glob("*.json")
                 if "_dirty" not in p.name and p.resolve() != new_path.resolve()
             ),
-            reverse=True,
         )
         if not candidates:
             sys.exit(
