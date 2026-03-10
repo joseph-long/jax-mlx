@@ -26,11 +26,44 @@ from pathlib import Path
 BENCHMARKS_DIR = Path(__file__).parent.parent / ".benchmarks"
 
 
+def _normalize_stats_per_iteration(stats: dict, amortized_iterations: int) -> dict:
+    """Normalize benchmark stats to per-logical-iteration units."""
+    if amortized_iterations <= 1:
+        return stats
+    out = dict(stats)
+    scale_down_keys = [
+        "min",
+        "max",
+        "mean",
+        "stddev",
+        "median",
+        "iqr",
+        "q1",
+        "q3",
+        "ld15iqr",
+        "hd15iqr",
+        "total",
+    ]
+    for key in scale_down_keys:
+        if key in out:
+            out[key] = out[key] / amortized_iterations
+    if "ops" in out:
+        out["ops"] = out["ops"] * amortized_iterations
+    return out
+
+
 def load(path: Path) -> dict[str, dict]:
-    """Load a benchmark JSON and return {name: stats_dict}."""
+    """Load a benchmark JSON and return {name: stats_dict (per logical iteration)}."""
     with open(path) as f:
         data = json.load(f)
-    return {b["name"]: b["stats"] for b in data["benchmarks"]}
+    out = {}
+    for b in data["benchmarks"]:
+        extra = b.get("extra_info", {}) or {}
+        amortized_iterations = int(extra.get("amortized_iterations", 1))
+        out[b["name"]] = _normalize_stats_per_iteration(
+            b["stats"], amortized_iterations
+        )
+    return out
 
 
 def sigfig(x: float, n: int = 3) -> str:

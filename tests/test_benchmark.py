@@ -1,3 +1,5 @@
+import os
+
 import jax
 import pytest
 from jax import random
@@ -6,6 +8,12 @@ from pytest_benchmark.fixture import BenchmarkFixture
 from .configs import OperationTestConfig, make_benchmark_op_configs
 
 pytestmark = pytest.mark.benchmark
+
+BENCH_AMORTIZED_ITERS = int(
+    os.environ.get("JAX_BENCH_ITERS", os.environ.get("JAX_MLX_BENCH_ITERS", "16"))
+)
+if BENCH_AMORTIZED_ITERS < 1:
+    raise ValueError("JAX_BENCH_ITERS must be >= 1")
 
 OPERATION_TEST_CONFIGS = list(make_benchmark_op_configs())
 GRAD_TEST_CONFIGS = []
@@ -49,8 +57,30 @@ def test_benchmark_value(
     )
     func = jax.jit(op_config.func, static_argnums=op_config.static_argnums)
 
-    def run():
-        return func(*args, **kwargs).block_until_ready()
+    def run_once():
+        return func(*args, **kwargs)
+
+    if BENCH_AMORTIZED_ITERS > 1:
+        amortized_iters = BENCH_AMORTIZED_ITERS
+
+        @jax.jit
+        def run_amortized():
+            init = run_once()
+
+            def body(_i, _carry):
+                return run_once()
+
+            return jax.lax.fori_loop(1, amortized_iters, body, init)
+
+        def run():
+            return run_amortized().block_until_ready()
+    else:
+        amortized_iters = 1
+
+        def run():
+            return run_once().block_until_ready()
+
+    benchmark.extra_info["amortized_iterations"] = amortized_iters
 
     # Run once for jit-compile and once for safety.
     run()
@@ -99,10 +129,34 @@ def test_benchmark_grad(
         static_argnums=op_config.static_argnums,
     )
 
-    def run():
-        result = grad_func(*args, **kwargs)
-        jax.tree.map(lambda x: x.block_until_ready(), result)
-        return result
+    def run_once():
+        return grad_func(*args, **kwargs)
+
+    if BENCH_AMORTIZED_ITERS > 1:
+        amortized_iters = BENCH_AMORTIZED_ITERS
+
+        @jax.jit
+        def run_amortized():
+            init = run_once()
+
+            def body(_i, _carry):
+                return run_once()
+
+            return jax.lax.fori_loop(1, amortized_iters, body, init)
+
+        def run():
+            result = run_amortized()
+            jax.tree.map(lambda x: x.block_until_ready(), result)
+            return result
+    else:
+        amortized_iters = 1
+
+        def run():
+            result = run_once()
+            jax.tree.map(lambda x: x.block_until_ready(), result)
+            return result
+
+    benchmark.extra_info["amortized_iterations"] = amortized_iters
 
     # Run once for jit-compile and once for safety.
     run()
