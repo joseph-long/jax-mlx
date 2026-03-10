@@ -22,10 +22,6 @@ if BENCH_PROFILE not in {"default", "throughput"}:
     )
 
 
-def _zeros_from_shape_dtype(struct):
-    return jax.tree.map(lambda x: jax.numpy.zeros(x.shape, x.dtype), struct)
-
-
 def _dynamic_rounds(benchmark: BenchmarkFixture, amortized_iters: int) -> int:
     min_rounds = getattr(benchmark, "_min_rounds", 5)
     return max(math.ceil(min_rounds / amortized_iters), 1)
@@ -75,25 +71,13 @@ def test_benchmark_value(
     def run_once():
         return func(*args, **kwargs)
 
-    if BENCH_AMORTIZED_ITERS > 1:
-        amortized_iters = BENCH_AMORTIZED_ITERS
+    amortized_iters = max(BENCH_AMORTIZED_ITERS, 1)
 
-        @jax.jit
-        def run_amortized():
-            init = _zeros_from_shape_dtype(jax.eval_shape(run_once))
-
-            def body(_i, _carry):
-                return run_once()
-
-            return jax.lax.fori_loop(0, amortized_iters, body, init)
-
-        def run():
-            return run_amortized().block_until_ready()
-    else:
-        amortized_iters = 1
-
-        def run():
-            return run_once().block_until_ready()
+    def run():
+        result = None
+        for _ in range(amortized_iters):
+            result = run_once()
+        return result.block_until_ready()
 
     benchmark.extra_info["amortized_iterations"] = amortized_iters
     benchmark.extra_info["profile"] = BENCH_PROFILE
@@ -147,29 +131,14 @@ def test_benchmark_grad(
     def run_once():
         return grad_func(*args, **kwargs)
 
-    if BENCH_AMORTIZED_ITERS > 1:
-        amortized_iters = BENCH_AMORTIZED_ITERS
+    amortized_iters = max(BENCH_AMORTIZED_ITERS, 1)
 
-        @jax.jit
-        def run_amortized():
-            init = _zeros_from_shape_dtype(jax.eval_shape(run_once))
-
-            def body(_i, _carry):
-                return run_once()
-
-            return jax.lax.fori_loop(0, amortized_iters, body, init)
-
-        def run():
-            result = run_amortized()
-            jax.tree.map(lambda x: x.block_until_ready(), result)
-            return result
-    else:
-        amortized_iters = 1
-
-        def run():
+    def run():
+        result = None
+        for _ in range(amortized_iters):
             result = run_once()
-            jax.tree.map(lambda x: x.block_until_ready(), result)
-            return result
+        jax.tree.map(lambda x: x.block_until_ready(), result)
+        return result
 
     benchmark.extra_info["amortized_iterations"] = amortized_iters
     benchmark.extra_info["profile"] = BENCH_PROFILE

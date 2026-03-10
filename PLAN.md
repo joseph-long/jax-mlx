@@ -154,6 +154,14 @@ Verification from this iteration:
   - `test_benchmark_value[mlx-benchmark.layernorm_2048]`: slight regression (`~1.03x` slower)
   - `test_benchmark_value[mlx-benchmark.matmul_2000]`: MLX slower (`~1.12x`)
   - Conclusion: launch-overhead amortization and larger shapes help, but dense matmul still needs deeper kernel/dispatch investigation.
+ - Root-cause + fix for benchmark amortization distortion:
+   - Root cause: amortization used a jitted `fori_loop` wrapper over closed-over constants; XLA could optimize/rewrite this path in ways that produced unrealistically small per-iteration timings.
+   - Fix: switched amortization in `tests/test_benchmark.py` to a Python-level repeat loop over the already-jitted op/grad function, with a single terminal `block_until_ready()`.
+   - Validation: same focused suite compared at `JAX_BENCH_ITERS=16` vs `JAX_BENCH_ITERS=1` reports `6 unchanged` after per-iteration normalization (`scripts/benchmark_compare.py --include-cpu`), confirming normalization parity across amortization settings.
+   - Updated focused same-run speedups after fix:
+     - `matmul_1000`: MLX ~`4.22x` faster than CPU (per-iter ~`57.8 ms` vs `244.1 ms`)
+     - `conv2d_128ch`: MLX ~`3.33x` faster (per-iter ~`1.5 ms` vs `5.1 ms`)
+     - `softmax_1000`: MLX ~`2.99x` slower (per-iter ~`10.9 ms` vs `3.6 ms`)
 
 Conclusion from iteration:
 - Unsupported-op failures in the associative-scan solving regressions are resolved again in the full control-flow run.
