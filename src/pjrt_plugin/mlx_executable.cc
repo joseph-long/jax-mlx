@@ -49,6 +49,13 @@ static mlxc::Shape toMlxShape(mlir::RankedTensorType type) {
     return s;
 }
 
+static bool HasZeroExtent(const mlxc::array& a) {
+    for (int d : a.shape()) {
+        if (d == 0) return true;
+    }
+    return false;
+}
+
 static std::vector<int64_t> normalizeStridesToElements(const std::vector<int64_t>& dims,
                                                        const std::vector<int64_t>& rawStrides,
                                                        int64_t dataSizeElems,
@@ -710,7 +717,7 @@ static mlxc::array HandlePadWithInterior(mlxc::array input,
     }
 
     auto base = mlxc::broadcast_to(padValue, outShape);
-    if (input.size() == 0) return base;
+    if (HasZeroExtent(input)) return base;
 
     // Row-major strides for flattened output indexing.
     std::vector<int> outStrides(static_cast<size_t>(rank), 1);
@@ -757,6 +764,17 @@ static mlxc::array HandleScatter(mlxc::array operand, mlxc::array scatterIndices
         s += "]";
         return s;
     };
+    auto i64RangeToString = [](auto range) {
+        std::string s = "[";
+        bool first = true;
+        for (auto v : range) {
+            if (!first) s += ",";
+            first = false;
+            s += std::to_string(static_cast<int64_t>(v));
+        }
+        s += "]";
+        return s;
+    };
     // MLX Metal atomic operations don't support complex types; reject early to
     // avoid a Metal shader compilation failure that would crash the background thread.
     if (operand.dtype().val() == mlxc::Dtype::Val::complex64) {
@@ -795,6 +813,9 @@ static mlxc::array HandleScatter(mlxc::array operand, mlxc::array scatterIndices
     };
 
     auto idx = normalizedIndices();
+    if (HasZeroExtent(idx) || HasZeroExtent(updates)) {
+        return operand;
+    }
 
     // Full-index scalar scatter into a single point of a rank-N tensor.
     if (scatterDimsToOperandDims.size() == static_cast<size_t>(operand.ndim()) &&
@@ -961,7 +982,15 @@ static mlxc::array HandleScatter(mlxc::array operand, mlxc::array scatterIndices
 
     // Existing single-axis fallback.
     if (scatterDimsToOperandDims.size() != 1 || insertedWindowDims.size() != 1) {
-        throw std::invalid_argument("only single-axis scatter is implemented");
+        throw std::invalid_argument(
+            "only single-axis scatter is implemented: operand_shape=" +
+            shapeToString(operand.shape()) +
+            " scatter_indices_shape=" + shapeToString(scatterIndices.shape()) +
+            " updates_shape=" + shapeToString(updates.shape()) +
+            " scatter_dims_to_operand_dims=" + i64RangeToString(scatterDimsToOperandDims) +
+            " inserted_window_dims=" + i64RangeToString(insertedWindowDims) +
+            " update_window_dims=" + i64RangeToString(updateWindowDims) +
+            " index_vector_dim=" + std::to_string(indexVectorDim));
     }
     int axis = static_cast<int>(scatterDimsToOperandDims[0]);
     if (insertedWindowDims[0] != scatterDimsToOperandDims[0]) {
@@ -1689,30 +1718,51 @@ static InterpResult interpretBlock(mlir::Block& entry,
             break;
         }
 
-        // --- Zero-element shortcut ---
-        // If any input operand has zero elements, produce zero-filled outputs of
-        // the types declared in the StableHLO op without running any Metal kernel.
-        // (MLX Metal does not support zero-sized dimensions; array creation does.)
+        // Conservative zero-element shortcut:
+        // If any input is empty, only short-circuit when all ranked outputs are
+        // statically empty. This preserves correctness for ops such as concatenate
+        // that may produce non-empty outputs despite empty operands.
         if (op.getNumResults() > 0 && op.getNumOperands() > 0) {
             bool hasZeroInput = false;
             for (unsigned i = 0; i < op.getNumOperands(); i++) {
                 auto it = vm.find(valKey(op.getOperand(i)));
-                if (it != vm.end() && it->second.size() == 0) {
+                if (it != vm.end() && HasZeroExtent(it->second)) {
                     hasZeroInput = true;
                     break;
                 }
             }
             if (hasZeroInput) {
+                bool allResultsEmpty = true;
                 for (unsigned i = 0; i < op.getNumResults(); i++) {
                     auto resType = mlir::dyn_cast<mlir::RankedTensorType>(
                         op.getResult(i).getType());
-                    if (resType) {
+                    if (!resType) {
+                        allResultsEmpty = false;
+                        break;
+                    }
+                    int64_t elems = 1;
+                    for (int64_t d : resType.getShape()) {
+                        if (d == 0) {
+                            elems = 0;
+                            break;
+                        }
+                        elems *= d;
+                    }
+                    if (elems != 0) {
+                        allResultsEmpty = false;
+                        break;
+                    }
+                }
+                if (allResultsEmpty) {
+                    for (unsigned i = 0; i < op.getNumResults(); i++) {
+                        auto resType = mlir::cast<mlir::RankedTensorType>(
+                            op.getResult(i).getType());
                         auto shape = toMlxShape(resType);
                         auto dtype = MlirTypeToMlx(resType.getElementType());
                         vm.emplace(valKey(op.getResult(i)), mlxc::zeros(shape, dtype));
                     }
+                    continue;
                 }
-                continue;
             }
         }
 
@@ -1933,7 +1983,26 @@ static InterpResult interpretBlock(mlir::Block& entry,
             int axis = static_cast<int>(catOp.getDimension());
             std::vector<mlxc::array> arrs;
             for (auto v : catOp.getInputs()) arrs.push_back(vm.at(valKey(v)));
-            set(0, mlxc::concatenate(arrs, axis));
+            std::vector<mlxc::array> nonEmpty;
+            nonEmpty.reserve(arrs.size());
+            for (auto& a : arrs) {
+                if (a.shape()[axis] != 0) nonEmpty.push_back(a);
+            }
+
+            if (nonEmpty.empty()) {
+                auto outTy =
+                    mlir::cast<mlir::RankedTensorType>(catOp.getResult().getType());
+                mlxc::Shape outShape;
+                outShape.reserve(static_cast<size_t>(outTy.getRank()));
+                for (int64_t d : outTy.getShape()) {
+                    outShape.push_back(static_cast<int>(d));
+                }
+                set(0, mlxc::zeros(outShape, arrs.front().dtype()));
+            } else if (nonEmpty.size() == 1) {
+                set(0, nonEmpty.front());
+            } else {
+                set(0, mlxc::concatenate(nonEmpty, axis));
+            }
         }
 
         // --- Slice ---

@@ -37,7 +37,7 @@ Apple Silicon
 ## Status
 
 **Branch**: `claude-mps-to-mlx`
-**Last updated**: March 10, 2026 (upstream JAX control-flow triage ongoing)
+**Last updated**: March 10, 2026 (upstream JAX control-flow scan/vmap numerics triage)
 
 ### Done
 
@@ -97,21 +97,19 @@ Apple Silicon
 
 ### Current Upstream Failure Profile (`tests/lax_control_flow_test.py`)
 
-Latest run (`.benchmarks/jax_tests_2026-03-10T09-25-40_2de5b8b07`):
-- `487 passed / 119 failed / 483 skipped`
+Latest run (`.benchmarks/jax_tests_2026-03-10T10-59-17_2de5b8b07`):
+- `540 passed / 66 failed / 483 skipped`
 - Previous runs:
+  - `.benchmarks/jax_tests_2026-03-10T10-56-01_2de5b8b07`: `537 / 69 / 483`
   - `.benchmarks/jax_tests_2026-03-10T07-27-04_2de5b8b07`: `483 / 123 / 483`
   - Baseline before these fixes: `481 / 125 / 483`
-- Net progress: 6 failures removed (all_reduce category eliminated; cpu-backend harness issue fixed; associative-scan solving regressions fixed)
+- Net progress vs baseline: 59 failures removed.
 
 Remaining high-impact categories:
-1. `stablehlo.gather` / `stablehlo.scatter` generalization (remaining forms)
-   - `testAssociativeScanSolvingRegressionTest_{2,43,100}` is now fixed.
-   - Remaining gather/scatter work is broader indexing/scan combinations, not this specific regression.
-2. Large scan numerics/assertion cluster (`impl=unroll0` dominant)
-   - Root cause still unresolved; likely semantic mismatch in control-flow/indexing path used by scan lowering.
-3. Broad scan/associative-scan assertion mismatches (`impl=unroll0`, many vmap combinations)
-   - Requires deeper semantic debugging in control-flow/indexing lowering paths beyond backend/harness fixes.
+1. Scan/vmap numerics (`testScanVmap*`, `testScanGrad_*unroll0`, `testScanVmapTuples`)
+   - Dominant remaining cluster; fails by large value mismatches, not unsupported-op errors.
+2. General control-flow/indexing semantic parity in scan lowerings
+   - Additional gather/scatter forms still likely involved in some vmap/unroll combinations.
 
 ### Notes From Current Iteration (March 10, 2026)
 
@@ -131,11 +129,28 @@ Tried and observed:
    - normalize axis to a common layout
    - apply per-slice 2D `scatter_add_axis` / `put_along_axis`
    - transpose back
-   - Result: `testAssociativeScanSolvingRegressionTest_{2,43,100}` now passes.
+   - Result: `testAssociativeScanSolvingRegressionTest_{2,43,100}` now passes in focused runs.
+4. Root-caused and fixed semantic corruption from the old global zero-size shortcut:
+   - Prior behavior: any op with a zero-sized input was short-circuited to zero outputs.
+   - This is invalid for ops like `stablehlo.concatenate` that can produce non-empty outputs with mixed empty/non-empty inputs.
+   - Fix: only short-circuit when all ranked outputs are statically empty.
+5. Replaced emptiness checks from `array.size()==0` to shape-based checks (`HasZeroExtent`) in critical paths.
+   - `size()` was unreliable for some lazy arrays and caused missed empty-index scatter no-op handling.
+6. Added scatter no-op handling for empty indices/updates.
+   - This fixed `testAssociativeScanSolvingRegressionTest_{2,43,100}` failures in full control-flow runs where scatter had:
+     - `scatter_dims_to_operand_dims=[]`
+     - `inserted_window_dims=[]`
+     - `update_window_dims=[0,1]`
+     - `scatter_indices_shape=[0]`
+
+Verification from this iteration:
+- Focused selector: `.benchmarks/jax_tests_2026-03-10T10-59-08_2de5b8b07` → `3 passed / 0 failed / 0 skipped`
+- Full control-flow: `.benchmarks/jax_tests_2026-03-10T10-59-17_2de5b8b07` → `540 passed / 66 failed / 483 skipped`
+- In-tree regression: `uv run pytest -q` → `1442 passed / 224 skipped / 144 deselected`
 
 Conclusion from iteration:
-- This path confirms the correctness-first strategy works: add narrow fast paths where possible, then normalize shape/layout before MLX primitive calls.
-- Next attempt should continue generalizing gather/scatter through explicit normalization/fallbacks for the remaining associative-scan unstructured and scan-vmap assertion clusters.
+- Unsupported-op failures in the associative-scan solving regressions are resolved again in the full control-flow run.
+- Remaining failures are now predominantly scan-vmap/gradient numerical mismatches (correctness gap, not missing-op gap).
 
 ### 1. Performance: `mlx::core::compile()` — Incremental Refactor Plan
 
