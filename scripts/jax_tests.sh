@@ -15,6 +15,12 @@
 #
 # Extra pytest args are forwarded verbatim.
 #
+# Structured output:
+#   Each run writes per-file JUnit XML + logs under:
+#     .benchmarks/jax_tests_<timestamp>_<jax_head>/
+#   After all files finish, a failure summary with selectors is generated via
+#   scripts/summarize_jax_tests.py.
+#
 # Environment:
 #   JAX_TAG          Git tag / ref to check out (default: jax-v0.9.0).
 #                    Must match the jaxlib version installed in .venv.
@@ -54,6 +60,16 @@ echo "=== JAX @ $JAX_HEAD ($JAX_TAG) ===" >&2
 # --- choose test files ---
 DEFAULT_FILES="tests/lax_numpy_test.py tests/lax_autodiff_test.py tests/lax_control_flow_test.py tests/lax_numpy_indexing_test.py"
 TEST_FILES="${JAX_TEST_FILES:-$DEFAULT_FILES}"
+IFS=' ' read -r -a TEST_FILES_ARR <<< "$TEST_FILES"
+
+# --- prepare structured output directory ---
+BENCHMARK_DIR="$REPO_ROOT/.benchmarks"
+mkdir -p "$BENCHMARK_DIR"
+TIMESTAMP="$(date +"%Y-%m-%dT%H-%M-%S")"
+RUN_DIR="$BENCHMARK_DIR/jax_tests_${TIMESTAMP}_${JAX_HEAD}"
+mkdir -p "$RUN_DIR"
+echo "=== Structured outputs ===" >&2
+echo "    dir: $RUN_DIR" >&2
 
 # --- run ---
 echo "=== Running JAX tests with jax-mlx backend ===" >&2
@@ -61,12 +77,35 @@ echo "    dylib: $LATEST_DYLIB" >&2
 echo "    files: $TEST_FILES" >&2
 
 cd "$JAX_DIR"
-exec env \
-  JAX_PLATFORMS=mlx \
-  JAX_MLX_LIBRARY_PATH="$LATEST_DYLIB" \
-  COLUMNS=200 \
-  "$REPO_ROOT/.venv/bin/python" -m pytest \
-  $TEST_FILES \
-  -p no:warnings \
-  --override-ini="addopts=" \
-  "$@"
+overall_rc=0
+for test_file in "${TEST_FILES_ARR[@]}"; do
+  safe_name="$(echo "$test_file" | tr '/.' '__')"
+  junit_xml="$RUN_DIR/${safe_name}.junit.xml"
+  log_file="$RUN_DIR/${safe_name}.log"
+
+  echo "=== pytest $test_file ===" >&2
+  set +e
+  env \
+    JAX_PLATFORMS=mlx \
+    JAX_MLX_LIBRARY_PATH="$LATEST_DYLIB" \
+    COLUMNS=200 \
+    uv run --project "$REPO_ROOT" python -m pytest \
+    "$test_file" \
+    -p no:warnings \
+    --override-ini="addopts=" \
+    --junitxml="$junit_xml" \
+    "$@" 2>&1 | tee "$log_file"
+  rc=${PIPESTATUS[0]}
+  set -e
+
+  echo -e "${test_file}\t${rc}" >> "$RUN_DIR/exit_codes.tsv"
+  if [[ $rc -ne 0 ]]; then
+    overall_rc=$rc
+  fi
+done
+
+echo "=== Summary ===" >&2
+uv run --project "$REPO_ROOT" python "$REPO_ROOT/scripts/summarize_jax_tests.py" "$RUN_DIR" \
+  | tee "$RUN_DIR/summary.txt"
+
+exit $overall_rc

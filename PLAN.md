@@ -283,41 +283,50 @@ not just raw microbenchmarks, and prioritize investigation accordingly.
 
 ### 3. JAX upstream test suite
 
-**Goal**: Run JAX's own `tests/` suite against jax-mlx and drive the pass rate
-from the current ~72% toward 100%.
+**Goal**: Keep upstream JAX failures measurable even when one file segfaults, then
+drive pass rate upward by fixing the highest-leverage failure buckets first.
 
-**Setup**: The JAX source lives in `.agent-context/jax/`.  The runner script
-`scripts/jax_tests.sh` pulls latest `main`, then runs the four core test files
-with `JAX_PLATFORMS=mlx`.
+**Runner/output flow**:
+- `scripts/jax_tests.sh` now runs each upstream file independently and writes structured output to
+  `.benchmarks/jax_tests_<timestamp>_<jax_head>/`.
+- Each file writes `*.junit.xml` + `*.log`; return codes are written to `exit_codes.tsv`.
+- `scripts/summarize_jax_tests.py` parses those artifacts, writes `summary.json`, and prints failed selectors.
+- If a file crashes before XML is emitted, the summarizer now records a crash entry with the inferred selector from the log.
 
-**Current status** (2026-03-09, `lax_numpy_test.py`, 2105 tests):
-- Passed: 1493 (71%)
-- Failed: 572 (27%)
-- Skipped: 30 (1%)
-- One crash batch (polyfit — NumPy fallback issue)
+**Most recent upstream sweep** (2026-03-09, JAX tag `jax-v0.9.0`, run dir `.benchmarks/jax_tests_2026-03-09T23-21-11_2de5b8b07`):
+- Parsed totals (files with JUnit XML): `3549 passed, 583 failed, 517 skipped, 4649 total`
+- Per-file failures: `lax_numpy_test.py` 257, `lax_control_flow_test.py` 161, `lax_numpy_indexing_test.py` 165
+- Crash-only file: `tests/lax_autodiff_test.py::testScatterGradSymbolicZeroUpdate` (exit code 139 / segfault)
 
-**Top failure categories to fix in priority order**:
+**Current top failure buckets from `summary.json` messages**:
 
-| Count | Category | Fix |
-|------:|----------|-----|
-| ~161 | `stablehlo.reduce_window` not implemented | Implement in interpreter using `mlxc::max_pool` / sliding-window reduce |
-| ~70  | `stablehlo.gather` unsupported patterns | Extend gather lowering for multi-batch-dim and ranged index cases |
-| ~36  | Assertion / numerics mismatches | Investigate case by case; likely precision or dtype promotion differences |
-| ~30  | Metal bool/complex64 sort kernels missing | Workaround: cast to int/float before sort, then cast back |
-| ~26  | Integer matmul unsupported | Cast integer inputs to float32, matmul, cast result back |
-| ~7   | Memory kinds size mismatch | Investigate `batched_device_put` path |
-| ~4   | `stablehlo.scatter` single-axis only | Extend scatter to support multi-axis updates |
-| ~178 | Zero-sized tensors | Known MLX/Metal limit; mark as xfail until upstream fix |
+| Count | Bucket | Likely implementation area |
+|------:|--------|----------------------------|
+| 119 | `stablehlo.scatter` lowering failures | Extend scatter beyond single-axis/rank-2 point assumptions; support complex64 where valid |
+| 103 | `stablehlo.gather` lowering failures | Add multi-batch / two-axis / mixed advanced indexing gather patterns |
+| 30 | `Memory kinds and dtypes have different sizes` | Investigate `batched_device_put`/buffer metadata path and zero-size handling |
+| 26 | missing Metal `*complex64*` kernels | Add complex fallback policy (cast/real-imag decomposition where semantically correct) |
+| 19 | `stablehlo.pad with interior padding` unsupported | Implement interior padding path |
+| 15 | `stablehlo.optimization_barrier` unsupported | Add no-op passthrough lowering |
+| 10 | primitive `eigh` translation missing for mlx | Add MLIR lowering/registration for eigendecomposition path used by polyfit |
+| 6 | missing Metal sort kernels | Add sort dtype fallback (cast to supported dtype, sort, cast back when safe) |
 
-**Workflow for each category**:
-1. Run `bash scripts/jax_tests.sh -q --tb=short -k <pattern>` to isolate failures
-2. Read the StableHLO (via `JAX_PLATFORMS=cpu jax.jit(...).lower(...).as_text()`) to understand the op pattern
-3. Implement or extend the handler in `src/pjrt_plugin/mlx_executable.cc`
-4. Rebuild with `uv pip install -e .` and re-run to confirm the fixes
+Plus many assertion-only mismatches (`~229`) that should be revisited after gather/scatter/pad fixes reduce cascading errors.
 
-**Acceptance criterion**: Each fixed category should show zero new failures in
-`uv run pytest` (in-tree suite) and measurable improvement in
-`bash scripts/jax_tests.sh --tb=no -q`.
+**Next implementation plan (ordered)**:
+1. Stabilize crash path first: isolate and fix `testScatterGradSymbolicZeroUpdate` segfault in `batched_device_put`/sharding path.
+2. Land `stablehlo.optimization_barrier` passthrough (small unblocker that removes many control-flow gradient failures).
+3. Expand `stablehlo.gather` for multi-axis/multi-batch indexing patterns used by `lax_numpy_indexing_test.py`.
+4. Expand `stablehlo.scatter` for multi-axis/segment-reduce/boolean update patterns.
+5. Implement interior-padding support in `stablehlo.pad`.
+6. Add robust dtype fallbacks for complex/sort kernels and close out remaining kernel-load failures.
+7. Re-run `bash scripts/jax_tests.sh -q --tb=no` and refresh `summary.json`; then triage remaining assertion mismatches.
+
+**Execution workflow per bucket**:
+1. Use failed selectors directly from `summary.json` for focused reruns (`bash scripts/jax_tests.sh -q --tb=short -k <selector-fragment>`).
+2. Dump StableHLO for representative failing cases from `.agent-context/jax`.
+3. Implement lowering changes in `src/pjrt_plugin/mlx_executable.cc`.
+4. Rebuild with `uv pip install --python .venv -e .` and re-run the focused selectors, then a full upstream sweep.
 
 ### 4. Remaining test gaps
 
@@ -327,13 +336,13 @@ with `JAX_PLATFORMS=mlx`.
 - **Zero-sized tensor xfails** (3 tests: cholesky, triangular_solve, batched matmul) — MLX/Metal
   platform limitation, not actionable without upstream MLX changes
 
-### 4. Accuracy and parity investigation
+### 5. Accuracy and parity investigation
 
 The 12 xfailed tests are all zero-sized tensor cases. No numerical tolerance failures
 remain in the current sweep. If regressions appear after `mlx::core::compile()` is added,
 investigate then.
 
-### 5. Segment compilation for linalg models (future)
+### 6. Segment compilation for linalg models (future)
 
 For functions that mix compilable regions with hard barriers (`cholesky`,
 `triangular_solve`, `lgamma`), a segment-compilation pass could split the function at
