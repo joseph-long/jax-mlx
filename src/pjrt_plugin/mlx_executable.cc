@@ -2102,6 +2102,19 @@ static InterpResult interpretBlock(mlir::Block& entry,
             set(0, result);
         }
 
+        // --- All-reduce ---
+        else if (opName == "stablehlo.all_reduce") {
+            // This backend is single-device only today; all_reduce over a
+            // singleton replica group is an identity.
+            if (op.getNumOperands() != op.getNumResults()) {
+                return InterpResult::Error(
+                    "stablehlo.all_reduce operand/result arity mismatch");
+            }
+            for (size_t i = 0; i < op.getNumResults(); ++i) {
+                set(i, operand(i));
+            }
+        }
+
         // --- Dot general ---
         else if (opName == "stablehlo.dot_general") {
             auto dotOp = mlir::cast<mlir::stablehlo::DotGeneralOp>(op);

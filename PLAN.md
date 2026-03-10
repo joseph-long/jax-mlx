@@ -37,7 +37,7 @@ Apple Silicon
 ## Status
 
 **Branch**: `claude-mps-to-mlx`
-**Last updated**: March 8, 2026 (MPS cleanup done; compile() refactor Phases A–C complete)
+**Last updated**: March 10, 2026 (upstream JAX control-flow triage ongoing)
 
 ### Done
 
@@ -81,10 +81,33 @@ Apple Silicon
   for **layernorm** (which contains a `select+NaN` pattern) giving 2–3× speedup. Softmax
   regresses slightly at toy sizes (< 100 elements) due to compile overhead; not impactful
   for realistic transformer workloads.
+- [x] Upstream JAX test runs now always save structured artifacts under `.benchmarks/jax_tests_*`
+  and produce summarized failed-test selectors via `scripts/summarize_jax_tests.py`.
+- [x] Fixed PJRT output metadata for zero-result executables (removed forced `num_outputs_=1`);
+  this unblocked `lax_control_flow` grad/checkpoint tests that return no values.
+- [x] Implemented `stablehlo.all_reduce` for single-device MLX semantics (identity over one
+  replica), clearing prior `Unsupported operation(s): stablehlo.all_reduce` failures.
 
 ---
 
 ## Next Steps
+
+### Current Upstream Failure Profile (`tests/lax_control_flow_test.py`)
+
+Latest run (`.benchmarks/jax_tests_2026-03-10T07-27-04_2de5b8b07`):
+- `483 passed / 123 failed / 483 skipped`
+- Previously: `481 passed / 125 failed / 483 skipped`
+- Net progress: 2 failures removed (`all_reduce` category eliminated)
+
+Remaining high-impact categories:
+1. `stablehlo.gather` associative-scan forms
+   - Failing selectors: `testAssociativeScanSolvingRegressionTest_{2,43,100}`
+   - Root cause: unsupported gather index-map pattern in `HandleGather`.
+2. Large scan numerics/assertion cluster (`impl=unroll0` dominant)
+   - Root cause still unresolved; likely semantic mismatch in control-flow/indexing path used by scan lowering.
+3. `Unknown backend cpu` in `testForiLoopIssue8152`
+   - Test harness currently exports `JAX_PLATFORMS=mlx`, which hides CPU backend.
+   - Need to switch to a default-mlx setting that still allows explicit `backend="cpu"` tests.
 
 ### 1. Performance: `mlx::core::compile()` — Incremental Refactor Plan
 
