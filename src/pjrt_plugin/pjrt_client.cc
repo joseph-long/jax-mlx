@@ -1,6 +1,8 @@
 // PJRT Client API implementation for Metal backend
 
+#include <cstdio>
 #include <cstring>
+#include <mutex>
 
 #include "pjrt_plugin/issue_url.h"
 #include "pjrt_plugin/logging.h"
@@ -254,13 +256,19 @@ PJRT_Error* MPS_Client_BufferFromHostBuffer(PJRT_Client_BufferFromHostBuffer_Arg
         byte_strides.assign(args->byte_strides, args->byte_strides + args->num_byte_strides);
     }
 
-    // Check for zero-sized tensors (any dimension is 0)
+    // Warn once when a zero-sized tensor is encountered, but allow it through.
+    // The interpreter short-circuits ops on zero-element inputs rather than
+    // dispatching Metal kernels, which cannot handle zero-sized tensors.
     for (size_t i = 0; i < dims.size(); i++) {
         if (dims[i] == 0) {
-            return MakeError(
-                "Zero-sized tensors are not supported by MPS. "
-                "Dimension " +
-                std::to_string(i) + " has size 0.");
+            static std::once_flag warned;
+            std::call_once(warned, [] {
+                std::fprintf(stderr,
+                    "[jax-mlx] WARNING: zero-sized tensor detected. "
+                    "Computation will fall back to a slow path. "
+                    "MLX Metal kernels do not support zero-element dimensions.\n");
+            });
+            break;
         }
     }
 

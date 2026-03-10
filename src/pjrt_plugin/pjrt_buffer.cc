@@ -1,6 +1,7 @@
 // PJRT Buffer API implementation for Metal backend
 
 #include "pjrt_plugin/logging.h"
+#include "pjrt_plugin/mlx_buffer.h"
 #include "pjrt_plugin/pjrt_types.h"
 
 // ============================================================================
@@ -98,7 +99,20 @@ PJRT_Error* MPS_Buffer_IsDeleted(PJRT_Buffer_IsDeleted_Args* args) {
 }
 
 PJRT_Error* MPS_Buffer_CopyToDevice(PJRT_Buffer_CopyToDevice_Args* args) {
-    return MakeError("CopyToDevice not implemented", PJRT_Error_Code_UNIMPLEMENTED);
+    fprintf(stderr, "[jax-mlx] MPS_Buffer_CopyToDevice called\n");
+    // We only have one device (MLX GPU), so copy is a shallow copy of the MLX array.
+    // MLX arrays are copy-on-write, so this is safe and cheap.
+    if (!args->buffer || !args->buffer->buffer) {
+        return MakeError("CopyToDevice: null source buffer");
+    }
+    auto* src = args->buffer->buffer.get();
+    auto* dst = new PJRT_Buffer();
+    dst->buffer = std::make_unique<jax_mlx::MlxBuffer>(
+        src->device(), src->array(), src->dtype(), src->dimensions());
+    dst->client = args->buffer->client;
+    args->dst_buffer = dst;
+    fprintf(stderr, "[jax-mlx] MPS_Buffer_CopyToDevice done\n");
+    return nullptr;
 }
 
 PJRT_Error* MPS_Buffer_ToHostBuffer(PJRT_Buffer_ToHostBuffer_Args* args) {

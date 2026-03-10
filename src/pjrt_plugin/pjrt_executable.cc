@@ -209,7 +209,14 @@ PJRT_Error* MPS_LoadedExecutable_Execute(PJRT_LoadedExecutable_Execute_Args* arg
     jax_mlx::MlxDevice* device =
         client && !client->devices.empty() ? client->devices[0]->device : nullptr;
 
-    auto exec_result = args->executable->executable->executable->Execute(inputs, device);
+    jax_mlx::ExecutionResult exec_result;
+    try {
+        exec_result = args->executable->executable->executable->Execute(inputs, device);
+    } catch (const std::exception& ex) {
+        return MakeError(std::string("MLX execution failed (uncaught exception): ") + ex.what());
+    } catch (...) {
+        return MakeError("MLX execution failed (unknown exception)");
+    }
 
     // Check for execution errors
     if (!exec_result.ok()) {

@@ -281,7 +281,45 @@ not just raw microbenchmarks, and prioritize investigation accordingly.
    implement a better lowering or document why MLX is fundamentally slower for that
    op/size regime.
 
-### 3. Remaining test gaps
+### 3. JAX upstream test suite
+
+**Goal**: Run JAX's own `tests/` suite against jax-mlx and drive the pass rate
+from the current ~72% toward 100%.
+
+**Setup**: The JAX source lives in `.agent-context/jax/`.  The runner script
+`scripts/jax_tests.sh` pulls latest `main`, then runs the four core test files
+with `JAX_PLATFORMS=mlx`.
+
+**Current status** (2026-03-09, `lax_numpy_test.py`, 2105 tests):
+- Passed: 1493 (71%)
+- Failed: 572 (27%)
+- Skipped: 30 (1%)
+- One crash batch (polyfit — NumPy fallback issue)
+
+**Top failure categories to fix in priority order**:
+
+| Count | Category | Fix |
+|------:|----------|-----|
+| ~161 | `stablehlo.reduce_window` not implemented | Implement in interpreter using `mlxc::max_pool` / sliding-window reduce |
+| ~70  | `stablehlo.gather` unsupported patterns | Extend gather lowering for multi-batch-dim and ranged index cases |
+| ~36  | Assertion / numerics mismatches | Investigate case by case; likely precision or dtype promotion differences |
+| ~30  | Metal bool/complex64 sort kernels missing | Workaround: cast to int/float before sort, then cast back |
+| ~26  | Integer matmul unsupported | Cast integer inputs to float32, matmul, cast result back |
+| ~7   | Memory kinds size mismatch | Investigate `batched_device_put` path |
+| ~4   | `stablehlo.scatter` single-axis only | Extend scatter to support multi-axis updates |
+| ~178 | Zero-sized tensors | Known MLX/Metal limit; mark as xfail until upstream fix |
+
+**Workflow for each category**:
+1. Run `bash scripts/jax_tests.sh -q --tb=short -k <pattern>` to isolate failures
+2. Read the StableHLO (via `JAX_PLATFORMS=cpu jax.jit(...).lower(...).as_text()`) to understand the op pattern
+3. Implement or extend the handler in `src/pjrt_plugin/mlx_executable.cc`
+4. Rebuild with `uv pip install -e .` and re-run to confirm the fixes
+
+**Acceptance criterion**: Each fixed category should show zero new failures in
+`uv run pytest` (in-tree suite) and measurable improvement in
+`bash scripts/jax_tests.sh --tb=no -q`.
+
+### 4. Remaining test gaps
 
 - **Grouped/depthwise conv weight grads** — now fixed via `batch_group_count` loop implementation
 - **`jnp.pad` gradient** — now fixed (was a stale MPS-era FIXME)

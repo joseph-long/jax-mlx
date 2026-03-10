@@ -96,3 +96,54 @@ Anything in SLOWER is a regression and must be investigated.
 LATEST_DYLIB="$(ls -t build/*/lib/libpjrt_plugin_mlx.dylib | head -n 1)"
 JAX_MLX_LIBRARY_PATH="$LATEST_DYLIB" uv run pytest -m benchmark --benchmark-only
 ```
+
+# JAX Upstream Test Suite
+
+JAX's own test suite provides much broader op coverage than our in-tree tests.
+The JAX source is checked out at `.agent-context/jax/` (tracked separately from
+the project git repo).
+
+## Running
+
+```bash
+# Pull latest JAX main and run the four core test files:
+bash scripts/jax_tests.sh -q --tb=short
+
+# Run specific files only:
+JAX_TEST_FILES="tests/lax_numpy_test.py" bash scripts/jax_tests.sh -q --tb=no
+
+# Skip the git pull (faster, use when JAX hasn't changed):
+NO_PULL=1 bash scripts/jax_tests.sh -q --tb=no
+```
+
+The script sets `JAX_PLATFORMS=mlx` and pins `JAX_MLX_LIBRARY_PATH` to the
+freshest build artifact automatically.
+
+## Updating the JAX checkout
+
+The checkout is pinned to `JAX_TAG` (default `jax-v0.9.0`) to match the
+installed jaxlib.  To switch to a different release, update `JAX_TAG` in
+`scripts/jax_tests.sh` and bump the jaxlib version in `pyproject.toml`:
+
+```bash
+JAX_TAG=jax-v0.9.1 bash scripts/jax_tests.sh -q --tb=no
+```
+
+## Interpreting results
+
+As of the initial analysis (2026-03-09), `lax_numpy_test.py` shows roughly
+**72% pass rate** (1493/2105 after filtering multi-device tests).  The top
+failure categories, in order of frequency:
+
+| Count | Root cause |
+|------:|-----------|
+| ~178 | Zero-sized tensors — known MLX/Metal limitation |
+| ~161 | `stablehlo.reduce_window` not implemented (pooling, cumsum, histogram) |
+| ~70  | `stablehlo.gather` unsupported patterns |
+| ~36  | Assertion / numerics mismatches |
+| ~30  | Metal bool-sort and complex64-sort kernels missing |
+| ~26  | Integer matmul — MLX only supports floating-point matmul |
+| ~7   | Memory kinds size mismatch |
+| ~4   | `stablehlo.scatter` single-axis-only limitation |
+
+Fix the highest-count categories first; each one unblocks many tests at once.

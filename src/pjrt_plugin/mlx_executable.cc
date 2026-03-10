@@ -226,6 +226,83 @@ static mlxc::array broadcastInDim(mlxc::array input,
     return mlxc::add(mlxc::zeros(outShape, input.dtype()), reshaped);
 }
 
+// Integer dot_general: broadcast-multiply-reduce, since MLX einsum only supports floats.
+// Permutes inputs to [batch..., lhsFree..., contract...] and [batch..., contract..., rhsFree...],
+// flattens each group into a single dim, then contracts via expand+multiply+sum.
+static mlxc::array intDotGeneral(mlxc::array lhs, mlxc::array rhs,
+                                  mlir::stablehlo::DotDimensionNumbersAttr dimNums) {
+    auto lhsBatchArr = dimNums.getLhsBatchingDimensions();
+    auto rhsBatchArr = dimNums.getRhsBatchingDimensions();
+    auto lhsContractArr = dimNums.getLhsContractingDimensions();
+    auto rhsContractArr = dimNums.getRhsContractingDimensions();
+
+    int lhsRank = lhs.ndim(), rhsRank = rhs.ndim();
+    std::set<int> lhsBatchSet(lhsBatchArr.begin(), lhsBatchArr.end());
+    std::set<int> lhsContractSet(lhsContractArr.begin(), lhsContractArr.end());
+    std::set<int> rhsBatchSet(rhsBatchArr.begin(), rhsBatchArr.end());
+    std::set<int> rhsContractSet(rhsContractArr.begin(), rhsContractArr.end());
+
+    auto lhsShape = lhs.shape();
+    auto rhsShape = rhs.shape();
+
+    // Build permutations and record dim sizes by group.
+    std::vector<int> lhsPerm, rhsPerm;
+    std::vector<int> batchSizes, lhsFreeSizes, rhsFreeSizes;
+
+    for (auto d : lhsBatchArr) {
+        lhsPerm.push_back(static_cast<int>(d));
+        batchSizes.push_back(lhsShape[static_cast<size_t>(d)]);
+    }
+    for (int i = 0; i < lhsRank; i++)
+        if (!lhsBatchSet.count(i) && !lhsContractSet.count(i)) {
+            lhsPerm.push_back(i);
+            lhsFreeSizes.push_back(lhsShape[static_cast<size_t>(i)]);
+        }
+    for (auto d : lhsContractArr) lhsPerm.push_back(static_cast<int>(d));
+
+    for (auto d : rhsBatchArr) rhsPerm.push_back(static_cast<int>(d));
+    for (auto d : rhsContractArr) rhsPerm.push_back(static_cast<int>(d));
+    for (int i = 0; i < rhsRank; i++)
+        if (!rhsBatchSet.count(i) && !rhsContractSet.count(i)) {
+            rhsPerm.push_back(i);
+            rhsFreeSizes.push_back(rhsShape[static_cast<size_t>(i)]);
+        }
+
+    auto lhsT = mlxc::transpose(lhs, lhsPerm);
+    auto rhsT = mlxc::transpose(rhs, rhsPerm);
+
+    // Compute flat sizes for each group.
+    int B = 1, M = 1, K = 1, N = 1;
+    for (int s : batchSizes) B *= s;
+    for (int s : lhsFreeSizes) M *= s;
+    auto lhsTShape = lhsT.shape();
+    int nbatch = static_cast<int>(lhsBatchArr.size());
+    int nlhsFree = static_cast<int>(lhsFreeSizes.size());
+    int ncontract = static_cast<int>(lhsContractArr.size());
+    for (int i = nbatch + nlhsFree; i < nbatch + nlhsFree + ncontract; i++)
+        K *= lhsTShape[static_cast<size_t>(i)];
+    for (int s : rhsFreeSizes) N *= s;
+
+    // Flatten each group: lhs → [B, M, K], rhs → [B, K, N]
+    auto lhsFlat = mlxc::reshape(lhsT, {B, M, K});
+    auto rhsFlat = mlxc::reshape(rhsT, {B, K, N});
+
+    // [B, M, K, 1] * [B, 1, K, N] → [B, M, K, N], sum over K axis → [B, M, N]
+    auto lhsExp = mlxc::expand_dims(lhsFlat, 3);   // [B, M, K, 1]
+    auto rhsExp = mlxc::expand_dims(rhsFlat, 1);   // [B, 1, K, N]
+    auto contracted = mlxc::sum(mlxc::multiply(lhsExp, rhsExp), {2}, false);  // [B, M, N]
+
+    // Reshape to true output shape: [batch..., lhsFree..., rhsFree...]
+    mlxc::Shape outShape;
+    outShape.insert(outShape.end(), batchSizes.begin(), batchSizes.end());
+    outShape.insert(outShape.end(), lhsFreeSizes.begin(), lhsFreeSizes.end());
+    outShape.insert(outShape.end(), rhsFreeSizes.begin(), rhsFreeSizes.end());
+    // Empty outShape = scalar result; squeeze to 0-rank.
+    if (outShape.empty())
+        return mlxc::reshape(contracted, mlxc::Shape{});
+    return mlxc::reshape(contracted, std::move(outShape));
+}
+
 // stablehlo.dot_general lowered through MLX einsum.
 static mlxc::array dotGeneral(mlxc::array lhs, mlxc::array rhs,
                               mlir::stablehlo::DotDimensionNumbersAttr dimNums) {
@@ -545,6 +622,13 @@ static mlxc::array HandleGather(mlxc::array operand, mlxc::array startIndices,
 
 static mlxc::array HandleScatter(mlxc::array operand, mlxc::array scatterIndices, mlxc::array updates,
                                mlir::stablehlo::ScatterOp scatterOp) {
+    // MLX Metal atomic operations don't support complex types; reject early to
+    // avoid a Metal shader compilation failure that would crash the background thread.
+    if (operand.dtype().val() == mlxc::Dtype::Val::complex64) {
+        throw std::invalid_argument(
+            "stablehlo.scatter: complex64 scatter is not supported on the MLX Metal backend");
+    }
+
     auto dimNums = scatterOp.getScatterDimensionNumbers();
     auto scatterDimsToOperandDims = dimNums.getScatterDimsToOperandDims();
     int indexVectorDim = static_cast<int>(dimNums.getIndexVectorDim());
@@ -1110,7 +1194,11 @@ static std::vector<mlxc::array> HandleSort(std::vector<mlxc::array> inputs,
     }
 
     bool descending = SortComparatorDescending(sortOp.getComparator());
-    auto indices = mlxc::argsort(inputs[0], axis);
+    // MLX argsort doesn't support bool; cast to int8 for comparison.
+    auto sortKey = inputs[0];
+    if (sortKey.dtype() == mlxc::bool_)
+        sortKey = mlxc::astype(sortKey, mlxc::int8);
+    auto indices = mlxc::argsort(sortKey, axis);
     if (descending) {
         indices = ReverseAlongAxis(indices, axis);
     }
@@ -1173,6 +1261,31 @@ static mlxc::array popcnt(mlxc::array a) {
         count = mlxc::add(count, mlxc::bitwise_and(shifted, one));
     }
     return mlxc::astype(count, a.dtype());
+}
+
+// stablehlo.divide for integers: truncating division (round toward zero, like C).
+// mlxc::divide converts integers to float32; we use floor_divide with sign correction.
+static mlxc::array truncDivide(mlxc::array x, mlxc::array y) {
+    auto dt = x.dtype();
+    // Float types: use regular divide
+    if (dt == mlxc::float32 || dt == mlxc::float16 || dt == mlxc::bfloat16 ||
+        dt == mlxc::float64 || dt == mlxc::complex64) {
+        return mlxc::divide(x, y);
+    }
+    // Unsigned integer types: floor_divide is identical to truncating divide
+    if (dt == mlxc::uint8 || dt == mlxc::uint16 ||
+        dt == mlxc::uint32 || dt == mlxc::uint64) {
+        return mlxc::floor_divide(x, y);
+    }
+    // Signed integer types: truncating divide = floor_divide(|x|, |y|) * sign(x*y)
+    auto zero = mlxc::zeros(x.shape(), dt);
+    auto xAbs = mlxc::abs(x);
+    auto yAbs = mlxc::abs(y);
+    auto qAbs = mlxc::floor_divide(xAbs, yAbs);
+    auto xNeg = mlxc::less(x, zero);
+    auto yNeg = mlxc::less(y, zero);
+    auto negResult = mlxc::not_equal(xNeg, yNeg);
+    return mlxc::where(negResult, mlxc::negative(qAbs), qAbs);
 }
 
 // stablehlo.remainder follows truncating remainder semantics.
@@ -1302,7 +1415,29 @@ static ExecutionResult runFunction(mlir::func::FuncOp func,
     auto interp = interpretFunction(func, module, arrays);
     if (!interp.ok()) return ExecutionResult::Error(interp.error);
 
-    mlxc::eval(interp.outputs);
+    std::string eval_error;
+    try {
+        mlxc::eval(interp.outputs);
+    } catch (const std::exception& ex) {
+        eval_error = std::string("MLX eval failed: ") + ex.what();
+    } catch (...) {
+        eval_error = "MLX eval failed: unknown exception";
+    }
+    // Always synchronize to drain any pending Metal command buffers so their
+    // completion handlers fire here (in our thread) rather than later in a
+    // background thread where uncaught exceptions would cause std::terminate.
+    // Only synchronize if eval failed; in the success path, eval() already
+    // blocks until the outputs are ready.
+    if (!eval_error.empty()) {
+        try {
+            mlxc::synchronize();
+        } catch (...) {
+            // Ignore synchronize errors; we'll report eval_error if set
+        }
+    }
+    if (!eval_error.empty()) {
+        return ExecutionResult::Error(eval_error);
+    }
     ExecutionResult result;
     for (auto& arr : interp.outputs) {
         int pjrt_dtype = MlxDtypeToPjrt(arr.dtype());
@@ -1362,6 +1497,33 @@ static InterpResult interpretBlock(mlir::Block& entry,
                 outputs.push_back(it->second);
             }
             break;
+        }
+
+        // --- Zero-element shortcut ---
+        // If any input operand has zero elements, produce zero-filled outputs of
+        // the types declared in the StableHLO op without running any Metal kernel.
+        // (MLX Metal does not support zero-sized dimensions; array creation does.)
+        if (op.getNumResults() > 0 && op.getNumOperands() > 0) {
+            bool hasZeroInput = false;
+            for (unsigned i = 0; i < op.getNumOperands(); i++) {
+                auto it = vm.find(valKey(op.getOperand(i)));
+                if (it != vm.end() && it->second.size() == 0) {
+                    hasZeroInput = true;
+                    break;
+                }
+            }
+            if (hasZeroInput) {
+                for (unsigned i = 0; i < op.getNumResults(); i++) {
+                    auto resType = mlir::dyn_cast<mlir::RankedTensorType>(
+                        op.getResult(i).getType());
+                    if (resType) {
+                        auto shape = toMlxShape(resType);
+                        auto dtype = MlirTypeToMlx(resType.getElementType());
+                        vm.emplace(valKey(op.getResult(i)), mlxc::zeros(shape, dtype));
+                    }
+                }
+                continue;
+            }
         }
 
         // --- stablehlo.constant ---
@@ -1475,7 +1637,7 @@ static InterpResult interpretBlock(mlir::Block& entry,
         else if (opName == "stablehlo.add")       set(0, mlxc::add(operand(0), operand(1)));
         else if (opName == "stablehlo.subtract")  set(0, mlxc::subtract(operand(0), operand(1)));
         else if (opName == "stablehlo.multiply")  set(0, mlxc::multiply(operand(0), operand(1)));
-        else if (opName == "stablehlo.divide")    set(0, mlxc::divide(operand(0), operand(1)));
+        else if (opName == "stablehlo.divide")    set(0, truncDivide(operand(0), operand(1)));
         else if (opName == "stablehlo.maximum")   set(0, mlxc::maximum(operand(0), operand(1)));
         else if (opName == "stablehlo.minimum")   set(0, mlxc::minimum(operand(0), operand(1)));
         else if (opName == "stablehlo.power")     set(0, mlxc::power(operand(0), operand(1)));
@@ -1738,10 +1900,150 @@ static InterpResult interpretBlock(mlir::Block& entry,
             }
         }
 
+        // --- Reduce Window ---
+        else if (opName == "stablehlo.reduce_window") {
+            auto rwOp = mlir::cast<mlir::stablehlo::ReduceWindowOp>(op);
+            std::string rwFn = reductionOpName(rwOp.getBody());
+            auto inp = operand(0);
+            auto initVal = operand(1);  // scalar init / identity element
+            int rank = inp.ndim();
+
+            // Parse mandatory window_dimensions
+            std::vector<int64_t> windowDims;
+            for (int64_t v : rwOp.getWindowDimensions())
+                windowDims.push_back(v);
+
+            // Parse optional attributes (default 1)
+            std::vector<int> windowStrides = toIntVector(rwOp.getWindowStrides(), 1, rank);
+            std::vector<int> baseDilations = toIntVector(rwOp.getBaseDilations(), 1, rank);
+            std::vector<int> windowDilations = toIntVector(rwOp.getWindowDilations(), 1, rank);
+
+            // Parse padding: DenseIntElementsAttr with shape [rank, 2]
+            std::vector<int> padLo(rank, 0), padHi(rank, 0);
+            if (auto padAttr = rwOp.getPadding()) {
+                std::vector<int64_t> vals;
+                for (int64_t v : padAttr->getValues<int64_t>()) vals.push_back(v);
+                for (int d = 0; d < rank; d++) {
+                    padLo[d] = static_cast<int>(vals[static_cast<size_t>(2 * d)]);
+                    padHi[d] = static_cast<int>(vals[static_cast<size_t>(2 * d + 1)]);
+                }
+            }
+
+            // Reject dilations > 1 for now
+            for (int d = 0; d < rank; d++) {
+                if (baseDilations[d] != 1 || windowDilations[d] != 1)
+                    return InterpResult::Error(
+                        "stablehlo.reduce_window with dilations > 1 not yet implemented");
+            }
+
+            // --- Detect cumulative scan pattern ---
+            // A dimension d is "cumulative" if:
+            //   padding[d] = [W-1, 0] (forward) or [0, W-1] (reverse)
+            //   windowStrides[d] == 1, windowDims[d] covers full axis
+            // All other dims must be trivial (windowDims[d] == 1, no pad).
+            int cumAxis = -1;
+            bool cumReverse = false;
+            bool isCumulative = true;
+            for (int d = 0; d < rank && isCumulative; d++) {
+                int W = static_cast<int>(windowDims[static_cast<size_t>(d)]);
+                if (W == 1 && padLo[d] == 0 && padHi[d] == 0) continue;  // trivial dim
+                if (cumAxis != -1) { isCumulative = false; break; }  // >1 non-trivial dim
+                if (windowStrides[d] != 1) { isCumulative = false; break; }
+                if (padLo[d] == W - 1 && padHi[d] == 0)
+                    cumReverse = false;
+                else if (padLo[d] == 0 && padHi[d] == W - 1)
+                    cumReverse = true;
+                else
+                    { isCumulative = false; break; }
+                cumAxis = d;
+            }
+            if (cumAxis == -1) isCumulative = false;
+
+            if (isCumulative) {
+                mlxc::array result = mlxc::array(0.0f);
+                if (rwFn == "stablehlo.add")
+                    result = mlxc::cumsum(inp, cumAxis, cumReverse);
+                else if (rwFn == "stablehlo.multiply")
+                    result = mlxc::cumprod(inp, cumAxis, cumReverse);
+                else if (rwFn == "stablehlo.maximum")
+                    result = mlxc::cummax(inp, cumAxis, cumReverse);
+                else if (rwFn == "stablehlo.minimum")
+                    result = mlxc::cummin(inp, cumAxis, cumReverse);
+                else
+                    return InterpResult::Error(
+                        "Unsupported cumulative reduce_window: " + rwFn);
+                set(0, result);
+                continue;
+            }
+
+            // --- General case: pad + as_strided + reduce ---
+            // 1. Pad the input with the init value
+            std::vector<std::pair<int, int>> padWidths(static_cast<size_t>(rank));
+            for (int d = 0; d < rank; d++) padWidths[static_cast<size_t>(d)] = {padLo[d], padHi[d]};
+            auto padded = mlxc::pad(inp, padWidths, initVal);
+
+            // 2. Compute output shape and row-major strides of padded array
+            auto paddedShape = padded.shape();
+            std::vector<int64_t> pStride(static_cast<size_t>(rank));
+            pStride[static_cast<size_t>(rank - 1)] = 1;
+            for (int d = rank - 2; d >= 0; d--)
+                pStride[static_cast<size_t>(d)] =
+                    pStride[static_cast<size_t>(d + 1)] *
+                    static_cast<int64_t>(paddedShape[static_cast<size_t>(d + 1)]);
+
+            // 3. Build as_strided shape and strides: [outDims..., winDims...]
+            mlxc::Shape viewShape(static_cast<size_t>(2 * rank));
+            mlxc::Strides viewStrides(static_cast<size_t>(2 * rank));
+            std::vector<int> windowAxes;
+            for (int d = 0; d < rank; d++) {
+                int W = static_cast<int>(windowDims[static_cast<size_t>(d)]);
+                int outDim = (static_cast<int>(paddedShape[static_cast<size_t>(d)]) - W)
+                             / windowStrides[static_cast<size_t>(d)] + 1;
+                viewShape[static_cast<size_t>(d)] = outDim;
+                viewShape[static_cast<size_t>(rank + d)] = W;
+                viewStrides[static_cast<size_t>(d)] =
+                    pStride[static_cast<size_t>(d)] *
+                    static_cast<int64_t>(windowStrides[static_cast<size_t>(d)]);
+                viewStrides[static_cast<size_t>(rank + d)] = pStride[static_cast<size_t>(d)];
+                windowAxes.push_back(rank + d);
+            }
+            auto windows = mlxc::as_strided(padded, viewShape, viewStrides, 0);
+
+            // 4. Reduce along the window axes
+            mlxc::array result = mlxc::array(0.0f);
+            if (rwFn == "stablehlo.add")
+                result = mlxc::sum(windows, windowAxes, false);
+            else if (rwFn == "stablehlo.maximum")
+                result = mlxc::max(windows, windowAxes, false);
+            else if (rwFn == "stablehlo.minimum")
+                result = mlxc::min(windows, windowAxes, false);
+            else if (rwFn == "stablehlo.multiply")
+                result = mlxc::prod(windows, windowAxes, false);
+            else if (rwFn == "stablehlo.or")
+                result = mlxc::any(windows, windowAxes, false);
+            else if (rwFn == "stablehlo.and")
+                result = mlxc::all(windows, windowAxes, false);
+            else
+                return InterpResult::Error(
+                    "Unsupported reduce_window op: " + rwFn);
+            set(0, result);
+        }
+
         // --- Dot general ---
         else if (opName == "stablehlo.dot_general") {
             auto dotOp = mlir::cast<mlir::stablehlo::DotGeneralOp>(op);
-            set(0, dotGeneral(operand(0), operand(1), dotOp.getDotDimensionNumbers()));
+            auto lhs = operand(0), rhs = operand(1);
+            auto resultType = mlir::cast<mlir::RankedTensorType>(op.getResult(0).getType());
+            auto resultDtype = MlirTypeToMlx(resultType.getElementType());
+            // MLX einsum only supports floating-point; use an exact integer path instead.
+            bool isIntResult = resultDtype == mlxc::int8 || resultDtype == mlxc::int16 ||
+                               resultDtype == mlxc::int32 || resultDtype == mlxc::int64 ||
+                               resultDtype == mlxc::uint8 || resultDtype == mlxc::uint16 ||
+                               resultDtype == mlxc::uint32 || resultDtype == mlxc::uint64;
+            if (isIntResult)
+                set(0, intDotGeneral(lhs, rhs, dotOp.getDotDimensionNumbers()));
+            else
+                set(0, dotGeneral(lhs, rhs, dotOp.getDotDimensionNumbers()));
         }
         else if (opName == "stablehlo.convolution") {
             auto convOp = mlir::cast<mlir::stablehlo::ConvolutionOp>(op);

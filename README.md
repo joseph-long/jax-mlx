@@ -109,6 +109,34 @@ PJRT (Portable JAX Runtime) is JAX's abstraction for hardware backends. The plug
 - `PJRT_Client_BufferFromHostBuffer` - Transfer data to GPU
 - `PJRT_LoadedExecutable_Execute` - Run computation on GPU
 
+## Testing
+
+### In-tree tests
+
+```bash
+uv run pytest          # fast correctness suite (~1430 tests)
+```
+
+### JAX upstream test suite
+
+JAX's own test suite provides much broader op coverage.  The JAX source is
+checked out at `.agent-context/jax/`.  To run it:
+
+```bash
+# Pull latest JAX main and run the four core test files:
+bash scripts/jax_tests.sh -q --tb=short
+
+# Run only one file (faster):
+JAX_TEST_FILES="tests/lax_numpy_test.py" bash scripts/jax_tests.sh -q --tb=no
+
+# Skip the git pull:
+NO_PULL=1 bash scripts/jax_tests.sh -q --tb=no
+```
+
+The script automatically sets `JAX_PLATFORMS=mlx` and uses the freshest built
+dylib.  See `AGENTS.md` for the current pass-rate breakdown and top failure
+categories.
+
 ## Benchmarking
 
 Microbenchmarks compare CPU and MLX performance across a range of ops and sizes.
