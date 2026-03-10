@@ -575,6 +575,8 @@ static mlxc::array HandleGather(mlxc::array operand, mlxc::array startIndices,
     }
 
     // Two-axis point gather lowering used by MultivariateNormal-like paths.
+    // Supports arbitrary point-index shapes by flattening index points and
+    // reshaping the gathered result back to the original index prefix shape.
     if (startIndexMap.size() == 2 && collapsedSliceDims.size() == 2 &&
         operandBatchingDims.empty() && startIndicesBatchingDims.empty()) {
         if (collapsedSliceDims[0] != startIndexMap[0] ||
@@ -587,10 +589,12 @@ static mlxc::array HandleGather(mlxc::array operand, mlxc::array startIndices,
         }
         auto idx0 = mlxc::take(idx, 0, idx.ndim() - 1);
         auto idx1 = mlxc::take(idx, 1, idx.ndim() - 1);
-        if (idx0.ndim() != 1 || idx1.ndim() != 1) {
-            throw std::invalid_argument("two-axis gather currently expects 1D point indices");
-        }
-        int n = idx0.shape()[0];
+        mlxc::Shape idxPrefixShape;
+        idxPrefixShape.reserve(static_cast<size_t>(idx0.ndim()));
+        for (int d = 0; d < idx0.ndim(); ++d) idxPrefixShape.push_back(idx0.shape()[d]);
+        int n = static_cast<int>(idx0.size());
+        idx0 = mlxc::reshape(idx0, {n});
+        idx1 = mlxc::reshape(idx1, {n});
 
         if (operand.ndim() == 2 && startIndexMap[0] == 0 && startIndexMap[1] == 1) {
             if (sliceSizes.size() != 2 || sliceSizes[0] != 1 || sliceSizes[1] != 1) {
@@ -600,7 +604,8 @@ static mlxc::array HandleGather(mlxc::array operand, mlxc::array startIndices,
                 mlxc::reshape(idx0, {n, 1}), {n, operand.shape()[1]});
             auto rows = mlxc::take_along_axis(operand, rowIdx, 0);
             auto colIdx = mlxc::reshape(idx1, {n, 1});
-            return mlxc::squeeze(mlxc::take_along_axis(rows, colIdx, 1), {1});
+            auto gathered = mlxc::squeeze(mlxc::take_along_axis(rows, colIdx, 1), {1});
+            return mlxc::reshape(gathered, idxPrefixShape);
         }
 
         if (operand.ndim() == 3 && startIndexMap[0] == 1 && startIndexMap[1] == 2) {
@@ -613,11 +618,67 @@ static mlxc::array HandleGather(mlxc::array operand, mlxc::array startIndices,
             auto rows = mlxc::take_along_axis(operand, rowIdx, 1);
             auto colIdx = mlxc::broadcast_to(
                 mlxc::reshape(idx1, {1, n, 1}), {operand.shape()[0], n, 1});
-            return mlxc::squeeze(mlxc::take_along_axis(rows, colIdx, 2), {2});
+            auto gathered = mlxc::squeeze(mlxc::take_along_axis(rows, colIdx, 2), {2});
+            mlxc::Shape outShape;
+            outShape.reserve(static_cast<size_t>(gathered.ndim() + idxPrefixShape.size()));
+            outShape.push_back(operand.shape()[0]);
+            outShape.insert(outShape.end(), idxPrefixShape.begin(), idxPrefixShape.end());
+            return mlxc::reshape(gathered, outShape);
         }
     }
 
     throw std::invalid_argument("unsupported gather pattern");
+}
+
+static mlxc::array HandlePadWithInterior(mlxc::array input,
+                                         mlxc::array padValue,
+                                         const std::vector<int>& lo,
+                                         const std::vector<int>& hi,
+                                         const std::vector<int>& interior) {
+    int rank = input.ndim();
+    mlxc::Shape outShape(static_cast<size_t>(rank), 0);
+    for (int d = 0; d < rank; ++d) {
+        int inDim = input.shape()[d];
+        int interiorExtent = inDim > 0 ? (inDim - 1) * interior[static_cast<size_t>(d)] : 0;
+        outShape[static_cast<size_t>(d)] =
+            lo[static_cast<size_t>(d)] + inDim + interiorExtent + hi[static_cast<size_t>(d)];
+    }
+
+    auto base = mlxc::broadcast_to(padValue, outShape);
+    if (input.size() == 0) return base;
+
+    // Row-major strides for flattened output indexing.
+    std::vector<int> outStrides(static_cast<size_t>(rank), 1);
+    for (int d = rank - 2; d >= 0; --d) {
+        outStrides[static_cast<size_t>(d)] =
+            outStrides[static_cast<size_t>(d + 1)] * outShape[static_cast<size_t>(d + 1)];
+    }
+
+    // Build broadcasted linear index for every logical input element.
+    mlxc::array linear = mlxc::zeros({1}, mlxc::int32);
+    for (int d = 0; d < rank; ++d) {
+        int inDim = input.shape()[d];
+        auto axisIdx = mlxc::add(
+            mlxc::full({inDim}, lo[static_cast<size_t>(d)], mlxc::int32),
+            mlxc::multiply(
+                mlxc::arange(0.0, static_cast<double>(inDim), 1.0, mlxc::int32),
+                mlxc::full({inDim}, interior[static_cast<size_t>(d)] + 1, mlxc::int32)));
+        mlxc::Shape bshape(static_cast<size_t>(rank), 1);
+        bshape[static_cast<size_t>(d)] = inDim;
+        axisIdx = mlxc::reshape(axisIdx, bshape);
+        linear = mlxc::add(
+            linear,
+            mlxc::multiply(
+                axisIdx,
+                mlxc::full({1}, outStrides[static_cast<size_t>(d)], mlxc::int32)));
+    }
+
+    int totalIn = static_cast<int>(input.size());
+    auto flatBase = mlxc::reshape(base, {static_cast<int>(base.size())});
+    auto flatLinear = mlxc::reshape(linear, {totalIn});
+    auto flatInput = mlxc::reshape(input, {totalIn});
+    auto outFlat = mlxc::put_along_axis(flatBase, flatLinear, flatInput, 0);
+    return mlxc::reshape(outFlat, outShape);
 }
 
 static mlxc::array HandleScatter(mlxc::array operand, mlxc::array scatterIndices, mlxc::array updates,
@@ -1838,14 +1899,26 @@ static InterpResult interpretBlock(mlir::Block& entry,
             bool hasInterior =
                 std::any_of(interior.begin(), interior.end(), [](int v) { return v != 0; });
             if (hasInterior) {
-                return InterpResult::Error(
-                    "stablehlo.pad with interior padding not yet implemented");
+                set(0, HandlePadWithInterior(operand(0), operand(1), lo, hi, interior));
+                continue;
             }
 
             // Build pad widths
             std::vector<std::pair<int, int>> padWidths(rank);
             for (int j = 0; j < rank; j++) padWidths[j] = {lo[j], hi[j]};
             set(0, mlxc::pad(operand(0), padWidths, operand(1)));
+        }
+
+        // --- Optimization barrier ---
+        // Semantically a no-op for execution; preserve values and block only compiler rewrites.
+        else if (opName == "stablehlo.optimization_barrier") {
+            if (op.getNumOperands() != op.getNumResults()) {
+                return InterpResult::Error(
+                    "stablehlo.optimization_barrier operand/result arity mismatch");
+            }
+            for (size_t i = 0; i < op.getNumResults(); ++i) {
+                set(i, operand(i));
+            }
         }
 
         // --- Reduce ---
