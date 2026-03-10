@@ -147,18 +147,15 @@ def test_unsupported_op_error_message(jit: bool) -> None:
     device = jax.devices("mlx")[0]
     with jax.default_device(device):
         try:
-            # This is an obscure op. It's unlikely to be implemented, but this test may
-            # break if `clz` gets implemented.
-            func = jax.lax.clz
+            # ApproxTopK lowers to a custom call that is currently unsupported.
+            func = lambda x: jax.lax.approx_max_k(x, 1)
             if jit:
                 func = jax.jit(func)
-            func(numpy.int32(7))
+            func(jnp.array([1.0, 2.0, 3.0], dtype=jnp.float32))
         except Exception as exc:
             message = str(exc)
             assert "issues/new?template=missing-op.yml" in message
             assert "CONTRIBUTING.md" in message
-        else:
-            pytest.skip("clz is now supported; test needs a new unregistered op")
 
 
 @pytest.fixture(autouse=True, scope="module")
