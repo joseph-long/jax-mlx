@@ -8,7 +8,7 @@
 // ============================================================================
 
 PJRT_Error* MPS_Client_TopologyDescription(PJRT_Client_TopologyDescription_Args* args) {
-    MPS_LOG_DEBUG(" PJRT_Client_TopologyDescription called\n");
+    JAXPLUGIN_LOG_DEBUG(" PJRT_Client_TopologyDescription called\n");
     if (args->client && args->client->topology) {
         args->topology = args->client->topology;
     } else {

@@ -147,8 +147,8 @@ target_include_directories(pjrt_plugin_mlx PRIVATE
 )
 
 # Debug logging level (0=error, 1=warn, 2=info, 3=debug)
-if(DEFINED ENV{MPS_LOG_LEVEL})
-    target_compile_definitions(pjrt_plugin_mlx PRIVATE MPS_LOG_LEVEL=$ENV{MPS_LOG_LEVEL})
+if(DEFINED ENV{JAXPLUGIN_LOG_LEVEL})
+    target_compile_definitions(pjrt_plugin_mlx PRIVATE JAXPLUGIN_LOG_LEVEL=$ENV{JAXPLUGIN_LOG_LEVEL})
 endif()
 
 # Core MLIR libraries (order matters for static linking)

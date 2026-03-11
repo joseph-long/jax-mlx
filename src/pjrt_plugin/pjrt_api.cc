@@ -2,7 +2,7 @@
 // Uses official XLA PJRT header for correct struct layouts
 
 // Log level: 0=error, 1=+warn (default), 2=+info, 3=+debug
-// #define MPS_LOG_LEVEL 3  // Uncomment for verbose logging
+// #define JAXPLUGIN_LOG_LEVEL 3  // Uncomment for verbose logging
 
 #include "pjrt_plugin/logging.h"
 #include "pjrt_plugin/pjrt_types.h"
@@ -24,10 +24,10 @@ PJRT_Client* GetOrCreateDefaultClient() {
     if (g_default_client)
         return g_default_client;
 
-    MPS_LOG_INFO("Creating default client\n");
+    JAXPLUGIN_LOG_INFO("Creating default client\n");
     auto mlx_client = jax_mlx::MlxClient::Create();
     if (!mlx_client) {
-        MPS_LOG_ERROR("Failed to create MLX client\n");
+        JAXPLUGIN_LOG_ERROR("Failed to create MLX client\n");
         return nullptr;
     }
 
@@ -59,7 +59,7 @@ PJRT_Client* GetOrCreateDefaultClient() {
     g_default_client->topology = new PJRT_TopologyDescription();
     g_default_client->topology->client = g_default_client;
 
-    MPS_LOG_INFO("Created client with %zu devices\n", g_default_client->devices.size());
+    JAXPLUGIN_LOG_INFO("Created client with %zu devices\n", g_default_client->devices.size());
 
     return g_default_client;
 }

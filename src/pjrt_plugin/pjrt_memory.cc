@@ -39,7 +39,7 @@ PJRT_Error* MPS_Memory_ToString(PJRT_Memory_ToString_Args* args) {
 }
 
 PJRT_Error* MPS_Memory_AddressableByDevices(PJRT_Memory_AddressableByDevices_Args* args) {
-    MPS_LOG_DEBUG(" PJRT_Memory_AddressableByDevices called\n");
+    JAXPLUGIN_LOG_DEBUG(" PJRT_Memory_AddressableByDevices called\n");
     if (args->memory && args->memory->device) {
         static PJRT_Device* dev_array[1];
         dev_array[0] = args->memory->device;

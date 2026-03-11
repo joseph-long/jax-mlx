@@ -34,7 +34,7 @@ PJRT_Error* MPS_Error_GetCode(PJRT_Error_GetCode_Args* args) {
 // ============================================================================
 
 PJRT_Error* MPS_Plugin_Initialize(PJRT_Plugin_Initialize_Args* args) {
-    MPS_LOG_DEBUG(" PJRT_Plugin_Initialize\n");
+    JAXPLUGIN_LOG_DEBUG(" PJRT_Plugin_Initialize\n");
     return nullptr;
 }
 
@@ -49,16 +49,16 @@ PJRT_Error* MPS_Plugin_Attributes(PJRT_Plugin_Attributes_Args* args) {
 // ============================================================================
 
 PJRT_Error* MPS_Client_Create(PJRT_Client_Create_Args* args) {
-    MPS_LOG_DEBUG(" PJRT_Client_Create called, args=%p\n", (void*)args);
+    JAXPLUGIN_LOG_DEBUG(" PJRT_Client_Create called, args=%p\n", (void*)args);
 
     PJRT_Client* client = GetOrCreateDefaultClient();
     if (!client) {
         return MakeError("Failed to create MPS client");
     }
 
-    MPS_LOG_DEBUG(" PJRT_Client_Create setting client=%p\n", (void*)client);
+    JAXPLUGIN_LOG_DEBUG(" PJRT_Client_Create setting client=%p\n", (void*)client);
     args->client = client;
-    MPS_LOG_DEBUG(" PJRT_Client_Create returning nullptr (success)\n");
+    JAXPLUGIN_LOG_DEBUG(" PJRT_Client_Create returning nullptr (success)\n");
     return nullptr;
 }
 
@@ -68,47 +68,47 @@ PJRT_Error* MPS_Client_Destroy(PJRT_Client_Destroy_Args* args) {
 }
 
 PJRT_Error* MPS_Client_PlatformName(PJRT_Client_PlatformName_Args* args) {
-    MPS_LOG_DEBUG(" PJRT_Client_PlatformName called\n");
+    JAXPLUGIN_LOG_DEBUG(" PJRT_Client_PlatformName called\n");
     args->platform_name = kPlatformName;
     args->platform_name_size = strlen(kPlatformName);
     return nullptr;
 }
 
 PJRT_Error* MPS_Client_ProcessIndex(PJRT_Client_ProcessIndex_Args* args) {
-    MPS_LOG_DEBUG(" PJRT_Client_ProcessIndex called\n");
+    JAXPLUGIN_LOG_DEBUG(" PJRT_Client_ProcessIndex called\n");
     args->process_index = 0;
     return nullptr;
 }
 
 PJRT_Error* MPS_Client_PlatformVersion(PJRT_Client_PlatformVersion_Args* args) {
-    MPS_LOG_DEBUG(" PJRT_Client_PlatformVersion called\n");
+    JAXPLUGIN_LOG_DEBUG(" PJRT_Client_PlatformVersion called\n");
     args->platform_version = kPlatformVersion;
     args->platform_version_size = strlen(kPlatformVersion);
     return nullptr;
 }
 
 PJRT_Error* MPS_Client_Devices(PJRT_Client_Devices_Args* args) {
-    MPS_LOG_DEBUG(" PJRT_Client_Devices called, client=%p\n", (void*)args->client);
+    JAXPLUGIN_LOG_DEBUG(" PJRT_Client_Devices called, client=%p\n", (void*)args->client);
     PJRT_Client* client = GetClient(args->client);
     if (!client) {
         args->devices = nullptr;
         args->num_devices = 0;
-        MPS_LOG_DEBUG(" PJRT_Client_Devices: no client, returning 0\n");
+        JAXPLUGIN_LOG_DEBUG(" PJRT_Client_Devices: no client, returning 0\n");
         return nullptr;
     }
-    MPS_LOG_DEBUG(" PJRT_Client_Devices: %zu devices, data=%p\n", client->devices.size(),
+    JAXPLUGIN_LOG_DEBUG(" PJRT_Client_Devices: %zu devices, data=%p\n", client->devices.size(),
                   (void*)client->devices.data());
     for (size_t i = 0; i < client->devices.size(); i++) {
-        MPS_LOG_DEBUG(" PJRT_Client_Devices: device[%zu]=%p\n", i, (void*)client->devices[i]);
+        JAXPLUGIN_LOG_DEBUG(" PJRT_Client_Devices: device[%zu]=%p\n", i, (void*)client->devices[i]);
     }
     args->devices = client->devices.data();
     args->num_devices = client->devices.size();
-    MPS_LOG_DEBUG(" PJRT_Client_Devices returning\n");
+    JAXPLUGIN_LOG_DEBUG(" PJRT_Client_Devices returning\n");
     return nullptr;
 }
 
 PJRT_Error* MPS_Client_AddressableDevices(PJRT_Client_AddressableDevices_Args* args) {
-    MPS_LOG_DEBUG(" PJRT_Client_AddressableDevices called\n");
+    JAXPLUGIN_LOG_DEBUG(" PJRT_Client_AddressableDevices called\n");
     PJRT_Client* client = GetClient(args->client);
     if (!client) {
         args->addressable_devices = nullptr;
@@ -117,16 +117,16 @@ PJRT_Error* MPS_Client_AddressableDevices(PJRT_Client_AddressableDevices_Args* a
     }
     args->addressable_devices = client->devices.data();
     args->num_addressable_devices = client->devices.size();
-    MPS_LOG_DEBUG(" PJRT_Client_AddressableDevices returning %zu\n", client->devices.size());
+    JAXPLUGIN_LOG_DEBUG(" PJRT_Client_AddressableDevices returning %zu\n", client->devices.size());
     return nullptr;
 }
 
 PJRT_Error* MPS_Client_LookupDevice(PJRT_Client_LookupDevice_Args* args) {
-    MPS_LOG_DEBUG(" PJRT_Client_LookupDevice called, id=%d\n", (int)args->id);
+    JAXPLUGIN_LOG_DEBUG(" PJRT_Client_LookupDevice called, id=%d\n", (int)args->id);
     PJRT_Client* client = GetClient(args->client);
     if (client && args->id < client->devices.size()) {
         args->device = client->devices[args->id];
-        MPS_LOG_DEBUG(" Returning device %p\n", (void*)args->device);
+        JAXPLUGIN_LOG_DEBUG(" Returning device %p\n", (void*)args->device);
     } else {
         args->device = nullptr;
     }
@@ -144,7 +144,7 @@ PJRT_Error* MPS_Client_LookupAddressableDevice(PJRT_Client_LookupAddressableDevi
 }
 
 PJRT_Error* MPS_Client_AddressableMemories(PJRT_Client_AddressableMemories_Args* args) {
-    MPS_LOG_DEBUG(" PJRT_Client_AddressableMemories called\n");
+    JAXPLUGIN_LOG_DEBUG(" PJRT_Client_AddressableMemories called\n");
     PJRT_Client* client = GetClient(args->client);
     if (client && !client->memories.empty()) {
         args->addressable_memories = client->memories.data();
@@ -157,7 +157,7 @@ PJRT_Error* MPS_Client_AddressableMemories(PJRT_Client_AddressableMemories_Args*
 }
 
 PJRT_Error* MPS_Client_Compile(PJRT_Client_Compile_Args* args) {
-    MPS_LOG_INFO("Compiling StableHLO program\n");
+    JAXPLUGIN_LOG_INFO("Compiling StableHLO program\n");
 
     PJRT_Client* client = GetClient(args->client);
     if (!client || !client->client) {
@@ -166,9 +166,9 @@ PJRT_Error* MPS_Client_Compile(PJRT_Client_Compile_Args* args) {
 
     // Get the program from the args
     std::string format_str(args->program->format, args->program->format_size);
-    MPS_LOG_DEBUG(" Program format: %s (size=%zu)\n", format_str.c_str(),
+    JAXPLUGIN_LOG_DEBUG(" Program format: %s (size=%zu)\n", format_str.c_str(),
                   args->program->format_size);
-    MPS_LOG_DEBUG(" Program code size: %zu\n", args->program->code_size);
+    JAXPLUGIN_LOG_DEBUG(" Program code size: %zu\n", args->program->code_size);
 
     // Parse the StableHLO bytecode - returns ParsedModule with ownership of MLIR context
     mps::ParsedModule parsed_module;
@@ -192,9 +192,9 @@ PJRT_Error* MPS_Client_Compile(PJRT_Client_Compile_Args* args) {
 
     // Log any unsupported operations found (for debugging)
     if (!parsed_module.unsupported_ops.empty()) {
-        MPS_LOG_DEBUG(" Found %zu unsupported operations:\n", parsed_module.unsupported_ops.size());
+        JAXPLUGIN_LOG_DEBUG(" Found %zu unsupported operations:\n", parsed_module.unsupported_ops.size());
         for (const auto& op : parsed_module.unsupported_ops) {
-            MPS_LOG_DEBUG("   - %s\n", op.c_str());
+            JAXPLUGIN_LOG_DEBUG("   - %s\n", op.c_str());
         }
     }
 
@@ -227,7 +227,7 @@ PJRT_Error* MPS_Client_Compile(PJRT_Client_Compile_Args* args) {
     loaded_executable->addressable_devices = client->devices;
 
     args->executable = loaded_executable;
-    MPS_LOG_INFO("Compilation successful\n");
+    JAXPLUGIN_LOG_INFO("Compilation successful\n");
     return nullptr;
 }
 
@@ -240,7 +240,7 @@ PJRT_Error* MPS_Client_DefaultDeviceAssignment(PJRT_Client_DefaultDeviceAssignme
 }
 
 PJRT_Error* MPS_Client_BufferFromHostBuffer(PJRT_Client_BufferFromHostBuffer_Args* args) {
-    MPS_LOG_DEBUG(" PJRT_Client_BufferFromHostBuffer\n");
+    JAXPLUGIN_LOG_DEBUG(" PJRT_Client_BufferFromHostBuffer\n");
 
     PJRT_Client* client = GetClient(args->client);
     if (!client || !client->client) {

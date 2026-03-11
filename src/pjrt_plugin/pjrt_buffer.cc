@@ -65,20 +65,20 @@ PJRT_Error* MPS_Buffer_OnDeviceSizeInBytes(PJRT_Buffer_OnDeviceSizeInBytes_Args*
 }
 
 PJRT_Error* MPS_Buffer_Device(PJRT_Buffer_Device_Args* args) {
-    MPS_LOG_DEBUG(" PJRT_Buffer_Device called, buffer=%p\n", (void*)args->buffer);
+    JAXPLUGIN_LOG_DEBUG(" PJRT_Buffer_Device called, buffer=%p\n", (void*)args->buffer);
     if (args->buffer && args->buffer->client && !args->buffer->client->devices.empty()) {
         args->device = args->buffer->client->devices[0];
-        MPS_LOG_DEBUG(" PJRT_Buffer_Device: returning device=%p from client=%p\n",
+        JAXPLUGIN_LOG_DEBUG(" PJRT_Buffer_Device: returning device=%p from client=%p\n",
                       (void*)args->device, (void*)args->buffer->client);
     } else {
         args->device = nullptr;
-        MPS_LOG_DEBUG(" PJRT_Buffer_Device: returning nullptr (no client or devices)\n");
+        JAXPLUGIN_LOG_DEBUG(" PJRT_Buffer_Device: returning nullptr (no client or devices)\n");
     }
     return nullptr;
 }
 
 PJRT_Error* MPS_Buffer_Memory(PJRT_Buffer_Memory_Args* args) {
-    MPS_LOG_DEBUG(" PJRT_Buffer_Memory called\n");
+    JAXPLUGIN_LOG_DEBUG(" PJRT_Buffer_Memory called\n");
     // Return the default memory for the buffer's device
     if (args->buffer && args->buffer->client && !args->buffer->client->memories.empty()) {
         args->memory = args->buffer->client->memories[0];
