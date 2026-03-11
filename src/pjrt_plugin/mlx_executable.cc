@@ -1700,9 +1700,8 @@ static InterpResult interpretFunction(mlir::func::FuncOp func, mlir::ModuleOp mo
     return interpretBlock(entry, module, std::move(vm));
 }
 
-static InterpResult interpretBlock(mlir::Block& entry,
-                                   mlir::ModuleOp module,  // NOLINT(readability-function-size)
-                                   ValueMap vm) {
+// NOLINTNEXTLINE(readability-function-size)
+static InterpResult interpretBlock(mlir::Block& entry, mlir::ModuleOp module, ValueMap vm) {
     std::vector<mlxc::array> outputs;
     bool traceOps = std::getenv("JAX_MLX_TRACE_OPS") != nullptr;
 
