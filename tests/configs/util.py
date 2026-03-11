@@ -161,7 +161,7 @@ class OperationTestConfig:
                 differentiable_argnums.append(argnum)
         return tuple(differentiable_argnums)
 
-    def evaluate_value(self, jit: bool, device: jax.Device | None = None):
+    def evaluate_value(self, jit: bool, device: object | None = None):
         """Evaluate the output of the operation."""
         with jax.default_device(CPU_DEVICE):
             key = random.key(self.seed)
@@ -200,7 +200,7 @@ class OperationTestConfig:
         return result
 
     def evaluate_grad(
-        self, argnum: int, jit: bool, device: jax.Device | None = None
+        self, argnum: int, jit: bool, device: object | None = None
     ) -> tuple[jnp.ndarray]:
         """Evaluate the gradient of the operation. If the operation returns a tuple of
         values, gradients are evaluated for each element."""

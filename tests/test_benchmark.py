@@ -204,6 +204,7 @@ def test_benchmark_grad(
             result = run_once()
             jax.tree.map(lambda x: x.block_until_ready(), result)
             return result
+        assert varied_arg_batch is not None
         result = None
         for i in range(amortized_iters):
             iter_args = _replace_arg(args, varied_arg_index, varied_arg_batch[i])
