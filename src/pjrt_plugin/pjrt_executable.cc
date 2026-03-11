@@ -142,16 +142,16 @@ PJRT_Error* MPS_LoadedExecutable_Destroy(PJRT_LoadedExecutable_Destroy_Args* arg
 
 PJRT_Error* MPS_LoadedExecutable_GetExecutable(PJRT_LoadedExecutable_GetExecutable_Args* args) {
     JAXPLUGIN_LOG_DEBUG(" PJRT_LoadedExecutable_GetExecutable called, loaded_exec=%p\n",
-                  (void*)args->loaded_executable);
+                        (void*)args->loaded_executable);
     if (args->loaded_executable) {
         JAXPLUGIN_LOG_DEBUG(" Getting executable from loaded, executable=%p\n",
-                      (void*)args->loaded_executable->executable);
+                            (void*)args->loaded_executable->executable);
         args->executable = args->loaded_executable->executable;
     } else {
         args->executable = nullptr;
     }
     JAXPLUGIN_LOG_DEBUG(" PJRT_LoadedExecutable_GetExecutable returning executable=%p\n",
-                  (void*)args->executable);
+                        (void*)args->executable);
     return nullptr;
 }
 
@@ -203,7 +203,7 @@ PJRT_Error* MPS_LoadedExecutable_Execute(PJRT_LoadedExecutable_Execute_Args* arg
     // Debug: log expected vs actual outputs
     size_t expected_outputs = args->executable->executable->executable->num_outputs();
     JAXPLUGIN_LOG_DEBUG(" Execute: expected_outputs=%zu, num_args=%zu\n", expected_outputs,
-                  args->num_args);
+                        args->num_args);
 
     PJRT_Client* client = args->executable->client;
     jax_mlx::MlxDevice* device =
@@ -226,12 +226,12 @@ PJRT_Error* MPS_LoadedExecutable_Execute(PJRT_LoadedExecutable_Execute_Args* arg
     // Write outputs to the pre-allocated output_lists
     size_t num_outputs = exec_result.buffers.size();
     JAXPLUGIN_LOG_DEBUG(" Execute: actual_outputs=%zu, expected=%zu, client=%p\n", num_outputs,
-                  expected_outputs, (void*)client);
+                        expected_outputs, (void*)client);
 
     // Safety check: don't write more outputs than expected
     if (num_outputs > expected_outputs) {
-        JAXPLUGIN_LOG_DEBUG(" WARNING: More outputs produced (%zu) than expected (%zu)!\n", num_outputs,
-                      expected_outputs);
+        JAXPLUGIN_LOG_DEBUG(" WARNING: More outputs produced (%zu) than expected (%zu)!\n",
+                            num_outputs, expected_outputs);
     }
 
     for (size_t i = 0; i < num_outputs; i++) {
@@ -239,8 +239,9 @@ PJRT_Error* MPS_LoadedExecutable_Execute(PJRT_LoadedExecutable_Execute_Args* arg
         buffer->buffer = std::move(exec_result.buffers[i]);
         buffer->client = client;
         args->output_lists[0][i] = buffer;
-        JAXPLUGIN_LOG_DEBUG(" Execute: output[%zu] buffer=%p, client->devices[0]=%p\n", i, (void*)buffer,
-                      (void*)(client->devices.empty() ? nullptr : client->devices[0]));
+        JAXPLUGIN_LOG_DEBUG(" Execute: output[%zu] buffer=%p, client->devices[0]=%p\n", i,
+                            (void*)buffer,
+                            (void*)(client->devices.empty() ? nullptr : client->devices[0]));
     }
 
     if (args->device_complete_events) {
@@ -294,6 +295,6 @@ PJRT_Error* MPS_LoadedExecutable_GetDeviceAssignment(
     args->serialized_device_assignment_deleter = MpsDeviceAssignmentDeleter;
 
     JAXPLUGIN_LOG_DEBUG(" PJRT_LoadedExecutable_GetDeviceAssignment returning %zu bytes\n",
-                  args->serialized_bytes_size);
+                        args->serialized_bytes_size);
     return nullptr;
 }

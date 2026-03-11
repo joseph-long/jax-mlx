@@ -2,16 +2,16 @@
 
 #include "pjrt_plugin/mlx_executable.h"
 
-#include <cstdlib>
-#include <cstddef>
-#include <cstring>
-#include <cmath>
 #include <algorithm>
+#include <cmath>
+#include <cstddef>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
 #include <limits>
 #include <numeric>
 #include <set>
 #include <sstream>
-#include <iostream>
 #include <unordered_set>
 
 #include "llvm/ADT/DenseMap.h"
@@ -20,12 +20,11 @@
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlx/fft.h"
 #include "mlx/mlx.h"
-#include "stablehlo/dialect/ChloOps.h"
-#include "stablehlo/dialect/StablehloOps.h"
-
 #include "pjrt_plugin/issue_url.h"
 #include "pjrt_plugin/mlx_type_utils.h"
 #include "pjrt_plugin/stablehlo_parser.h"
+#include "stablehlo/dialect/ChloOps.h"
+#include "stablehlo/dialect/StablehloOps.h"
 
 namespace mlxc = mlx::core;
 
@@ -45,30 +44,34 @@ static void* valKey(mlir::Value v) {
 
 static mlxc::Shape toMlxShape(mlir::RankedTensorType type) {
     mlxc::Shape s;
-    for (int64_t d : type.getShape()) s.push_back(static_cast<int>(d));
+    for (int64_t d : type.getShape())
+        s.push_back(static_cast<int>(d));
     return s;
 }
 
 static bool HasZeroExtent(const mlxc::array& a) {
     for (int d : a.shape()) {
-        if (d == 0) return true;
+        if (d == 0)
+            return true;
     }
     return false;
 }
 
 static std::vector<int64_t> normalizeStridesToElements(const std::vector<int64_t>& dims,
                                                        const std::vector<int64_t>& rawStrides,
-                                                       int64_t dataSizeElems,
-                                                       size_t elemSize) {
-    if (rawStrides.empty()) return rawStrides;
+                                                       int64_t dataSizeElems, size_t elemSize) {
+    if (rawStrides.empty())
+        return rawStrides;
     auto maxOffset = [&](const std::vector<int64_t>& strides) {
         int64_t off = 0;
         for (size_t i = 0; i < dims.size(); ++i) {
-            if (dims[i] > 1) off += (dims[i] - 1) * std::abs(strides[i]);
+            if (dims[i] > 1)
+                off += (dims[i] - 1) * std::abs(strides[i]);
         }
         return off;
     };
-    if (maxOffset(rawStrides) < dataSizeElems || elemSize <= 1) return rawStrides;
+    if (maxOffset(rawStrides) < dataSizeElems || elemSize <= 1)
+        return rawStrides;
 
     std::vector<int64_t> normalized = rawStrides;
     bool divisible = true;
@@ -79,43 +82,33 @@ static std::vector<int64_t> normalizeStridesToElements(const std::vector<int64_t
         }
         s /= static_cast<int64_t>(elemSize);
     }
-    if (!divisible) return rawStrides;
+    if (!divisible)
+        return rawStrides;
     return maxOffset(normalized) < dataSizeElems ? normalized : rawStrides;
 }
 
-static void copyStridedToLinearBytes(const uint8_t* src,
-                                     uint8_t* dst,
+static void copyStridedToLinearBytes(const uint8_t* src, uint8_t* dst,
                                      const std::vector<int64_t>& dims,
-                                     const std::vector<int64_t>& stridesElems,
-                                     size_t elemSize,
-                                     size_t dim,
-                                     int64_t srcIndex,
-                                     size_t& dstOffset) {
+                                     const std::vector<int64_t>& stridesElems, size_t elemSize,
+                                     size_t dim, int64_t srcIndex, size_t& dstOffset) {
     if (dim == dims.size()) {
         auto* srcBytes = reinterpret_cast<const std::byte*>(src);
         std::ptrdiff_t byteOffset =
             static_cast<std::ptrdiff_t>(srcIndex) * static_cast<std::ptrdiff_t>(elemSize);
-        std::memcpy(dst + dstOffset,
-                    srcBytes + byteOffset,
-                    elemSize);
+        std::memcpy(dst + dstOffset, srcBytes + byteOffset, elemSize);
         dstOffset += elemSize;
         return;
     }
     for (int64_t i = 0; i < dims[dim]; ++i) {
-        copyStridedToLinearBytes(src,
-                                 dst,
-                                 dims,
-                                 stridesElems,
-                                 elemSize,
-                                 dim + 1,
-                                 srcIndex + i * stridesElems[dim],
-                                 dstOffset);
+        copyStridedToLinearBytes(src, dst, dims, stridesElems, elemSize, dim + 1,
+                                 srcIndex + i * stridesElems[dim], dstOffset);
     }
 }
 
 // Apply an arbitrary axis permutation.
 static mlxc::array permuteAxes(mlxc::array input, const std::vector<int>& perm) {
-    if (perm.empty()) return input;
+    if (perm.empty())
+        return input;
     return mlxc::transpose(input, perm);
 }
 
@@ -131,7 +124,8 @@ static mlxc::array makeConstant(mlir::stablehlo::ConstantOp op) {
     // Handle bool (i1): MLIR stores packed bits, convert to uint8
     if (elemType.isInteger(1)) {
         std::vector<uint8_t> data;
-        for (bool v : denseAttr.getValues<bool>()) data.push_back(v ? 1 : 0);
+        for (bool v : denseAttr.getValues<bool>())
+            data.push_back(v ? 1 : 0);
         return mlxc::array(data.data(), shape, mlxc::bool_);
     }
 
@@ -148,8 +142,7 @@ static mlxc::array makeConstant(mlir::stablehlo::ConstantOp op) {
         if (denseAttr.isSplat() && numElems > 0) {
             const char* one = rawData.data();
             for (int64_t i = 0; i < numElems; ++i) {
-                std::memcpy(static_cast<char*>(buf) + static_cast<size_t>(i) * elemBytes,
-                            one,
+                std::memcpy(static_cast<char*>(buf) + static_cast<size_t>(i) * elemBytes, one,
                             elemBytes);
             }
         } else {
@@ -168,8 +161,8 @@ static mlxc::array makeConstant(mlir::stablehlo::ConstantOp op) {
     // Use raw bytes (not getValues<T>()) so splat constants are O(1) to check
     // (rawData only holds one element for splats) and dense constants are
     // checked without MLIR value iterator overhead.
-    if (dtype == mlxc::float16 || dtype == mlxc::bfloat16 ||
-        dtype == mlxc::float32 || dtype == mlxc::float64) {
+    if (dtype == mlxc::float16 || dtype == mlxc::bfloat16 || dtype == mlxc::float32 ||
+        dtype == mlxc::float64) {
         // rawData covers exactly one element for splats, all elements otherwise.
         bool hasNonFinite = false;
         const char* raw = rawData.data();
@@ -178,14 +171,18 @@ static mlxc::array makeConstant(mlir::stablehlo::ConstantOp op) {
             for (size_t i = 0; i + 4 <= nraw; i += 4) {
                 uint32_t bits;
                 std::memcpy(&bits, raw + i, 4);
-                if ((bits & 0x7F800000U) == 0x7F800000U) { hasNonFinite = true; break; }
+                if ((bits & 0x7F800000U) == 0x7F800000U) {
+                    hasNonFinite = true;
+                    break;
+                }
             }
         } else if (dtype == mlxc::float64) {
             for (size_t i = 0; i + 8 <= nraw; i += 8) {
                 uint64_t bits;
                 std::memcpy(&bits, raw + i, 8);
                 if ((bits & 0x7FF0000000000000ULL) == 0x7FF0000000000000ULL) {
-                    hasNonFinite = true; break;
+                    hasNonFinite = true;
+                    break;
                 }
             }
         } else {
@@ -194,17 +191,19 @@ static mlxc::array makeConstant(mlir::stablehlo::ConstantOp op) {
             for (size_t i = 0; i + 2 <= nraw; i += 2) {
                 uint16_t bits;
                 std::memcpy(&bits, raw + i, 2);
-                if ((bits & expMask) == expMask) { hasNonFinite = true; break; }
+                if ((bits & expMask) == expMask) {
+                    hasNonFinite = true;
+                    break;
+                }
             }
         }
         if (hasNonFinite) {
             mlxc::Dtype intType = (dtype == mlxc::float16 || dtype == mlxc::bfloat16)
-                ? mlxc::int16
-                : (dtype == mlxc::float32 ? mlxc::int32 : mlxc::int64);
+                                      ? mlxc::int16
+                                      : (dtype == mlxc::float32 ? mlxc::int32 : mlxc::int64);
             // Build as integer (same bytes, no float literal in Metal), then
             // reinterpret as float so NaN/inf bits are preserved.
-            auto intArr = mlxc::array(buf, shape, intType,
-                                      [](void* p) { std::free(p); });
+            auto intArr = mlxc::array(buf, shape, intType, [](void* p) { std::free(p); });
             int n1d = static_cast<int>(numElems > 0 ? numElems : 1);
             auto flat = mlxc::reshape(intArr, {n1d});
             auto floatFlat = mlxc::view(flat, dtype);
@@ -216,9 +215,8 @@ static mlxc::array makeConstant(mlir::stablehlo::ConstantOp op) {
 }
 
 // stablehlo.broadcast_in_dim: insert size-1 dims then broadcast_to
-static mlxc::array broadcastInDim(mlxc::array input,
-                                 llvm::ArrayRef<int64_t> bdcDims,
-                                 mlxc::Shape outShape) {
+static mlxc::array broadcastInDim(mlxc::array input, llvm::ArrayRef<int64_t> bdcDims,
+                                  mlxc::Shape outShape) {
     if (input.ndim() == 0 && bdcDims.empty()) {
         // MLX broadcast_to on reshaped scalars can produce sparse-looking outputs.
         // Force scalar broadcasting via arithmetic expansion.
@@ -237,7 +235,7 @@ static mlxc::array broadcastInDim(mlxc::array input,
 // Permutes inputs to [batch..., lhsFree..., contract...] and [batch..., contract..., rhsFree...],
 // flattens each group into a single dim, then contracts via expand+multiply+sum.
 static mlxc::array intDotGeneral(mlxc::array lhs, mlxc::array rhs,
-                                  mlir::stablehlo::DotDimensionNumbersAttr dimNums) {
+                                 mlir::stablehlo::DotDimensionNumbersAttr dimNums) {
     auto lhsBatchArr = dimNums.getLhsBatchingDimensions();
     auto rhsBatchArr = dimNums.getRhsBatchingDimensions();
     auto lhsContractArr = dimNums.getLhsContractingDimensions();
@@ -265,10 +263,13 @@ static mlxc::array intDotGeneral(mlxc::array lhs, mlxc::array rhs,
             lhsPerm.push_back(i);
             lhsFreeSizes.push_back(lhsShape[static_cast<size_t>(i)]);
         }
-    for (auto d : lhsContractArr) lhsPerm.push_back(static_cast<int>(d));
+    for (auto d : lhsContractArr)
+        lhsPerm.push_back(static_cast<int>(d));
 
-    for (auto d : rhsBatchArr) rhsPerm.push_back(static_cast<int>(d));
-    for (auto d : rhsContractArr) rhsPerm.push_back(static_cast<int>(d));
+    for (auto d : rhsBatchArr)
+        rhsPerm.push_back(static_cast<int>(d));
+    for (auto d : rhsContractArr)
+        rhsPerm.push_back(static_cast<int>(d));
     for (int i = 0; i < rhsRank; i++)
         if (!rhsBatchSet.count(i) && !rhsContractSet.count(i)) {
             rhsPerm.push_back(i);
@@ -280,23 +281,26 @@ static mlxc::array intDotGeneral(mlxc::array lhs, mlxc::array rhs,
 
     // Compute flat sizes for each group.
     int B = 1, M = 1, K = 1, N = 1;
-    for (int s : batchSizes) B *= s;
-    for (int s : lhsFreeSizes) M *= s;
+    for (int s : batchSizes)
+        B *= s;
+    for (int s : lhsFreeSizes)
+        M *= s;
     auto lhsTShape = lhsT.shape();
     int nbatch = static_cast<int>(lhsBatchArr.size());
     int nlhsFree = static_cast<int>(lhsFreeSizes.size());
     int ncontract = static_cast<int>(lhsContractArr.size());
     for (int i = nbatch + nlhsFree; i < nbatch + nlhsFree + ncontract; i++)
         K *= lhsTShape[static_cast<size_t>(i)];
-    for (int s : rhsFreeSizes) N *= s;
+    for (int s : rhsFreeSizes)
+        N *= s;
 
     // Flatten each group: lhs → [B, M, K], rhs → [B, K, N]
     auto lhsFlat = mlxc::reshape(lhsT, {B, M, K});
     auto rhsFlat = mlxc::reshape(rhsT, {B, K, N});
 
     // [B, M, K, 1] * [B, 1, K, N] → [B, M, K, N], sum over K axis → [B, M, N]
-    auto lhsExp = mlxc::expand_dims(lhsFlat, 3);   // [B, M, K, 1]
-    auto rhsExp = mlxc::expand_dims(rhsFlat, 1);   // [B, 1, K, N]
+    auto lhsExp = mlxc::expand_dims(lhsFlat, 3);                              // [B, M, K, 1]
+    auto rhsExp = mlxc::expand_dims(rhsFlat, 1);                              // [B, 1, K, N]
     auto contracted = mlxc::sum(mlxc::multiply(lhsExp, rhsExp), {2}, false);  // [B, M, N]
 
     // Reshape to true output shape: [batch..., lhsFree..., rhsFree...]
@@ -318,8 +322,7 @@ static mlxc::array dotGeneral(mlxc::array lhs, mlxc::array rhs,
     auto lhsContractArr = dimNums.getLhsContractingDimensions();
     auto rhsContractArr = dimNums.getRhsContractingDimensions();
 
-    static constexpr const char* kSymbols =
-        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    static constexpr const char* kSymbols = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     static constexpr int kSymbolCount = 52;
 
     if (lhs.ndim() + rhs.ndim() > kSymbolCount) {
@@ -371,24 +374,28 @@ static mlxc::array dotGeneral(mlxc::array lhs, mlxc::array rhs,
     return mlxc::einsum(lhsSub + "," + rhsSub + "->" + outSub, {lhs, rhs});
 }
 
-static std::vector<int> toIntVector(std::optional<llvm::ArrayRef<int64_t>> arr,
-                                    int defaultValue,
+static std::vector<int> toIntVector(std::optional<llvm::ArrayRef<int64_t>> arr, int defaultValue,
                                     int sizeHint) {
-    if (!arr.has_value()) return std::vector<int>(sizeHint, defaultValue);
+    if (!arr.has_value())
+        return std::vector<int>(sizeHint, defaultValue);
     std::vector<int> out;
     out.reserve(arr->size());
-    for (int64_t v : *arr) out.push_back(static_cast<int>(v));
+    for (int64_t v : *arr)
+        out.push_back(static_cast<int>(v));
     return out;
 }
 
 static std::pair<std::vector<int>, std::vector<int>> parsePadding(
     std::optional<mlir::DenseIntElementsAttr> attr, int spatialDims) {
     std::vector<int> lo(spatialDims, 0), hi(spatialDims, 0);
-    if (!attr.has_value()) return {lo, hi};
+    if (!attr.has_value())
+        return {lo, hi};
 
     std::vector<int64_t> vals;
-    for (int64_t v : attr->getValues<int64_t>()) vals.push_back(v);
-    if (vals.size() != static_cast<size_t>(2 * spatialDims)) return {lo, hi};
+    for (int64_t v : attr->getValues<int64_t>())
+        vals.push_back(v);
+    if (vals.size() != static_cast<size_t>(2 * spatialDims))
+        return {lo, hi};
     for (int i = 0; i < spatialDims; ++i) {
         lo[i] = static_cast<int>(vals[static_cast<size_t>(2 * i)]);
         hi[i] = static_cast<int>(vals[static_cast<size_t>(2 * i + 1)]);
@@ -398,13 +405,14 @@ static std::pair<std::vector<int>, std::vector<int>> parsePadding(
 
 static int findSpatialPos(llvm::ArrayRef<int64_t> spatialDims, int64_t axis) {
     for (int i = 0; i < static_cast<int>(spatialDims.size()); ++i) {
-        if (spatialDims[static_cast<size_t>(i)] == axis) return i;
+        if (spatialDims[static_cast<size_t>(i)] == axis)
+            return i;
     }
     return -1;
 }
 
 static mlxc::array HandleConvolution(mlxc::array lhs, mlxc::array rhs,
-                                   mlir::stablehlo::ConvolutionOp convOp) {
+                                     mlir::stablehlo::ConvolutionOp convOp) {
     auto dimNums = convOp.getDimensionNumbers();
     int spatialDims = static_cast<int>(dimNums.getInputSpatialDimensions().size());
 
@@ -412,14 +420,16 @@ static mlxc::array HandleConvolution(mlxc::array lhs, mlxc::array rhs,
     std::vector<int> inputPerm;
     inputPerm.reserve(static_cast<size_t>(lhs.ndim()));
     inputPerm.push_back(static_cast<int>(dimNums.getInputBatchDimension()));
-    for (int64_t d : dimNums.getInputSpatialDimensions()) inputPerm.push_back(static_cast<int>(d));
+    for (int64_t d : dimNums.getInputSpatialDimensions())
+        inputPerm.push_back(static_cast<int>(d));
     inputPerm.push_back(static_cast<int>(dimNums.getInputFeatureDimension()));
     auto lhsCanonical = permuteAxes(lhs, inputPerm);
 
     std::vector<int> kernelPerm;
     kernelPerm.reserve(static_cast<size_t>(rhs.ndim()));
     kernelPerm.push_back(static_cast<int>(dimNums.getKernelOutputFeatureDimension()));
-    for (int64_t d : dimNums.getKernelSpatialDimensions()) kernelPerm.push_back(static_cast<int>(d));
+    for (int64_t d : dimNums.getKernelSpatialDimensions())
+        kernelPerm.push_back(static_cast<int>(d));
     kernelPerm.push_back(static_cast<int>(dimNums.getKernelInputFeatureDimension()));
     auto rhsCanonical = permuteAxes(rhs, kernelPerm);
 
@@ -431,7 +441,8 @@ static mlxc::array HandleConvolution(mlxc::array lhs, mlxc::array rhs,
     bool flip = false;
     if (auto reversal = convOp.getWindowReversal(); reversal.has_value()) {
         for (bool v : *reversal)
-            if (v) flip = true;
+            if (v)
+                flip = true;
     }
 
     uint64_t batchGroups = convOp.getBatchGroupCount();
@@ -439,9 +450,8 @@ static mlxc::array HandleConvolution(mlxc::array lhs, mlxc::array rhs,
 
     mlxc::array outCanonical = mlxc::array({});
     if (batchGroups == 1) {
-        outCanonical = mlxc::conv_general(lhsCanonical, rhsCanonical,
-                                         strides, padLo, padHi,
-                                         rhsDil, lhsDil, featureGroups, flip);
+        outCanonical = mlxc::conv_general(lhsCanonical, rhsCanonical, strides, padLo, padHi, rhsDil,
+                                          lhsDil, featureGroups, flip);
     } else {
         // batch_group_count > 1: used by JAX for weight gradients of grouped/depthwise
         // convolutions. Split LHS along batch (axis 0) and RHS along output-feature
@@ -474,11 +484,10 @@ static mlxc::array HandleConvolution(mlxc::array lhs, mlxc::array rhs,
         std::vector<mlxc::array> pieces;
         pieces.reserve(static_cast<size_t>(G));
         for (int64_t g = 0; g < G; ++g) {
-            auto lhsG = fullSlice(lhsCanonical, 0, g * bPerGroup,   (g + 1) * bPerGroup);
+            auto lhsG = fullSlice(lhsCanonical, 0, g * bPerGroup, (g + 1) * bPerGroup);
             auto rhsG = fullSlice(rhsCanonical, 0, g * coutPerGroup, (g + 1) * coutPerGroup);
-            pieces.push_back(mlxc::conv_general(lhsG, rhsG,
-                                               strides, padLo, padHi,
-                                               rhsDil, lhsDil, featureGroups, flip));
+            pieces.push_back(mlxc::conv_general(lhsG, rhsG, strides, padLo, padHi, rhsDil, lhsDil,
+                                                featureGroups, flip));
         }
         // Each piece: [bPerGroup, spatial..., coutPerGroup]
         // Concatenate along the output-feature axis (last = rank - 1 in canonical form).
@@ -494,7 +503,8 @@ static mlxc::array HandleConvolution(mlxc::array lhs, mlxc::array rhs,
             outPerm[static_cast<size_t>(axis)] = outRank - 1;
         } else {
             int p = findSpatialPos(dimNums.getOutputSpatialDimensions(), axis);
-            if (p < 0) throw std::invalid_argument("invalid output spatial dimensions");
+            if (p < 0)
+                throw std::invalid_argument("invalid output spatial dimensions");
             outPerm[static_cast<size_t>(axis)] = 1 + p;
         }
     }
@@ -502,7 +512,7 @@ static mlxc::array HandleConvolution(mlxc::array lhs, mlxc::array rhs,
 }
 
 static mlxc::array HandleGather(mlxc::array operand, mlxc::array startIndices,
-                              mlir::stablehlo::GatherOp gatherOp) {
+                                mlir::stablehlo::GatherOp gatherOp) {
     auto dimNums = gatherOp.getDimensionNumbers();
     auto startIndexMap = dimNums.getStartIndexMap();
     auto collapsedSliceDims = dimNums.getCollapsedSliceDims();
@@ -519,7 +529,8 @@ static mlxc::array HandleGather(mlxc::array operand, mlxc::array startIndices,
             std::vector<int> perm;
             perm.reserve(static_cast<size_t>(idx.ndim()));
             for (int i = 0; i < idx.ndim(); ++i)
-                if (i != indexVectorDim) perm.push_back(i);
+                if (i != indexVectorDim)
+                    perm.push_back(i);
             perm.push_back(indexVectorDim);
             idx = mlxc::transpose(idx, perm);
         }
@@ -562,15 +573,13 @@ static mlxc::array HandleGather(mlxc::array operand, mlxc::array startIndices,
                             "gather and batching axes must have slice size 1");
                     }
                 } else if (sliceSizes[static_cast<size_t>(i)] != operand.shape()[i]) {
-                    throw std::invalid_argument(
-                        "non-gather/non-batching axes must use full slice");
+                    throw std::invalid_argument("non-gather/non-batching axes must use full slice");
                 }
             }
 
             if (indices.ndim() != operand.ndim()) {
                 if (indices.ndim() == operand.ndim() - 1) {
-                    indices =
-                        mlxc::expand_dims(indices, {static_cast<int>(indices.ndim())});
+                    indices = mlxc::expand_dims(indices, {static_cast<int>(indices.ndim())});
                 } else {
                     throw std::invalid_argument("batched gather indices rank mismatch");
                 }
@@ -578,7 +587,8 @@ static mlxc::array HandleGather(mlxc::array operand, mlxc::array startIndices,
             mlxc::Shape targetShape(operand.shape().begin(), operand.shape().end());
             targetShape[static_cast<size_t>(axis)] = indices.shape()[axis];
             for (int d = 0; d < operand.ndim(); ++d) {
-                if (d == axis) continue;
+                if (d == axis)
+                    continue;
                 int idxDim = indices.shape()[d];
                 int want = targetShape[static_cast<size_t>(d)];
                 if (idxDim != want && idxDim != 1) {
@@ -614,7 +624,8 @@ static mlxc::array HandleGather(mlxc::array operand, mlxc::array startIndices,
         auto idx1 = mlxc::take(idx, 1, idx.ndim() - 1);
         mlxc::Shape idxPrefixShape;
         idxPrefixShape.reserve(static_cast<size_t>(idx0.ndim()));
-        for (int d = 0; d < idx0.ndim(); ++d) idxPrefixShape.push_back(idx0.shape()[d]);
+        for (int d = 0; d < idx0.ndim(); ++d)
+            idxPrefixShape.push_back(idx0.shape()[d]);
         int n = static_cast<int>(idx0.size());
         idx0 = mlxc::reshape(idx0, {n});
         idx1 = mlxc::reshape(idx1, {n});
@@ -623,8 +634,7 @@ static mlxc::array HandleGather(mlxc::array operand, mlxc::array startIndices,
             if (sliceSizes.size() != 2 || sliceSizes[0] != 1 || sliceSizes[1] != 1) {
                 throw std::invalid_argument("rank-2 point gather requires slice sizes [1, 1]");
             }
-            auto rowIdx = mlxc::broadcast_to(
-                mlxc::reshape(idx0, {n, 1}), {n, operand.shape()[1]});
+            auto rowIdx = mlxc::broadcast_to(mlxc::reshape(idx0, {n, 1}), {n, operand.shape()[1]});
             auto rows = mlxc::take_along_axis(operand, rowIdx, 0);
             auto colIdx = mlxc::reshape(idx1, {n, 1});
             auto gathered = mlxc::squeeze(mlxc::take_along_axis(rows, colIdx, 1), {1});
@@ -635,12 +645,11 @@ static mlxc::array HandleGather(mlxc::array operand, mlxc::array startIndices,
             if (sliceSizes.size() != 3 || sliceSizes[1] != 1 || sliceSizes[2] != 1) {
                 throw std::invalid_argument("rank-3 point gather requires unit gathered slices");
             }
-            auto rowIdx = mlxc::broadcast_to(
-                mlxc::reshape(idx0, {1, n, 1}),
-                {operand.shape()[0], n, operand.shape()[2]});
+            auto rowIdx = mlxc::broadcast_to(mlxc::reshape(idx0, {1, n, 1}),
+                                             {operand.shape()[0], n, operand.shape()[2]});
             auto rows = mlxc::take_along_axis(operand, rowIdx, 1);
-            auto colIdx = mlxc::broadcast_to(
-                mlxc::reshape(idx1, {1, n, 1}), {operand.shape()[0], n, 1});
+            auto colIdx =
+                mlxc::broadcast_to(mlxc::reshape(idx1, {1, n, 1}), {operand.shape()[0], n, 1});
             auto gathered = mlxc::squeeze(mlxc::take_along_axis(rows, colIdx, 2), {2});
             mlxc::Shape outShape;
             outShape.reserve(static_cast<size_t>(gathered.ndim() + idxPrefixShape.size()));
@@ -653,25 +662,23 @@ static mlxc::array HandleGather(mlxc::array operand, mlxc::array startIndices,
     // Scalar index-vector gather (no batching, no collapsed dims): clamped
     // dynamic-slice with static slice_sizes.
     if (operandBatchingDims.empty() && startIndicesBatchingDims.empty() &&
-        collapsedSliceDims.empty() && startIndices.ndim() == 1 &&
-        indexVectorDim == 0 &&
+        collapsedSliceDims.empty() && startIndices.ndim() == 1 && indexVectorDim == 0 &&
         static_cast<size_t>(startIndices.shape()[0]) == startIndexMap.size()) {
         int rank = operand.ndim();
         mlxc::Shape starts(static_cast<size_t>(rank), 0);
         mlxc::Shape stops(static_cast<size_t>(rank), 0);
         mlxc::Shape strides(static_cast<size_t>(rank), 1);
         for (int d = 0; d < rank; ++d) {
-            stops[static_cast<size_t>(d)] =
-                static_cast<int>(sliceSizes[static_cast<size_t>(d)]);
+            stops[static_cast<size_t>(d)] = static_cast<int>(sliceSizes[static_cast<size_t>(d)]);
         }
         auto idx64 = mlxc::astype(startIndices, mlxc::int64);
         for (size_t k = 0; k < startIndexMap.size(); ++k) {
             int axis = static_cast<int>(startIndexMap[k]);
             int64_t rawStart = mlxc::take(idx64, static_cast<int>(k), 0).item<int64_t>();
-            int64_t maxStart =
-                static_cast<int64_t>(operand.shape()[axis]) -
-                static_cast<int64_t>(sliceSizes[static_cast<size_t>(axis)]);
-            if (maxStart < 0) maxStart = 0;
+            int64_t maxStart = static_cast<int64_t>(operand.shape()[axis]) -
+                               static_cast<int64_t>(sliceSizes[static_cast<size_t>(axis)]);
+            if (maxStart < 0)
+                maxStart = 0;
             int64_t clampedStart = std::clamp<int64_t>(rawStart, 0, maxStart);
             starts[static_cast<size_t>(axis)] = static_cast<int>(clampedStart);
             stops[static_cast<size_t>(axis)] =
@@ -684,7 +691,8 @@ static mlxc::array HandleGather(mlxc::array operand, mlxc::array startIndices,
         std::string s = "[";
         bool first = true;
         for (auto v : vals) {
-            if (!first) s += ",";
+            if (!first)
+                s += ",";
             first = false;
             s += std::to_string(static_cast<int64_t>(v));
         }
@@ -693,19 +701,16 @@ static mlxc::array HandleGather(mlxc::array operand, mlxc::array startIndices,
     };
     throw std::invalid_argument(
         "unsupported gather pattern: operand_rank=" + std::to_string(operand.ndim()) +
-        " start_indices_rank=" + std::to_string(startIndices.ndim()) +
-        " index_vector_dim=" + std::to_string(indexVectorDim) +
-        " start_index_map=" + vecToString(startIndexMap) +
+        " start_indices_rank=" + std::to_string(startIndices.ndim()) + " index_vector_dim=" +
+        std::to_string(indexVectorDim) + " start_index_map=" + vecToString(startIndexMap) +
         " collapsed_slice_dims=" + vecToString(collapsedSliceDims) +
         " operand_batching_dims=" + vecToString(operandBatchingDims) +
         " start_indices_batching_dims=" + vecToString(startIndicesBatchingDims) +
         " slice_sizes=" + vecToString(sliceSizes));
 }
 
-static mlxc::array HandlePadWithInterior(mlxc::array input,
-                                         mlxc::array padValue,
-                                         const std::vector<int>& lo,
-                                         const std::vector<int>& hi,
+static mlxc::array HandlePadWithInterior(mlxc::array input, mlxc::array padValue,
+                                         const std::vector<int>& lo, const std::vector<int>& hi,
                                          const std::vector<int>& interior) {
     int rank = input.ndim();
     mlxc::Shape outShape(static_cast<size_t>(rank), 0);
@@ -717,7 +722,8 @@ static mlxc::array HandlePadWithInterior(mlxc::array input,
     }
 
     auto base = mlxc::broadcast_to(padValue, outShape);
-    if (HasZeroExtent(input)) return base;
+    if (HasZeroExtent(input))
+        return base;
 
     // Row-major strides for flattened output indexing.
     std::vector<int> outStrides(static_cast<size_t>(rank), 1);
@@ -732,17 +738,14 @@ static mlxc::array HandlePadWithInterior(mlxc::array input,
         int inDim = input.shape()[d];
         auto axisIdx = mlxc::add(
             mlxc::full({inDim}, lo[static_cast<size_t>(d)], mlxc::int32),
-            mlxc::multiply(
-                mlxc::arange(0.0, static_cast<double>(inDim), 1.0, mlxc::int32),
-                mlxc::full({inDim}, interior[static_cast<size_t>(d)] + 1, mlxc::int32)));
+            mlxc::multiply(mlxc::arange(0.0, static_cast<double>(inDim), 1.0, mlxc::int32),
+                           mlxc::full({inDim}, interior[static_cast<size_t>(d)] + 1, mlxc::int32)));
         mlxc::Shape bshape(static_cast<size_t>(rank), 1);
         bshape[static_cast<size_t>(d)] = inDim;
         axisIdx = mlxc::reshape(axisIdx, bshape);
         linear = mlxc::add(
-            linear,
-            mlxc::multiply(
-                axisIdx,
-                mlxc::full({1}, outStrides[static_cast<size_t>(d)], mlxc::int32)));
+            linear, mlxc::multiply(
+                        axisIdx, mlxc::full({1}, outStrides[static_cast<size_t>(d)], mlxc::int32)));
     }
 
     int totalIn = static_cast<int>(input.size());
@@ -753,12 +756,13 @@ static mlxc::array HandlePadWithInterior(mlxc::array input,
     return mlxc::reshape(outFlat, outShape);
 }
 
-static mlxc::array HandleScatter(mlxc::array operand, mlxc::array scatterIndices, mlxc::array updates,
-                               mlir::stablehlo::ScatterOp scatterOp) {
+static mlxc::array HandleScatter(mlxc::array operand, mlxc::array scatterIndices,
+                                 mlxc::array updates, mlir::stablehlo::ScatterOp scatterOp) {
     auto shapeToString = [](const mlxc::Shape& shape) {
         std::string s = "[";
         for (size_t i = 0; i < shape.size(); ++i) {
-            if (i) s += ",";
+            if (i)
+                s += ",";
             s += std::to_string(shape[i]);
         }
         s += "]";
@@ -768,7 +772,8 @@ static mlxc::array HandleScatter(mlxc::array operand, mlxc::array scatterIndices
         std::string s = "[";
         bool first = true;
         for (auto v : range) {
-            if (!first) s += ",";
+            if (!first)
+                s += ",";
             first = false;
             s += std::to_string(static_cast<int64_t>(v));
         }
@@ -805,7 +810,8 @@ static mlxc::array HandleScatter(mlxc::array operand, mlxc::array scatterIndices
             std::vector<int> perm;
             perm.reserve(static_cast<size_t>(idx.ndim()));
             for (int i = 0; i < idx.ndim(); ++i)
-                if (i != indexVectorDim) perm.push_back(i);
+                if (i != indexVectorDim)
+                    perm.push_back(i);
             perm.push_back(indexVectorDim);
             idx = mlxc::transpose(idx, perm);
         }
@@ -819,8 +825,8 @@ static mlxc::array HandleScatter(mlxc::array operand, mlxc::array scatterIndices
 
     // Full-index scalar scatter into a single point of a rank-N tensor.
     if (scatterDimsToOperandDims.size() == static_cast<size_t>(operand.ndim()) &&
-        insertedWindowDims.size() == static_cast<size_t>(operand.ndim()) &&
-        idx.ndim() == 1 && idx.shape()[0] == operand.ndim()) {
+        insertedWindowDims.size() == static_cast<size_t>(operand.ndim()) && idx.ndim() == 1 &&
+        idx.shape()[0] == operand.ndim()) {
         for (int d = 0; d < operand.ndim(); ++d) {
             if (scatterDimsToOperandDims[static_cast<size_t>(d)] != d ||
                 insertedWindowDims[static_cast<size_t>(d)] != d) {
@@ -842,10 +848,9 @@ static mlxc::array HandleScatter(mlxc::array operand, mlxc::array scatterIndices
         auto flatOperand = mlxc::reshape(operand, {static_cast<int>(operand.size())});
         auto flatIndex = mlxc::reshape(linear, {1});
         auto flatUpdate = mlxc::reshape(updates, {1});
-        auto outFlat =
-            scatterFn == "stablehlo.add"
-                ? mlxc::scatter_add_axis(flatOperand, flatIndex, flatUpdate, 0)
-                : mlxc::put_along_axis(flatOperand, flatIndex, flatUpdate, 0);
+        auto outFlat = scatterFn == "stablehlo.add"
+                           ? mlxc::scatter_add_axis(flatOperand, flatIndex, flatUpdate, 0)
+                           : mlxc::put_along_axis(flatOperand, flatIndex, flatUpdate, 0);
         return mlxc::reshape(outFlat, operand.shape());
     }
 
@@ -886,17 +891,17 @@ static mlxc::array HandleScatter(mlxc::array operand, mlxc::array scatterIndices
                     }
                 }
                 auto outNorm = mlxc::stack(slices, 2);
-                if (axis == 0) return mlxc::transpose(outNorm, {1, 0, 2});
-                if (axis == 2) return mlxc::transpose(outNorm, {0, 2, 1});
+                if (axis == 0)
+                    return mlxc::transpose(outNorm, {1, 0, 2});
+                if (axis == 2)
+                    return mlxc::transpose(outNorm, {0, 2, 1});
                 return outNorm;
             } catch (const std::exception& ex) {
                 throw std::invalid_argument(
                     std::string("rank3 axis scatter fallback failed: fn=") + scatterFn +
-                    " axis=" + std::to_string(axis) +
-                    " operand=" + shapeToString(operand.shape()) +
+                    " axis=" + std::to_string(axis) + " operand=" + shapeToString(operand.shape()) +
                     " idx=" + shapeToString(idxAxis.shape()) +
-                    " updates=" + shapeToString(updates.shape()) +
-                    " err=" + ex.what());
+                    " updates=" + shapeToString(updates.shape()) + " err=" + ex.what());
             }
         }
         if (updates.ndim() == idxAxis.ndim()) {
@@ -908,11 +913,9 @@ static mlxc::array HandleScatter(mlxc::array operand, mlxc::array scatterIndices
             } catch (const std::exception& ex) {
                 throw std::invalid_argument(
                     std::string("axis scatter failed: fn=") + scatterFn +
-                    " axis=" + std::to_string(axis) +
-                    " operand=" + shapeToString(operand.shape()) +
+                    " axis=" + std::to_string(axis) + " operand=" + shapeToString(operand.shape()) +
                     " idx=" + shapeToString(idxAxis.shape()) +
-                    " updates=" + shapeToString(updates.shape()) +
-                    " err=" + ex.what());
+                    " updates=" + shapeToString(updates.shape()) + " err=" + ex.what());
             }
         }
     }
@@ -920,8 +923,8 @@ static mlxc::array HandleScatter(mlxc::array operand, mlxc::array scatterIndices
     // Two-axis point scatter into rank-2 tensors.
     if (scatterDimsToOperandDims.size() == 2 && insertedWindowDims.size() == 2 &&
         scatterDimsToOperandDims[0] == 0 && scatterDimsToOperandDims[1] == 1 &&
-        insertedWindowDims[0] == 0 && insertedWindowDims[1] == 1 &&
-        operand.ndim() == 2 && idx.shape().back() == 2) {
+        insertedWindowDims[0] == 0 && insertedWindowDims[1] == 1 && operand.ndim() == 2 &&
+        idx.shape().back() == 2) {
         auto idx0 = mlxc::take(idx, 0, idx.ndim() - 1);
         auto idx1 = mlxc::take(idx, 1, idx.ndim() - 1);
         if (idx0.ndim() != 1 || idx1.ndim() != 1) {
@@ -931,10 +934,9 @@ static mlxc::array HandleScatter(mlxc::array operand, mlxc::array scatterIndices
         auto linear = idx0 * operand.shape()[1] + idx1;
         auto flatOperand = mlxc::reshape(operand, {operand.shape()[0] * operand.shape()[1]});
         auto flatUpdates = mlxc::reshape(updates, {static_cast<int>(points)});
-        auto outFlat =
-            scatterFn == "stablehlo.add"
-                ? mlxc::scatter_add_axis(flatOperand, linear, flatUpdates, 0)
-                : mlxc::put_along_axis(flatOperand, linear, flatUpdates, 0);
+        auto outFlat = scatterFn == "stablehlo.add"
+                           ? mlxc::scatter_add_axis(flatOperand, linear, flatUpdates, 0)
+                           : mlxc::put_along_axis(flatOperand, linear, flatUpdates, 0);
         return mlxc::reshape(outFlat, {operand.shape()[0], operand.shape()[1]});
     }
 
@@ -942,8 +944,8 @@ static mlxc::array HandleScatter(mlxc::array operand, mlxc::array scatterIndices
     if (scatterDimsToOperandDims.size() == 2 && insertedWindowDims.size() == 2 &&
         updateWindowDims.size() == 1 && updateWindowDims[0] == 0 &&
         scatterDimsToOperandDims[0] == 1 && scatterDimsToOperandDims[1] == 2 &&
-        insertedWindowDims[0] == 1 && insertedWindowDims[1] == 2 &&
-        operand.ndim() == 3 && idx.shape().back() == 2) {
+        insertedWindowDims[0] == 1 && insertedWindowDims[1] == 2 && operand.ndim() == 3 &&
+        idx.shape().back() == 2) {
         auto idx0 = mlxc::take(idx, 0, idx.ndim() - 1);
         auto idx1 = mlxc::take(idx, 1, idx.ndim() - 1);
         if (idx0.ndim() != 1 || idx1.ndim() != 1) {
@@ -960,8 +962,7 @@ static mlxc::array HandleScatter(mlxc::array operand, mlxc::array scatterIndices
                    upd.shape()[1] == b) {
             upd = mlxc::transpose(upd, {1, 0});
         }
-        if (upd.ndim() != 2 || upd.shape()[0] != b ||
-            upd.shape()[1] != static_cast<int>(points)) {
+        if (upd.ndim() != 2 || upd.shape()[0] != b || upd.shape()[1] != static_cast<int>(points)) {
             throw std::invalid_argument("rank-3 point scatter updates must be [B, P]");
         }
 
@@ -971,10 +972,9 @@ static mlxc::array HandleScatter(mlxc::array operand, mlxc::array scatterIndices
             auto opSlice = mlxc::take(operand, bi, 0);
             auto flatOp = mlxc::reshape(opSlice, {operand.shape()[1] * operand.shape()[2]});
             auto updSlice = mlxc::take(upd, bi, 0);
-            auto outFlat =
-                scatterFn == "stablehlo.add"
-                    ? mlxc::scatter_add_axis(flatOp, linear, updSlice, 0)
-                    : mlxc::put_along_axis(flatOp, linear, updSlice, 0);
+            auto outFlat = scatterFn == "stablehlo.add"
+                               ? mlxc::scatter_add_axis(flatOp, linear, updSlice, 0)
+                               : mlxc::put_along_axis(flatOp, linear, updSlice, 0);
             slices.push_back(mlxc::reshape(outFlat, {operand.shape()[1], operand.shape()[2]}));
         }
         return mlxc::stack(slices, 0);
@@ -1042,14 +1042,16 @@ static mlxc::array HandleScatter(mlxc::array operand, mlxc::array scatterIndices
 
 static mlxc::array HandleCholesky(mlxc::array a, mlir::stablehlo::CholeskyOp choleskyOp) {
     bool lower = true;
-    if (choleskyOp.getLowerAttr()) lower = choleskyOp.getLower();
+    if (choleskyOp.getLowerAttr())
+        lower = choleskyOp.getLower();
 
     if (a.ndim() < 2) {
         throw std::invalid_argument("cholesky expects rank >= 2");
     }
     int n = a.shape()[a.ndim() - 1];
     int m = a.shape()[a.ndim() - 2];
-    if (n != m) throw std::invalid_argument("cholesky expects square matrices");
+    if (n != m)
+        throw std::invalid_argument("cholesky expects square matrices");
     if (a.dtype() != mlxc::float32 && a.dtype() != mlxc::float64) {
         throw std::invalid_argument("cholesky only supports f32/f64");
     }
@@ -1057,12 +1059,12 @@ static mlxc::array HandleCholesky(mlxc::array a, mlir::stablehlo::CholeskyOp cho
     a.eval();
     std::vector<int64_t> dims(a.shape().begin(), a.shape().end());
     std::vector<int64_t> rawStrides(a.strides().begin(), a.strides().end());
-    auto strides = normalizeStridesToElements(
-        dims, rawStrides, static_cast<int64_t>(a.data_size()),
-        static_cast<size_t>(a.dtype().size()));
+    auto strides = normalizeStridesToElements(dims, rawStrides, static_cast<int64_t>(a.data_size()),
+                                              static_cast<size_t>(a.dtype().size()));
 
     int64_t batch = 1;
-    for (int i = 0; i < a.ndim() - 2; ++i) batch *= a.shape()[i];
+    for (int i = 0; i < a.ndim() - 2; ++i)
+        batch *= a.shape()[i];
     int64_t matrixElems = static_cast<int64_t>(n) * static_cast<int64_t>(n);
     int64_t totalElems = batch * matrixElems;
 
@@ -1073,13 +1075,8 @@ static mlxc::array HandleCholesky(mlxc::array a, mlir::stablehlo::CholeskyOp cho
 
         size_t dstOffset = 0;
         copyStridedToLinearBytes(reinterpret_cast<const uint8_t*>(srcPtr),
-                                 reinterpret_cast<uint8_t*>(in.data()),
-                                 dims,
-                                 strides,
-                                 sizeof(T),
-                                 0,
-                                 0,
-                                 dstOffset);
+                                 reinterpret_cast<uint8_t*>(in.data()), dims, strides, sizeof(T), 0,
+                                 0, dstOffset);
 
         for (int64_t b = 0; b < batch; ++b) {
             const int64_t base = b * matrixElems;
@@ -1120,15 +1117,15 @@ static mlxc::array HandleCholesky(mlxc::array a, mlir::stablehlo::CholeskyOp cho
                             out[static_cast<size_t>(base + j * n + i)];
                     }
                 }
-                std::copy(upper.begin(),
-                          upper.end(),
+                std::copy(upper.begin(), upper.end(),
                           out.begin() + static_cast<std::ptrdiff_t>(base));
             }
         }
 
         size_t nbytes = out.size() * sizeof(T);
         void* buf = std::malloc(nbytes > 0 ? nbytes : 1);
-        if (nbytes > 0) std::memcpy(buf, out.data(), nbytes);
+        if (nbytes > 0)
+            std::memcpy(buf, out.data(), nbytes);
         return mlxc::array(buf, a.shape(), a.dtype(), [](void* p) { std::free(p); });
     };
 
@@ -1139,7 +1136,7 @@ static mlxc::array HandleCholesky(mlxc::array a, mlir::stablehlo::CholeskyOp cho
 }
 
 static mlxc::array HandleTriangularSolve(mlxc::array a, mlxc::array b,
-                                       mlir::stablehlo::TriangularSolveOp triSolveOp) {
+                                         mlir::stablehlo::TriangularSolveOp triSolveOp) {
     bool leftSide = triSolveOp.getLeftSide();
     bool lower = triSolveOp.getLower();
     bool unitDiagonal = triSolveOp.getUnitDiagonal();
@@ -1173,9 +1170,11 @@ static mlxc::array HandleTriangularSolve(mlxc::array a, mlxc::array b,
     int bRows = b.shape()[b.ndim() - 2];
     int bCols = b.shape()[b.ndim() - 1];
     if (leftSide) {
-        if (bRows != n) throw std::invalid_argument("left triangular_solve requires b.shape[-2] == n");
+        if (bRows != n)
+            throw std::invalid_argument("left triangular_solve requires b.shape[-2] == n");
     } else {
-        if (bCols != n) throw std::invalid_argument("right triangular_solve requires b.shape[-1] == n");
+        if (bCols != n)
+            throw std::invalid_argument("right triangular_solve requires b.shape[-1] == n");
     }
 
     a.eval();
@@ -1184,15 +1183,16 @@ static mlxc::array HandleTriangularSolve(mlxc::array a, mlxc::array b,
     std::vector<int64_t> bDims(b.shape().begin(), b.shape().end());
     std::vector<int64_t> aRawStrides(a.strides().begin(), a.strides().end());
     std::vector<int64_t> bRawStrides(b.strides().begin(), b.strides().end());
-    auto aStrides = normalizeStridesToElements(
-        aDims, aRawStrides, static_cast<int64_t>(a.data_size()),
-        static_cast<size_t>(a.dtype().size()));
-    auto bStrides = normalizeStridesToElements(
-        bDims, bRawStrides, static_cast<int64_t>(b.data_size()),
-        static_cast<size_t>(b.dtype().size()));
+    auto aStrides =
+        normalizeStridesToElements(aDims, aRawStrides, static_cast<int64_t>(a.data_size()),
+                                   static_cast<size_t>(a.dtype().size()));
+    auto bStrides =
+        normalizeStridesToElements(bDims, bRawStrides, static_cast<int64_t>(b.data_size()),
+                                   static_cast<size_t>(b.dtype().size()));
 
     int64_t batch = 1;
-    for (int i = 0; i < a.ndim() - 2; ++i) batch *= a.shape()[i];
+    for (int i = 0; i < a.ndim() - 2; ++i)
+        batch *= a.shape()[i];
     int64_t aMatrixElems = static_cast<int64_t>(n) * static_cast<int64_t>(n);
     int64_t bMatrixElems = static_cast<int64_t>(bRows) * static_cast<int64_t>(bCols);
 
@@ -1204,26 +1204,18 @@ static mlxc::array HandleTriangularSolve(mlxc::array a, mlxc::array b,
 
         size_t aOff = 0;
         copyStridedToLinearBytes(reinterpret_cast<const uint8_t*>(aPtr),
-                                 reinterpret_cast<uint8_t*>(aData.data()),
-                                 aDims,
-                                 aStrides,
-                                 sizeof(T),
-                                 0,
-                                 0,
-                                 aOff);
+                                 reinterpret_cast<uint8_t*>(aData.data()), aDims, aStrides,
+                                 sizeof(T), 0, 0, aOff);
         size_t bOff = 0;
         copyStridedToLinearBytes(reinterpret_cast<const uint8_t*>(bPtr),
-                                 reinterpret_cast<uint8_t*>(bData.data()),
-                                 bDims,
-                                 bStrides,
-                                 sizeof(T),
-                                 0,
-                                 0,
-                                 bOff);
+                                 reinterpret_cast<uint8_t*>(bData.data()), bDims, bStrides,
+                                 sizeof(T), 0, 0, bOff);
 
         bool upper = false;
-        if (leftSide) upper = (isTranspose || isAdjoint) ? lower : !lower;
-        else upper = (isTranspose || isAdjoint) ? !lower : lower;
+        if (leftSide)
+            upper = (isTranspose || isAdjoint) ? lower : !lower;
+        else
+            upper = (isTranspose || isAdjoint) ? !lower : lower;
 
         const int rhsCols = leftSide ? bCols : bRows;
 
@@ -1272,7 +1264,8 @@ static mlxc::array HandleTriangularSolve(mlxc::array a, mlxc::array b,
                             sum -= c[static_cast<size_t>(i * n + j)] *
                                    y[static_cast<size_t>(j * rhsCols + col)];
                         }
-                        if (!unitDiagonal) sum /= c[static_cast<size_t>(i * n + i)];
+                        if (!unitDiagonal)
+                            sum /= c[static_cast<size_t>(i * n + i)];
                         y[static_cast<size_t>(i * rhsCols + col)] = sum;
                     }
                 } else {
@@ -1282,7 +1275,8 @@ static mlxc::array HandleTriangularSolve(mlxc::array a, mlxc::array b,
                             sum -= c[static_cast<size_t>(i * n + j)] *
                                    y[static_cast<size_t>(j * rhsCols + col)];
                         }
-                        if (!unitDiagonal) sum /= c[static_cast<size_t>(i * n + i)];
+                        if (!unitDiagonal)
+                            sum /= c[static_cast<size_t>(i * n + i)];
                         y[static_cast<size_t>(i * rhsCols + col)] = sum;
                     }
                 }
@@ -1307,7 +1301,8 @@ static mlxc::array HandleTriangularSolve(mlxc::array a, mlxc::array b,
 
         size_t nbytes = out.size() * sizeof(T);
         void* buf = std::malloc(nbytes > 0 ? nbytes : 1);
-        if (nbytes > 0) std::memcpy(buf, out.data(), nbytes);
+        if (nbytes > 0)
+            std::memcpy(buf, out.data(), nbytes);
         return mlxc::array(buf, b.shape(), b.dtype(), [](void* p) { std::free(p); });
     };
 
@@ -1326,11 +1321,13 @@ static mlxc::array HandleFft(mlxc::array input, mlir::stablehlo::FftOp fftOp) {
     std::vector<int> axes;
     axes.reserve(static_cast<size_t>(nAxes));
     int startAxis = input.ndim() - nAxes;
-    for (int i = 0; i < nAxes; ++i) axes.push_back(startAxis + i);
+    for (int i = 0; i < nAxes; ++i)
+        axes.push_back(startAxis + i);
 
     mlxc::Shape lengths;
     lengths.reserve(static_cast<size_t>(nAxes));
-    for (int64_t n : fftLength) lengths.push_back(static_cast<int>(n));
+    for (int64_t n : fftLength)
+        lengths.push_back(static_cast<int>(n));
 
     switch (fftOp.getFftType()) {
         case mlir::stablehlo::FftType::FFT:
@@ -1353,9 +1350,8 @@ static mlxc::array HandleLgamma(mlxc::array x) {
     x.eval();
     std::vector<int64_t> dims(x.shape().begin(), x.shape().end());
     std::vector<int64_t> rawStrides(x.strides().begin(), x.strides().end());
-    auto strides = normalizeStridesToElements(
-        dims, rawStrides, static_cast<int64_t>(x.data_size()),
-        static_cast<size_t>(x.dtype().size()));
+    auto strides = normalizeStridesToElements(dims, rawStrides, static_cast<int64_t>(x.data_size()),
+                                              static_cast<size_t>(x.dtype().size()));
 
     auto apply = [&](const auto* inPtr) -> mlxc::array {
         using T = std::decay_t<decltype(*inPtr)>;
@@ -1363,21 +1359,19 @@ static mlxc::array HandleLgamma(mlxc::array x) {
         std::vector<T> out(static_cast<size_t>(x.size()));
         size_t off = 0;
         copyStridedToLinearBytes(reinterpret_cast<const uint8_t*>(inPtr),
-                                 reinterpret_cast<uint8_t*>(in.data()),
-                                 dims,
-                                 strides,
-                                 sizeof(T),
-                                 0,
-                                 0,
-                                 off);
-        for (size_t i = 0; i < out.size(); ++i) out[i] = static_cast<T>(std::lgamma(in[i]));
+                                 reinterpret_cast<uint8_t*>(in.data()), dims, strides, sizeof(T), 0,
+                                 0, off);
+        for (size_t i = 0; i < out.size(); ++i)
+            out[i] = static_cast<T>(std::lgamma(in[i]));
         size_t nbytes = out.size() * sizeof(T);
         void* buf = std::malloc(nbytes > 0 ? nbytes : 1);
-        if (nbytes > 0) std::memcpy(buf, out.data(), nbytes);
+        if (nbytes > 0)
+            std::memcpy(buf, out.data(), nbytes);
         return mlxc::array(buf, x.shape(), x.dtype(), [](void* p) { std::free(p); });
     };
 
-    if (x.dtype() == mlxc::float32) return apply(x.data<float>());
+    if (x.dtype() == mlxc::float32)
+        return apply(x.data<float>());
     return apply(x.data<double>());
 }
 
@@ -1404,10 +1398,12 @@ static mlxc::array ReverseAlongAxis(mlxc::array x, int axis) {
 }
 
 static std::vector<mlxc::array> HandleSort(std::vector<mlxc::array> inputs,
-                                         mlir::stablehlo::SortOp sortOp) {
-    if (inputs.empty()) return {};
+                                           mlir::stablehlo::SortOp sortOp) {
+    if (inputs.empty())
+        return {};
     int axis = static_cast<int>(sortOp.getDimension());
-    if (axis < 0) axis += inputs[0].ndim();
+    if (axis < 0)
+        axis += inputs[0].ndim();
     if (axis < 0 || axis >= inputs[0].ndim()) {
         throw std::invalid_argument("stablehlo.sort: invalid dimension");
     }
@@ -1434,13 +1430,14 @@ static std::vector<mlxc::array> HandleSort(std::vector<mlxc::array> inputs,
 static std::string reductionOpName(mlir::Region& body) {
     for (auto& op : body.front()) {
         auto nm = op.getName().getStringRef();
-        if (nm != "stablehlo.return" && nm != "func.return") return nm.str();
+        if (nm != "stablehlo.return" && nm != "func.return")
+            return nm.str();
     }
     return "";
 }
 
-static std::optional<mlir::stablehlo::ComparisonDirection>
-reductionCompareDirection(mlir::Region& body) {
+static std::optional<mlir::stablehlo::ComparisonDirection> reductionCompareDirection(
+    mlir::Region& body) {
     for (auto& op : body.front()) {
         if (op.getName().getStringRef() == "stablehlo.compare") {
             auto cmp = mlir::cast<mlir::stablehlo::CompareOp>(op);
@@ -1456,7 +1453,8 @@ reductionCompareDirection(mlir::Region& body) {
 
 // Bitwise NOT: implemented as XOR with all-ones for integer types, logical_not for bool
 static mlxc::array bitwiseNot(mlxc::array a) {
-    if (a.dtype() == mlxc::bool_) return mlxc::logical_not(a);
+    if (a.dtype() == mlxc::bool_)
+        return mlxc::logical_not(a);
     // Use -1 (all-ones in two's complement) as the mask
     auto mask = mlxc::full(a.shape(), -1, a.dtype());
     return mlxc::bitwise_xor(a, mask);
@@ -1476,7 +1474,8 @@ static mlxc::array popcnt(mlxc::array a) {
     auto count = mlxc::zeros(a.shape(), mlxc::uint32);
     auto one = mlxc::array(1u, mlxc::uint32);
     for (int i = 0; i < nbits; i++) {
-        auto shifted = mlxc::right_shift(mlxc::astype(a, mlxc::uint32), mlxc::array((unsigned)i, mlxc::uint32));
+        auto shifted = mlxc::right_shift(mlxc::astype(a, mlxc::uint32),
+                                         mlxc::array((unsigned)i, mlxc::uint32));
         count = mlxc::add(count, mlxc::bitwise_and(shifted, one));
     }
     return mlxc::astype(count, a.dtype());
@@ -1487,13 +1486,12 @@ static mlxc::array popcnt(mlxc::array a) {
 static mlxc::array truncDivide(mlxc::array x, mlxc::array y) {
     auto dt = x.dtype();
     // Float types: use regular divide
-    if (dt == mlxc::float32 || dt == mlxc::float16 || dt == mlxc::bfloat16 ||
-        dt == mlxc::float64 || dt == mlxc::complex64) {
+    if (dt == mlxc::float32 || dt == mlxc::float16 || dt == mlxc::bfloat16 || dt == mlxc::float64 ||
+        dt == mlxc::complex64) {
         return mlxc::divide(x, y);
     }
     // Unsigned integer types: floor_divide is identical to truncating divide
-    if (dt == mlxc::uint8 || dt == mlxc::uint16 ||
-        dt == mlxc::uint32 || dt == mlxc::uint64) {
+    if (dt == mlxc::uint8 || dt == mlxc::uint16 || dt == mlxc::uint32 || dt == mlxc::uint64) {
         return mlxc::floor_divide(x, y);
     }
     // Signed integer types: truncating divide = floor_divide(|x|, |y|) * sign(x*y)
@@ -1520,8 +1518,10 @@ static mlxc::array truncRemainder(mlxc::array x, mlxc::array y) {
 }
 
 static mlxc::Dtype unsignedDtypeFor(mlxc::Dtype dt) {
-    if (dt == mlxc::int32 || dt == mlxc::uint32) return mlxc::uint32;
-    if (dt == mlxc::int64 || dt == mlxc::uint64) return mlxc::uint64;
+    if (dt == mlxc::int32 || dt == mlxc::uint32)
+        return mlxc::uint32;
+    if (dt == mlxc::int64 || dt == mlxc::uint64)
+        return mlxc::uint64;
     return dt;
 }
 
@@ -1558,7 +1558,8 @@ static mlxc::array shiftRightArithmeticLikeCpu(mlxc::array value, mlxc::array sh
     auto safeShift = mlxc::where(invalid, zeroShift, shift);
     auto shifted = mlxc::right_shift(value, safeShift);
     auto zero = mlxc::zeros(value.shape(), value.dtype());
-    auto signFill = mlxc::where(mlxc::less(value, zero), mlxc::full(value.shape(), -1, value.dtype()), zero);
+    auto signFill =
+        mlxc::where(mlxc::less(value, zero), mlxc::full(value.shape(), -1, value.dtype()), zero);
     return mlxc::where(invalid, signFill, shifted);
 }
 
@@ -1570,7 +1571,9 @@ static mlxc::array shiftRightArithmeticLikeCpu(mlxc::array value, mlxc::array sh
 struct InterpResult {
     std::vector<mlxc::array> outputs;
     std::string error;
-    bool ok() const { return error.empty(); }
+    bool ok() const {
+        return error.empty();
+    }
     static InterpResult Error(const std::string& msg) {
         InterpResult r;
         r.error = msg;
@@ -1579,35 +1582,30 @@ struct InterpResult {
 };
 
 // Forward declaration so func.call can recurse
-static InterpResult interpretBlock(mlir::Block& block,
-                                    mlir::ModuleOp module,
-                                    ValueMap vm);
+static InterpResult interpretBlock(mlir::Block& block, mlir::ModuleOp module, ValueMap vm);
 
-static InterpResult interpretFunction(mlir::func::FuncOp func,
-                                       mlir::ModuleOp module,
-                                       const std::vector<mlxc::array>& inputs);
+static InterpResult interpretFunction(mlir::func::FuncOp func, mlir::ModuleOp module,
+                                      const std::vector<mlxc::array>& inputs);
 
-static void BindBlockArguments(mlir::Block& block,
-                                const std::vector<mlxc::array>& inputs,
-                                ValueMap& vm) {
-    if (inputs.size() != block.getNumArguments()) return;
+static void BindBlockArguments(mlir::Block& block, const std::vector<mlxc::array>& inputs,
+                               ValueMap& vm) {
+    if (inputs.size() != block.getNumArguments())
+        return;
     for (size_t i = 0; i < inputs.size(); i++)
         vm.emplace(valKey(block.getArgument(i)), inputs[i]);
 }
 
-static InterpResult interpretRegion(mlir::Region& region,
-                                     mlir::ModuleOp module,
-                                     const std::vector<mlxc::array>& inputs,
-                                     const ValueMap& parentVm) {
+static InterpResult interpretRegion(mlir::Region& region, mlir::ModuleOp module,
+                                    const std::vector<mlxc::array>& inputs,
+                                    const ValueMap& parentVm) {
     if (region.empty()) {
         return InterpResult::Error("Region is empty");
     }
     auto& block = region.front();
     if (inputs.size() != block.getNumArguments()) {
-        return InterpResult::Error(
-            "Region input arity mismatch: expected " +
-            std::to_string(block.getNumArguments()) + ", got " +
-            std::to_string(inputs.size()));
+        return InterpResult::Error("Region input arity mismatch: expected " +
+                                   std::to_string(block.getNumArguments()) + ", got " +
+                                   std::to_string(inputs.size()));
     }
     ValueMap vm = parentVm;
     BindBlockArguments(block, inputs, vm);
@@ -1616,23 +1614,27 @@ static InterpResult interpretRegion(mlir::Region& region,
 
 static int64_t ScalarToInt64(mlxc::array a) {
     a.eval();
-    if (a.dtype() == mlxc::int32) return static_cast<int64_t>(a.item<int32_t>());
-    if (a.dtype() == mlxc::uint32) return static_cast<int64_t>(a.item<uint32_t>());
-    if (a.dtype() == mlxc::uint64) return static_cast<int64_t>(a.item<uint64_t>());
-    if (a.dtype() == mlxc::bool_) return a.item<bool>() ? 1 : 0;
+    if (a.dtype() == mlxc::int32)
+        return static_cast<int64_t>(a.item<int32_t>());
+    if (a.dtype() == mlxc::uint32)
+        return static_cast<int64_t>(a.item<uint32_t>());
+    if (a.dtype() == mlxc::uint64)
+        return static_cast<int64_t>(a.item<uint64_t>());
+    if (a.dtype() == mlxc::bool_)
+        return a.item<bool>() ? 1 : 0;
     return a.item<int64_t>();
 }
 
-static ExecutionResult runFunction(mlir::func::FuncOp func,
-                                    mlir::ModuleOp module,
-                                    const std::vector<MlxBuffer*>& inputs,
-                                    MlxDevice* device) {
+static ExecutionResult runFunction(mlir::func::FuncOp func, mlir::ModuleOp module,
+                                   const std::vector<MlxBuffer*>& inputs, MlxDevice* device) {
     std::vector<mlxc::array> arrays;
     arrays.reserve(inputs.size());
-    for (auto* buf : inputs) arrays.push_back(buf->array());
+    for (auto* buf : inputs)
+        arrays.push_back(buf->array());
 
     auto interp = interpretFunction(func, module, arrays);
-    if (!interp.ok()) return ExecutionResult::Error(interp.error);
+    if (!interp.ok())
+        return ExecutionResult::Error(interp.error);
 
     std::string eval_error;
     try {
@@ -1661,25 +1663,25 @@ static ExecutionResult runFunction(mlir::func::FuncOp func,
     for (auto& arr : interp.outputs) {
         int pjrt_dtype = MlxDtypeToPjrt(arr.dtype());
         std::vector<int64_t> dims;
-        for (int d : arr.shape()) dims.push_back(d);
+        for (int d : arr.shape())
+            dims.push_back(d);
         result.buffers.push_back(
             std::make_unique<MlxBuffer>(device, std::move(arr), pjrt_dtype, dims));
     }
     return result;
 }
 
-static InterpResult interpretFunction(mlir::func::FuncOp func,
-                                       mlir::ModuleOp module,
-                                       const std::vector<mlxc::array>& inputs) {
+static InterpResult interpretFunction(mlir::func::FuncOp func, mlir::ModuleOp module,
+                                      const std::vector<mlxc::array>& inputs) {
     ValueMap vm;
 
     // Map function arguments → input arrays
     auto& entry = func.getBody().front();
     auto blockArgs = entry.getArguments();
     if (inputs.size() != blockArgs.size()) {
-        return InterpResult::Error(
-            "Input count mismatch: expected " + std::to_string(blockArgs.size()) +
-            ", got " + std::to_string(inputs.size()));
+        return InterpResult::Error("Input count mismatch: expected " +
+                                   std::to_string(blockArgs.size()) + ", got " +
+                                   std::to_string(inputs.size()));
     }
     for (size_t i = 0; i < blockArgs.size(); i++)
         vm.emplace(valKey(blockArgs[i]), inputs[i]);
@@ -1687,20 +1689,17 @@ static InterpResult interpretFunction(mlir::func::FuncOp func,
     return interpretBlock(entry, module, std::move(vm));
 }
 
-static InterpResult interpretBlock(mlir::Block& entry,
-                                    mlir::ModuleOp module,
-                                    ValueMap vm) {
+static InterpResult interpretBlock(mlir::Block& entry, mlir::ModuleOp module, ValueMap vm) {
     std::vector<mlxc::array> outputs;
     bool traceOps = std::getenv("JAX_MLX_TRACE_OPS") != nullptr;
 
     for (auto& op : entry) {
         auto opName = op.getName().getStringRef();
-        if (traceOps) std::cerr << "[mlx-op] " << opName.str() << "\n";
+        if (traceOps)
+            std::cerr << "[mlx-op] " << opName.str() << "\n";
 
         // Helper: get the i-th operand array
-        auto operand = [&](unsigned i) -> mlxc::array& {
-            return vm.at(valKey(op.getOperand(i)));
-        };
+        auto operand = [&](unsigned i) -> mlxc::array& { return vm.at(valKey(op.getOperand(i))); };
 
         // Helper: set the i-th result
         auto set = [&](unsigned i, mlxc::array arr) {
@@ -1734,8 +1733,8 @@ static InterpResult interpretBlock(mlir::Block& entry,
             if (hasZeroInput) {
                 bool allResultsEmpty = true;
                 for (unsigned i = 0; i < op.getNumResults(); i++) {
-                    auto resType = mlir::dyn_cast<mlir::RankedTensorType>(
-                        op.getResult(i).getType());
+                    auto resType =
+                        mlir::dyn_cast<mlir::RankedTensorType>(op.getResult(i).getType());
                     if (!resType) {
                         allResultsEmpty = false;
                         break;
@@ -1755,8 +1754,8 @@ static InterpResult interpretBlock(mlir::Block& entry,
                 }
                 if (allResultsEmpty) {
                     for (unsigned i = 0; i < op.getNumResults(); i++) {
-                        auto resType = mlir::cast<mlir::RankedTensorType>(
-                            op.getResult(i).getType());
+                        auto resType =
+                            mlir::cast<mlir::RankedTensorType>(op.getResult(i).getType());
                         auto shape = toMlxShape(resType);
                         auto dtype = MlirTypeToMlx(resType.getElementType());
                         vm.emplace(valKey(op.getResult(i)), mlxc::zeros(shape, dtype));
@@ -1775,15 +1774,15 @@ static InterpResult interpretBlock(mlir::Block& entry,
         else if (opName == "stablehlo.reshape") {
             auto reshOp = mlir::cast<mlir::stablehlo::ReshapeOp>(op);
             set(0, mlxc::reshape(operand(0),
-                               toMlxShape(mlir::cast<mlir::RankedTensorType>(reshOp.getType()))));
+                                 toMlxShape(mlir::cast<mlir::RankedTensorType>(reshOp.getType()))));
         } else if (opName == "stablehlo.broadcast_in_dim") {
             auto bdcOp = mlir::cast<mlir::stablehlo::BroadcastInDimOp>(op);
             set(0, broadcastInDim(operand(0), bdcOp.getBroadcastDimensions(),
-                                   toMlxShape(mlir::cast<mlir::RankedTensorType>(bdcOp.getType()))));
+                                  toMlxShape(mlir::cast<mlir::RankedTensorType>(bdcOp.getType()))));
         } else if (opName == "stablehlo.convert") {
             auto cvtOp = mlir::cast<mlir::stablehlo::ConvertOp>(op);
-            auto dtype = MlirTypeToMlx(
-                mlir::cast<mlir::RankedTensorType>(cvtOp.getType()).getElementType());
+            auto dtype =
+                MlirTypeToMlx(mlir::cast<mlir::RankedTensorType>(cvtOp.getType()).getElementType());
             set(0, mlxc::astype(operand(0), dtype));
         } else if (opName == "stablehlo.bitcast_convert" || opName.contains("bitcast_convert")) {
             auto outType = mlir::cast<mlir::RankedTensorType>(op.getResult(0).getType());
@@ -1793,11 +1792,11 @@ static InterpResult interpretBlock(mlir::Block& entry,
             auto in = operand(0);
             int64_t inBytes = static_cast<int64_t>(in.size()) * in.dtype().size();
             int64_t outElems = 1;
-            for (int d : outShape) outElems *= d;
+            for (int d : outShape)
+                outElems *= d;
             int64_t outBytes = outElems * outDtype.size();
             if (inBytes != outBytes) {
-                return InterpResult::Error(
-                    "stablehlo.bitcast_convert: byte-size mismatch");
+                return InterpResult::Error("stablehlo.bitcast_convert: byte-size mismatch");
             }
             // Reshape to 1D first to ensure logical row-major byte order (handles
             // non-contiguous strides lazily), then view, then reshape to output shape.
@@ -1835,56 +1834,102 @@ static InterpResult interpretBlock(mlir::Block& entry,
         }
 
         // --- Unary math ---
-        else if (opName == "stablehlo.abs")               set(0, mlxc::abs(operand(0)));
-        else if (opName == "stablehlo.negate")            set(0, mlxc::negative(operand(0)));
-        else if (opName == "stablehlo.sign")              set(0, mlxc::sign(operand(0)));
-        else if (opName == "stablehlo.not")               set(0, bitwiseNot(operand(0)));
-        else if (opName == "stablehlo.exponential")       set(0, mlxc::exp(operand(0)));
-        else if (opName == "stablehlo.exponential_minus_one") set(0, mlxc::expm1(operand(0)));
-        else if (opName == "stablehlo.sqrt")              set(0, mlxc::sqrt(operand(0)));
-        else if (opName == "stablehlo.rsqrt")             set(0, mlxc::rsqrt(operand(0)));
-        else if (opName == "stablehlo.cbrt")              set(0, cbrt(operand(0)));
-        else if (opName == "stablehlo.log")               set(0, mlxc::log(operand(0)));
-        else if (opName == "stablehlo.log_plus_one")      set(0, mlxc::log1p(operand(0)));
-        else if (opName == "stablehlo.logistic")          set(0, mlxc::sigmoid(operand(0)));
-        else if (opName == "stablehlo.sine")              set(0, mlxc::sin(operand(0)));
-        else if (opName == "stablehlo.cosine")            set(0, mlxc::cos(operand(0)));
-        else if (opName == "stablehlo.tan")               set(0, mlxc::tan(operand(0)));
-        else if (opName == "stablehlo.tanh")              set(0, mlxc::tanh(operand(0)));
-        else if (opName == "stablehlo.floor")             set(0, mlxc::floor(operand(0)));
-        else if (opName == "stablehlo.ceil")              set(0, mlxc::ceil(operand(0)));
-        else if (opName == "stablehlo.round_nearest_afz") set(0, mlxc::round(operand(0)));
-        else if (opName == "stablehlo.round_nearest_even") set(0, mlxc::round(operand(0)));
-        else if (opName == "stablehlo.is_finite")         set(0, mlxc::isfinite(operand(0)));
-        else if (opName == "stablehlo.real")              set(0, mlxc::real(operand(0)));
-        else if (opName == "stablehlo.imag")              set(0, mlxc::imag(operand(0)));
-        else if (opName == "stablehlo.popcnt")            set(0, popcnt(operand(0)));
+        else if (opName == "stablehlo.abs")
+            set(0, mlxc::abs(operand(0)));
+        else if (opName == "stablehlo.negate")
+            set(0, mlxc::negative(operand(0)));
+        else if (opName == "stablehlo.sign")
+            set(0, mlxc::sign(operand(0)));
+        else if (opName == "stablehlo.not")
+            set(0, bitwiseNot(operand(0)));
+        else if (opName == "stablehlo.exponential")
+            set(0, mlxc::exp(operand(0)));
+        else if (opName == "stablehlo.exponential_minus_one")
+            set(0, mlxc::expm1(operand(0)));
+        else if (opName == "stablehlo.sqrt")
+            set(0, mlxc::sqrt(operand(0)));
+        else if (opName == "stablehlo.rsqrt")
+            set(0, mlxc::rsqrt(operand(0)));
+        else if (opName == "stablehlo.cbrt")
+            set(0, cbrt(operand(0)));
+        else if (opName == "stablehlo.log")
+            set(0, mlxc::log(operand(0)));
+        else if (opName == "stablehlo.log_plus_one")
+            set(0, mlxc::log1p(operand(0)));
+        else if (opName == "stablehlo.logistic")
+            set(0, mlxc::sigmoid(operand(0)));
+        else if (opName == "stablehlo.sine")
+            set(0, mlxc::sin(operand(0)));
+        else if (opName == "stablehlo.cosine")
+            set(0, mlxc::cos(operand(0)));
+        else if (opName == "stablehlo.tan")
+            set(0, mlxc::tan(operand(0)));
+        else if (opName == "stablehlo.tanh")
+            set(0, mlxc::tanh(operand(0)));
+        else if (opName == "stablehlo.floor")
+            set(0, mlxc::floor(operand(0)));
+        else if (opName == "stablehlo.ceil")
+            set(0, mlxc::ceil(operand(0)));
+        else if (opName == "stablehlo.round_nearest_afz")
+            set(0, mlxc::round(operand(0)));
+        else if (opName == "stablehlo.round_nearest_even")
+            set(0, mlxc::round(operand(0)));
+        else if (opName == "stablehlo.is_finite")
+            set(0, mlxc::isfinite(operand(0)));
+        else if (opName == "stablehlo.real")
+            set(0, mlxc::real(operand(0)));
+        else if (opName == "stablehlo.imag")
+            set(0, mlxc::imag(operand(0)));
+        else if (opName == "stablehlo.popcnt")
+            set(0, popcnt(operand(0)));
 
         // --- CHLO unary ops ---
-        else if (opName == "chlo.asin")    set(0, mlxc::arcsin(operand(0)));
-        else if (opName == "chlo.acos")    set(0, mlxc::arccos(operand(0)));
-        else if (opName == "chlo.atan")    set(0, mlxc::arctan(operand(0)));
-        else if (opName == "chlo.asinh")   set(0, mlxc::arcsinh(operand(0)));
-        else if (opName == "chlo.acosh")   set(0, mlxc::arccosh(operand(0)));
-        else if (opName == "chlo.atanh")   set(0, mlxc::arctanh(operand(0)));
-        else if (opName == "chlo.sinh")    set(0, mlxc::sinh(operand(0)));
-        else if (opName == "chlo.cosh")    set(0, mlxc::cosh(operand(0)));
-        else if (opName == "chlo.erf")     set(0, mlxc::erf(operand(0)));
-        else if (opName == "chlo.erf_inv") set(0, mlxc::erfinv(operand(0)));
-        else if (opName == "chlo.lgamma")  set(0, HandleLgamma(operand(0)));
+        else if (opName == "chlo.asin")
+            set(0, mlxc::arcsin(operand(0)));
+        else if (opName == "chlo.acos")
+            set(0, mlxc::arccos(operand(0)));
+        else if (opName == "chlo.atan")
+            set(0, mlxc::arctan(operand(0)));
+        else if (opName == "chlo.asinh")
+            set(0, mlxc::arcsinh(operand(0)));
+        else if (opName == "chlo.acosh")
+            set(0, mlxc::arccosh(operand(0)));
+        else if (opName == "chlo.atanh")
+            set(0, mlxc::arctanh(operand(0)));
+        else if (opName == "chlo.sinh")
+            set(0, mlxc::sinh(operand(0)));
+        else if (opName == "chlo.cosh")
+            set(0, mlxc::cosh(operand(0)));
+        else if (opName == "chlo.erf")
+            set(0, mlxc::erf(operand(0)));
+        else if (opName == "chlo.erf_inv")
+            set(0, mlxc::erfinv(operand(0)));
+        else if (opName == "chlo.lgamma")
+            set(0, HandleLgamma(operand(0)));
 
         // --- Binary arithmetic ---
-        else if (opName == "stablehlo.add")       set(0, mlxc::add(operand(0), operand(1)));
-        else if (opName == "stablehlo.subtract")  set(0, mlxc::subtract(operand(0), operand(1)));
-        else if (opName == "stablehlo.multiply")  set(0, mlxc::multiply(operand(0), operand(1)));
-        else if (opName == "stablehlo.divide")    set(0, truncDivide(operand(0), operand(1)));
-        else if (opName == "stablehlo.maximum")   set(0, mlxc::maximum(operand(0), operand(1)));
-        else if (opName == "stablehlo.minimum")   set(0, mlxc::minimum(operand(0), operand(1)));
-        else if (opName == "stablehlo.power")     set(0, mlxc::power(operand(0), operand(1)));
-        else if (opName == "stablehlo.remainder") set(0, truncRemainder(operand(0), operand(1)));
-        else if (opName == "stablehlo.and")       set(0, mlxc::bitwise_and(operand(0), operand(1)));
-        else if (opName == "stablehlo.or")        set(0, mlxc::bitwise_or(operand(0), operand(1)));
-        else if (opName == "stablehlo.xor")       set(0, mlxc::bitwise_xor(operand(0), operand(1)));
+        else if (opName == "stablehlo.add")
+            set(0, mlxc::add(operand(0), operand(1)));
+        else if (opName == "stablehlo.subtract")
+            set(0, mlxc::subtract(operand(0), operand(1)));
+        else if (opName == "stablehlo.multiply")
+            set(0, mlxc::multiply(operand(0), operand(1)));
+        else if (opName == "stablehlo.divide")
+            set(0, truncDivide(operand(0), operand(1)));
+        else if (opName == "stablehlo.maximum")
+            set(0, mlxc::maximum(operand(0), operand(1)));
+        else if (opName == "stablehlo.minimum")
+            set(0, mlxc::minimum(operand(0), operand(1)));
+        else if (opName == "stablehlo.power")
+            set(0, mlxc::power(operand(0), operand(1)));
+        else if (opName == "stablehlo.remainder")
+            set(0, truncRemainder(operand(0), operand(1)));
+        else if (opName == "stablehlo.and")
+            set(0, mlxc::bitwise_and(operand(0), operand(1)));
+        else if (opName == "stablehlo.or")
+            set(0, mlxc::bitwise_or(operand(0), operand(1)));
+        else if (opName == "stablehlo.xor")
+            set(0, mlxc::bitwise_xor(operand(0), operand(1)));
         else if (opName == "stablehlo.shift_left")
             set(0, shiftLeftLikeCpu(operand(0), operand(1)));
         else if (opName == "stablehlo.shift_right_arithmetic")
@@ -1907,37 +1952,36 @@ static InterpResult interpretBlock(mlir::Block& entry,
                     return InterpResult::Error("chlo.next_after only supports f32/f64");
                 }
                 bool isF32 = (x.dtype() == mlxc::float32);
-                auto itype  = isF32 ? mlxc::int32  : mlxc::int64;
-                auto shape  = x.shape();
-                auto xFlat  = mlxc::reshape(x, {static_cast<int>(x.size())});
-                auto yFlat  = mlxc::reshape(y, {static_cast<int>(y.size())});
+                auto itype = isF32 ? mlxc::int32 : mlxc::int64;
+                auto shape = x.shape();
+                auto xFlat = mlxc::reshape(x, {static_cast<int>(x.size())});
+                auto yFlat = mlxc::reshape(y, {static_cast<int>(y.size())});
                 auto x_bits = mlxc::view(xFlat, itype);
                 auto y_bits = mlxc::view(yFlat, itype);
                 auto zero_f = mlxc::zeros_like(xFlat);
                 auto zero_i = mlxc::zeros_like(x_bits);
-                auto one_i  = mlxc::ones_like(x_bits);
+                auto one_i = mlxc::ones_like(x_bits);
                 auto neg1_i = mlxc::full(x_bits.shape(), -1, itype);
-                auto x_eq_y    = mlxc::equal(xFlat, yFlat);
-                auto x_is_0    = mlxc::equal(xFlat, zero_f);
-                auto x_pos     = mlxc::greater_equal(x_bits, zero_i);
-                auto y_pos     = mlxc::greater_equal(y_bits, zero_i);
+                auto x_eq_y = mlxc::equal(xFlat, yFlat);
+                auto x_is_0 = mlxc::equal(xFlat, zero_f);
+                auto x_pos = mlxc::greater_equal(x_bits, zero_i);
+                auto y_pos = mlxc::greater_equal(y_bits, zero_i);
                 auto towards_y = mlxc::greater(yFlat, xFlat);
-                auto dir       = mlxc::where(towards_y, one_i, neg1_i);
+                auto dir = mlxc::where(towards_y, one_i, neg1_i);
                 // Same sign: increment bits; opposite sign (crossing zero): decrement.
                 auto same_sign = mlxc::equal(x_pos, y_pos);
-                auto nz_bits   = mlxc::where(same_sign,
-                                             mlxc::add(x_bits, dir),
-                                             mlxc::subtract(x_bits, dir));
+                auto nz_bits =
+                    mlxc::where(same_sign, mlxc::add(x_bits, dir), mlxc::subtract(x_bits, dir));
                 // x == 0: return smallest subnormal with sign of y.
                 // f32: +subnormal = 0x00000001, -subnormal = 0x80000001
                 // f64: +subnormal = 0x0000000000000001, -subnormal = 0x8000000000000001
                 auto min_pos = mlxc::full(x_bits.shape(), 1, itype);
-                auto min_neg = isF32
-                    ? mlxc::full(x_bits.shape(), static_cast<int>(-2147483647),  itype)
-                    : mlxc::full(x_bits.shape(), (long long)-9223372036854775807LL, itype);
-                auto min_sub  = mlxc::where(y_pos, min_pos, min_neg);
+                auto min_neg =
+                    isF32 ? mlxc::full(x_bits.shape(), static_cast<int>(-2147483647), itype)
+                          : mlxc::full(x_bits.shape(), (long long)-9223372036854775807LL, itype);
+                auto min_sub = mlxc::where(y_pos, min_pos, min_neg);
                 auto res_bits = mlxc::where(x_is_0, min_sub, nz_bits);
-                res_bits      = mlxc::where(x_eq_y, y_bits, res_bits);
+                res_bits = mlxc::where(x_eq_y, y_bits, res_bits);
                 set(0, mlxc::reshape(mlxc::view(res_bits, x.dtype()), shape));
             }
         }
@@ -1953,17 +1997,23 @@ static InterpResult interpretBlock(mlir::Block& entry,
             }
             switch (cmpOp.getComparisonDirection()) {
                 case mlir::stablehlo::ComparisonDirection::EQ:
-                    set(0, mlxc::equal(lhs, rhs)); break;
+                    set(0, mlxc::equal(lhs, rhs));
+                    break;
                 case mlir::stablehlo::ComparisonDirection::NE:
-                    set(0, mlxc::not_equal(lhs, rhs)); break;
+                    set(0, mlxc::not_equal(lhs, rhs));
+                    break;
                 case mlir::stablehlo::ComparisonDirection::LT:
-                    set(0, mlxc::less(lhs, rhs)); break;
+                    set(0, mlxc::less(lhs, rhs));
+                    break;
                 case mlir::stablehlo::ComparisonDirection::LE:
-                    set(0, mlxc::less_equal(lhs, rhs)); break;
+                    set(0, mlxc::less_equal(lhs, rhs));
+                    break;
                 case mlir::stablehlo::ComparisonDirection::GT:
-                    set(0, mlxc::greater(lhs, rhs)); break;
+                    set(0, mlxc::greater(lhs, rhs));
+                    break;
                 case mlir::stablehlo::ComparisonDirection::GE:
-                    set(0, mlxc::greater_equal(lhs, rhs)); break;
+                    set(0, mlxc::greater_equal(lhs, rhs));
+                    break;
             }
         }
 
@@ -1982,16 +2032,17 @@ static InterpResult interpretBlock(mlir::Block& entry,
             auto catOp = mlir::cast<mlir::stablehlo::ConcatenateOp>(op);
             int axis = static_cast<int>(catOp.getDimension());
             std::vector<mlxc::array> arrs;
-            for (auto v : catOp.getInputs()) arrs.push_back(vm.at(valKey(v)));
+            for (auto v : catOp.getInputs())
+                arrs.push_back(vm.at(valKey(v)));
             std::vector<mlxc::array> nonEmpty;
             nonEmpty.reserve(arrs.size());
             for (auto& a : arrs) {
-                if (a.shape()[axis] != 0) nonEmpty.push_back(a);
+                if (a.shape()[axis] != 0)
+                    nonEmpty.push_back(a);
             }
 
             if (nonEmpty.empty()) {
-                auto outTy =
-                    mlir::cast<mlir::RankedTensorType>(catOp.getResult().getType());
+                auto outTy = mlir::cast<mlir::RankedTensorType>(catOp.getResult().getType());
                 mlxc::Shape outShape;
                 outShape.reserve(static_cast<size_t>(outTy.getRank()));
                 for (int64_t d : outTy.getShape()) {
@@ -2025,11 +2076,9 @@ static InterpResult interpretBlock(mlir::Block& entry,
             auto result = operand(0);
             int szi = 0;
             for (int64_t sz : dsOp.getSliceSizes()) {
-                auto startArr =
-                    mlxc::astype(vm.at(valKey(op.getOperand(1 + szi))), mlxc::int32);
-                auto idx = mlxc::add(
-                    mlxc::arange(0.0, static_cast<double>(sz), 1.0, mlxc::int32),
-                    startArr);
+                auto startArr = mlxc::astype(vm.at(valKey(op.getOperand(1 + szi))), mlxc::int32);
+                auto idx = mlxc::add(mlxc::arange(0.0, static_cast<double>(sz), 1.0, mlxc::int32),
+                                     startArr);
                 result = mlxc::take(result, idx, szi);
                 szi++;
             }
@@ -2040,9 +2089,9 @@ static InterpResult interpretBlock(mlir::Block& entry,
         // Compile-safe: build N-D linear indices via broadcasting, use put_along_axis
         // on the flattened base instead of materializing scalar start indices.
         else if (opName == "stablehlo.dynamic_update_slice") {
-            auto base   = operand(0);
+            auto base = operand(0);
             auto update = operand(1);
-            int rank    = base.ndim();
+            int rank = base.ndim();
 
             // Row-major strides for base.
             std::vector<int> rowStrides(static_cast<size_t>(rank), 1);
@@ -2055,10 +2104,8 @@ static InterpResult interpretBlock(mlir::Block& entry,
             mlxc::array linear = mlxc::zeros({1}, mlxc::int32);
             for (int d = 0; d < rank; ++d) {
                 int ud = update.shape()[d];
-                auto start =
-                    mlxc::astype(vm.at(valKey(op.getOperand(2 + d))), mlxc::int32);
-                auto arange_d =
-                    mlxc::arange(0.0, static_cast<double>(ud), 1.0, mlxc::int32);
+                auto start = mlxc::astype(vm.at(valKey(op.getOperand(2 + d))), mlxc::int32);
+                auto arange_d = mlxc::arange(0.0, static_cast<double>(ud), 1.0, mlxc::int32);
                 auto idx_d = mlxc::add(arange_d, start);  // shape [ud]
                 // Reshape for broadcast at axis d: [1,...,1,ud,1,...,1]
                 mlxc::Shape bshape(static_cast<size_t>(rank), 1);
@@ -2066,13 +2113,12 @@ static InterpResult interpretBlock(mlir::Block& entry,
                 idx_d = mlxc::reshape(idx_d, bshape);
                 linear = mlxc::add(
                     linear,
-                    mlxc::multiply(idx_d,
-                                   mlxc::full({1}, rowStrides[static_cast<size_t>(d)],
-                                              mlxc::int32)));
+                    mlxc::multiply(
+                        idx_d, mlxc::full({1}, rowStrides[static_cast<size_t>(d)], mlxc::int32)));
             }
             // linear shape: [u0, u1, ..., uR-1] via broadcasting.
             int totalUpdate = static_cast<int>(update.size());
-            auto flatBase   = mlxc::reshape(base,   {static_cast<int>(base.size())});
+            auto flatBase = mlxc::reshape(base, {static_cast<int>(base.size())});
             auto flatLinear = mlxc::reshape(linear, {totalUpdate});
             auto flatUpdate = mlxc::reshape(update, {totalUpdate});
             auto outFlat = mlxc::put_along_axis(flatBase, flatLinear, flatUpdate, 0);
@@ -2103,7 +2149,8 @@ static InterpResult interpretBlock(mlir::Block& entry,
 
             // Build pad widths
             std::vector<std::pair<int, int>> padWidths(rank);
-            for (int j = 0; j < rank; j++) padWidths[j] = {lo[j], hi[j]};
+            for (int j = 0; j < rank; j++)
+                padWidths[j] = {lo[j], hi[j]};
             set(0, mlxc::pad(operand(0), padWidths, operand(1)));
         }
 
@@ -2137,11 +2184,9 @@ static InterpResult interpretBlock(mlir::Block& entry,
                     auto idx = *cmpDir == mlir::stablehlo::ComparisonDirection::GT
                                    ? mlxc::argmax(data, axis, false)
                                    : mlxc::argmin(data, axis, false);
-                    auto vals = mlxc::take_along_axis(
-                        data, mlxc::expand_dims(idx, {axis}), axis);
+                    auto vals = mlxc::take_along_axis(data, mlxc::expand_dims(idx, {axis}), axis);
                     vals = mlxc::squeeze(vals, {axis});
-                    auto idxType =
-                        mlir::cast<mlir::RankedTensorType>(op.getResult(1).getType());
+                    auto idxType = mlir::cast<mlir::RankedTensorType>(op.getResult(1).getType());
                     auto idxDtype = MlirTypeToMlx(idxType.getElementType());
                     vm.emplace(valKey(op.getResult(0)), vals);
                     vm.emplace(valKey(op.getResult(1)), mlxc::astype(idx, idxDtype));
@@ -2165,8 +2210,7 @@ static InterpResult interpretBlock(mlir::Block& entry,
                 else if (redFn == "stablehlo.and")
                     result = mlxc::all(inp, axes, false);
                 else
-                    return InterpResult::Error(
-                        "Unsupported reduction op: " + redFn);
+                    return InterpResult::Error("Unsupported reduction op: " + redFn);
                 vm.emplace(valKey(redOp.getResult(i)), result);
             }
         }
@@ -2193,7 +2237,8 @@ static InterpResult interpretBlock(mlir::Block& entry,
             std::vector<int> padLo(rank, 0), padHi(rank, 0);
             if (auto padAttr = rwOp.getPadding()) {
                 std::vector<int64_t> vals;
-                for (int64_t v : padAttr->getValues<int64_t>()) vals.push_back(v);
+                for (int64_t v : padAttr->getValues<int64_t>())
+                    vals.push_back(v);
                 for (int d = 0; d < rank; d++) {
                     padLo[d] = static_cast<int>(vals[static_cast<size_t>(2 * d)]);
                     padHi[d] = static_cast<int>(vals[static_cast<size_t>(2 * d + 1)]);
@@ -2217,18 +2262,28 @@ static InterpResult interpretBlock(mlir::Block& entry,
             bool isCumulative = true;
             for (int d = 0; d < rank && isCumulative; d++) {
                 int W = static_cast<int>(windowDims[static_cast<size_t>(d)]);
-                if (W == 1 && padLo[d] == 0 && padHi[d] == 0) continue;  // trivial dim
-                if (cumAxis != -1) { isCumulative = false; break; }  // >1 non-trivial dim
-                if (windowStrides[d] != 1) { isCumulative = false; break; }
+                if (W == 1 && padLo[d] == 0 && padHi[d] == 0)
+                    continue;  // trivial dim
+                if (cumAxis != -1) {
+                    isCumulative = false;
+                    break;
+                }  // >1 non-trivial dim
+                if (windowStrides[d] != 1) {
+                    isCumulative = false;
+                    break;
+                }
                 if (padLo[d] == W - 1 && padHi[d] == 0)
                     cumReverse = false;
                 else if (padLo[d] == 0 && padHi[d] == W - 1)
                     cumReverse = true;
-                else
-                    { isCumulative = false; break; }
+                else {
+                    isCumulative = false;
+                    break;
+                }
                 cumAxis = d;
             }
-            if (cumAxis == -1) isCumulative = false;
+            if (cumAxis == -1)
+                isCumulative = false;
 
             if (isCumulative) {
                 mlxc::array result = mlxc::array(0.0f);
@@ -2241,8 +2296,7 @@ static InterpResult interpretBlock(mlir::Block& entry,
                 else if (rwFn == "stablehlo.minimum")
                     result = mlxc::cummin(inp, cumAxis, cumReverse);
                 else
-                    return InterpResult::Error(
-                        "Unsupported cumulative reduce_window: " + rwFn);
+                    return InterpResult::Error("Unsupported cumulative reduce_window: " + rwFn);
                 set(0, result);
                 continue;
             }
@@ -2250,7 +2304,8 @@ static InterpResult interpretBlock(mlir::Block& entry,
             // --- General case: pad + as_strided + reduce ---
             // 1. Pad the input with the init value
             std::vector<std::pair<int, int>> padWidths(static_cast<size_t>(rank));
-            for (int d = 0; d < rank; d++) padWidths[static_cast<size_t>(d)] = {padLo[d], padHi[d]};
+            for (int d = 0; d < rank; d++)
+                padWidths[static_cast<size_t>(d)] = {padLo[d], padHi[d]};
             auto padded = mlxc::pad(inp, padWidths, initVal);
 
             // 2. Compute output shape and row-major strides of padded array
@@ -2268,8 +2323,9 @@ static InterpResult interpretBlock(mlir::Block& entry,
             std::vector<int> windowAxes;
             for (int d = 0; d < rank; d++) {
                 int W = static_cast<int>(windowDims[static_cast<size_t>(d)]);
-                int outDim = (static_cast<int>(paddedShape[static_cast<size_t>(d)]) - W)
-                             / windowStrides[static_cast<size_t>(d)] + 1;
+                int outDim = (static_cast<int>(paddedShape[static_cast<size_t>(d)]) - W) /
+                                 windowStrides[static_cast<size_t>(d)] +
+                             1;
                 viewShape[static_cast<size_t>(d)] = outDim;
                 viewShape[static_cast<size_t>(rank + d)] = W;
                 viewStrides[static_cast<size_t>(d)] =
@@ -2295,8 +2351,7 @@ static InterpResult interpretBlock(mlir::Block& entry,
             else if (rwFn == "stablehlo.and")
                 result = mlxc::all(windows, windowAxes, false);
             else
-                return InterpResult::Error(
-                    "Unsupported reduce_window op: " + rwFn);
+                return InterpResult::Error("Unsupported reduce_window op: " + rwFn);
             set(0, result);
         }
 
@@ -2305,8 +2360,7 @@ static InterpResult interpretBlock(mlir::Block& entry,
             // This backend is single-device only today; all_reduce over a
             // singleton replica group is an identity.
             if (op.getNumOperands() != op.getNumResults()) {
-                return InterpResult::Error(
-                    "stablehlo.all_reduce operand/result arity mismatch");
+                return InterpResult::Error("stablehlo.all_reduce operand/result arity mismatch");
             }
             for (size_t i = 0; i < op.getNumResults(); ++i) {
                 set(i, operand(i));
@@ -2328,24 +2382,23 @@ static InterpResult interpretBlock(mlir::Block& entry,
                 set(0, intDotGeneral(lhs, rhs, dotOp.getDotDimensionNumbers()));
             else
                 set(0, dotGeneral(lhs, rhs, dotOp.getDotDimensionNumbers()));
-        }
-        else if (opName == "stablehlo.convolution") {
+        } else if (opName == "stablehlo.convolution") {
             auto convOp = mlir::cast<mlir::stablehlo::ConvolutionOp>(op);
             try {
                 set(0, HandleConvolution(operand(0), operand(1), convOp));
             } catch (const std::exception& ex) {
-                return InterpResult::Error(std::string("stablehlo.convolution lowering failed: ") + ex.what());
+                return InterpResult::Error(std::string("stablehlo.convolution lowering failed: ") +
+                                           ex.what());
             }
-        }
-        else if (opName == "stablehlo.gather") {
+        } else if (opName == "stablehlo.gather") {
             auto gatherOp = mlir::cast<mlir::stablehlo::GatherOp>(op);
             try {
                 set(0, HandleGather(operand(0), operand(1), gatherOp));
             } catch (const std::exception& ex) {
-                return InterpResult::Error(std::string("stablehlo.gather lowering failed: ") + ex.what());
+                return InterpResult::Error(std::string("stablehlo.gather lowering failed: ") +
+                                           ex.what());
             }
-        }
-        else if (opName == "stablehlo.sort") {
+        } else if (opName == "stablehlo.sort") {
             auto sortOp = mlir::cast<mlir::stablehlo::SortOp>(op);
             std::vector<mlxc::array> inputs;
             inputs.reserve(op.getNumOperands());
@@ -2361,39 +2414,40 @@ static InterpResult interpretBlock(mlir::Block& entry,
                     set(i, sorted[i]);
                 }
             } catch (const std::exception& ex) {
-                return InterpResult::Error(std::string("stablehlo.sort lowering failed: ") + ex.what());
+                return InterpResult::Error(std::string("stablehlo.sort lowering failed: ") +
+                                           ex.what());
             }
-        }
-        else if (opName == "stablehlo.scatter") {
+        } else if (opName == "stablehlo.scatter") {
             auto scatterOp = mlir::cast<mlir::stablehlo::ScatterOp>(op);
             try {
                 set(0, HandleScatter(operand(0), operand(1), operand(2), scatterOp));
             } catch (const std::exception& ex) {
-                return InterpResult::Error(std::string("stablehlo.scatter lowering failed: ") + ex.what());
+                return InterpResult::Error(std::string("stablehlo.scatter lowering failed: ") +
+                                           ex.what());
             }
-        }
-        else if (opName == "stablehlo.cholesky") {
+        } else if (opName == "stablehlo.cholesky") {
             auto choleskyOp = mlir::cast<mlir::stablehlo::CholeskyOp>(op);
             try {
                 set(0, HandleCholesky(operand(0), choleskyOp));
             } catch (const std::exception& ex) {
-                return InterpResult::Error(std::string("stablehlo.cholesky lowering failed: ") + ex.what());
+                return InterpResult::Error(std::string("stablehlo.cholesky lowering failed: ") +
+                                           ex.what());
             }
-        }
-        else if (opName == "stablehlo.triangular_solve") {
+        } else if (opName == "stablehlo.triangular_solve") {
             auto triSolveOp = mlir::cast<mlir::stablehlo::TriangularSolveOp>(op);
             try {
                 set(0, HandleTriangularSolve(operand(0), operand(1), triSolveOp));
             } catch (const std::exception& ex) {
-                return InterpResult::Error(std::string("stablehlo.triangular_solve lowering failed: ") + ex.what());
+                return InterpResult::Error(
+                    std::string("stablehlo.triangular_solve lowering failed: ") + ex.what());
             }
-        }
-        else if (opName == "stablehlo.fft") {
+        } else if (opName == "stablehlo.fft") {
             auto fftOp = mlir::cast<mlir::stablehlo::FftOp>(op);
             try {
                 set(0, HandleFft(operand(0), fftOp));
             } catch (const std::exception& ex) {
-                return InterpResult::Error(std::string("stablehlo.fft lowering failed: ") + ex.what());
+                return InterpResult::Error(std::string("stablehlo.fft lowering failed: ") +
+                                           ex.what());
             }
         }
 
@@ -2422,10 +2476,10 @@ static InterpResult interpretBlock(mlir::Block& entry,
             for (auto operand : callOp.getOperands())
                 callInputs.push_back(vm.at(valKey(operand)));
             auto callResult = interpretFunction(callee, module, callInputs);
-            if (!callResult.ok()) return callResult;
+            if (!callResult.ok())
+                return callResult;
             for (size_t i = 0; i < callResult.outputs.size(); i++)
-                vm.emplace(valKey(callOp.getResult(i)),
-                           std::move(callResult.outputs[i]));
+                vm.emplace(valKey(callOp.getResult(i)), std::move(callResult.outputs[i]));
         }
 
         // --- stablehlo.count_leading_zeros ---
@@ -2438,8 +2492,9 @@ static InterpResult interpretBlock(mlir::Block& entry,
             // Iterate LSB→MSB; last found bit (highest bit) wins → correct clz
             auto clz = mlxc::full(a.shape(), nbits, mlxc::uint32);
             for (int i = 0; i < nbits; i++) {
-                auto bit = mlxc::bitwise_and(mlxc::right_shift(u, mlxc::array((unsigned)i, mlxc::uint32)),
-                                           mlxc::array(1u, mlxc::uint32));
+                auto bit =
+                    mlxc::bitwise_and(mlxc::right_shift(u, mlxc::array((unsigned)i, mlxc::uint32)),
+                                      mlxc::array(1u, mlxc::uint32));
                 auto found = mlxc::equal(bit, mlxc::array(1u, mlxc::uint32));
                 auto pos = mlxc::full(a.shape(), nbits - 1 - i, mlxc::uint32);
                 clz = mlxc::where(found, pos, clz);
@@ -2452,30 +2507,31 @@ static InterpResult interpretBlock(mlir::Block& entry,
             auto whileOp = mlir::cast<mlir::stablehlo::WhileOp>(op);
             std::vector<mlxc::array> carried;
             carried.reserve(op.getNumOperands());
-            for (auto v : op.getOperands()) carried.push_back(vm.at(valKey(v)));
+            for (auto v : op.getOperands())
+                carried.push_back(vm.at(valKey(v)));
 
             int64_t iter = 0;
             constexpr int64_t kMaxWhileIters = 1000000;
             while (true) {
                 if (iter++ > kMaxWhileIters) {
-                    return InterpResult::Error(
-                        "stablehlo.while exceeded max iterations (" +
-                        std::to_string(kMaxWhileIters) + ")");
+                    return InterpResult::Error("stablehlo.while exceeded max iterations (" +
+                                               std::to_string(kMaxWhileIters) + ")");
                 }
                 auto condResult = interpretRegion(whileOp.getCond(), module, carried, vm);
-                if (!condResult.ok()) return condResult;
+                if (!condResult.ok())
+                    return condResult;
                 if (condResult.outputs.empty()) {
-                    return InterpResult::Error(
-                        "stablehlo.while condition returned no predicate");
+                    return InterpResult::Error("stablehlo.while condition returned no predicate");
                 }
                 bool pred = ScalarToInt64(condResult.outputs[0]) != 0;
-                if (!pred) break;
+                if (!pred)
+                    break;
 
                 auto bodyResult = interpretRegion(whileOp.getBody(), module, carried, vm);
-                if (!bodyResult.ok()) return bodyResult;
+                if (!bodyResult.ok())
+                    return bodyResult;
                 if (bodyResult.outputs.size() != carried.size()) {
-                    return InterpResult::Error(
-                        "stablehlo.while body output arity mismatch");
+                    return InterpResult::Error("stablehlo.while body output arity mismatch");
                 }
                 carried = std::move(bodyResult.outputs);
             }
@@ -2495,16 +2551,15 @@ static InterpResult interpretBlock(mlir::Block& entry,
             for (size_t i = 1; i < op.getNumOperands(); i++)
                 branchInputs.push_back(vm.at(valKey(op.getOperand(i))));
 
-            auto branchResult = interpretRegion(
-                pred ? ifOp.getTrueBranch() : ifOp.getFalseBranch(),
-                module, branchInputs, vm);
-            if (!branchResult.ok()) return branchResult;
+            auto branchResult = interpretRegion(pred ? ifOp.getTrueBranch() : ifOp.getFalseBranch(),
+                                                module, branchInputs, vm);
+            if (!branchResult.ok())
+                return branchResult;
             if (branchResult.outputs.size() != op.getNumResults()) {
                 return InterpResult::Error("stablehlo.if result arity mismatch");
             }
             for (size_t i = 0; i < branchResult.outputs.size(); i++)
-                vm.emplace(valKey(op.getResult(i)),
-                           std::move(branchResult.outputs[i]));
+                vm.emplace(valKey(op.getResult(i)), std::move(branchResult.outputs[i]));
         }
 
         // --- Case ---
@@ -2524,13 +2579,13 @@ static InterpResult interpretBlock(mlir::Block& entry,
 
             auto& region = caseOp->getRegion(static_cast<unsigned>(idx));
             auto branchResult = interpretRegion(region, module, branchInputs, vm);
-            if (!branchResult.ok()) return branchResult;
+            if (!branchResult.ok())
+                return branchResult;
             if (branchResult.outputs.size() != op.getNumResults()) {
                 return InterpResult::Error("stablehlo.case result arity mismatch");
             }
             for (size_t i = 0; i < branchResult.outputs.size(); i++)
-                vm.emplace(valKey(op.getResult(i)),
-                           std::move(branchResult.outputs[i]));
+                vm.emplace(valKey(op.getResult(i)), std::move(branchResult.outputs[i]));
         }
         // --- Custom call ---
         else if (opName == "stablehlo.custom_call") {
@@ -2558,33 +2613,42 @@ static InterpResult interpretBlock(mlir::Block& entry,
             }
             if (target == "mhlo.asin" || target == "mhlo.acos" || target == "mhlo.atan") {
                 if (op.getNumOperands() == 1 && op.getNumResults() == 1) {
-                    if (target == "mhlo.asin") set(0, mlxc::arcsin(operand(0)));
-                    else if (target == "mhlo.acos") set(0, mlxc::arccos(operand(0)));
-                    else set(0, mlxc::arctan(operand(0)));
+                    if (target == "mhlo.asin")
+                        set(0, mlxc::arcsin(operand(0)));
+                    else if (target == "mhlo.acos")
+                        set(0, mlxc::arccos(operand(0)));
+                    else
+                        set(0, mlxc::arctan(operand(0)));
                     continue;
                 }
-                return InterpResult::Error(
-                    "stablehlo.custom_call(" + target + "): unsupported operand/result arity");
+                return InterpResult::Error("stablehlo.custom_call(" + target +
+                                           "): unsupported operand/result arity");
             }
             if (target == "mhlo.asinh" || target == "mhlo.acosh" || target == "mhlo.atanh") {
                 if (op.getNumOperands() == 1 && op.getNumResults() == 1) {
-                    if (target == "mhlo.asinh") set(0, mlxc::arcsinh(operand(0)));
-                    else if (target == "mhlo.acosh") set(0, mlxc::arccosh(operand(0)));
-                    else set(0, mlxc::arctanh(operand(0)));
+                    if (target == "mhlo.asinh")
+                        set(0, mlxc::arcsinh(operand(0)));
+                    else if (target == "mhlo.acosh")
+                        set(0, mlxc::arccosh(operand(0)));
+                    else
+                        set(0, mlxc::arctanh(operand(0)));
                     continue;
                 }
-                return InterpResult::Error(
-                    "stablehlo.custom_call(" + target + "): unsupported operand/result arity");
+                return InterpResult::Error("stablehlo.custom_call(" + target +
+                                           "): unsupported operand/result arity");
             }
             if (target == "mhlo.sinh" || target == "mhlo.cosh" || target == "mhlo.tanh") {
                 if (op.getNumOperands() == 1 && op.getNumResults() == 1) {
-                    if (target == "mhlo.sinh") set(0, mlxc::sinh(operand(0)));
-                    else if (target == "mhlo.cosh") set(0, mlxc::cosh(operand(0)));
-                    else set(0, mlxc::tanh(operand(0)));
+                    if (target == "mhlo.sinh")
+                        set(0, mlxc::sinh(operand(0)));
+                    else if (target == "mhlo.cosh")
+                        set(0, mlxc::cosh(operand(0)));
+                    else
+                        set(0, mlxc::tanh(operand(0)));
                     continue;
                 }
-                return InterpResult::Error(
-                    "stablehlo.custom_call(" + target + "): unsupported operand/result arity");
+                return InterpResult::Error("stablehlo.custom_call(" + target +
+                                           "): unsupported operand/result arity");
             }
             if (target == "mhlo.topk") {
                 if (op.getNumOperands() == 1 && op.getNumResults() == 2) {
@@ -2594,12 +2658,10 @@ static InterpResult interpretBlock(mlir::Block& entry,
                     int axis = x.ndim() - 1;
                     auto outValsType =
                         mlir::cast<mlir::RankedTensorType>(op.getResult(0).getType());
-                    auto outIdxType =
-                        mlir::cast<mlir::RankedTensorType>(op.getResult(1).getType());
+                    auto outIdxType = mlir::cast<mlir::RankedTensorType>(op.getResult(1).getType());
                     int k = static_cast<int>(outValsType.getShape().back());
                     if (k < 0 || k > x.shape()[axis]) {
-                        return InterpResult::Error(
-                            "stablehlo.custom_call(mhlo.topk): invalid k");
+                        return InterpResult::Error("stablehlo.custom_call(mhlo.topk): invalid k");
                     }
 
                     auto sortedIdx = ReverseAlongAxis(mlxc::argsort(x, axis), axis);
@@ -2618,8 +2680,7 @@ static InterpResult interpretBlock(mlir::Block& entry,
                     "stablehlo.custom_call(mhlo.topk): unsupported operand/result arity");
             }
             return InterpResult::Error(
-                jax_mlx::UnsupportedOpsMessage(
-                    {"stablehlo.custom_call(" + target + ")"}));
+                jax_mlx::UnsupportedOpsMessage({"stablehlo.custom_call(" + target + ")"}));
         }
 
         // --- Unknown op ---
@@ -2637,8 +2698,7 @@ static InterpResult interpretBlock(mlir::Block& entry,
 // MlxExecutable implementation
 // ============================================================================
 
-MlxExecutable::MlxExecutable(MlxClient* client, mps::ParsedModule module)
-    : client_(client) {
+MlxExecutable::MlxExecutable(MlxClient* client, mps::ParsedModule module) : client_(client) {
     if (!module.ok()) {
         error_ = "Invalid parsed module";
         return;
@@ -2699,9 +2759,9 @@ static bool HasHardEvalBarrier(mlir::ModuleOp module) {
     return found;
 }
 
-ExecutionResult MlxExecutable::Execute(const std::vector<MlxBuffer*>& inputs,
-                                        MlxDevice* device) {
-    if (!valid_) return ExecutionResult::Error("Executable is not valid: " + error_);
+ExecutionResult MlxExecutable::Execute(const std::vector<MlxBuffer*>& inputs, MlxDevice* device) {
+    if (!valid_)
+        return ExecutionResult::Error("Executable is not valid: " + error_);
 
     // Lazy compile on first call: wrap interpretFunction in mlxc::compile() so
     // MLX can cache the Metal kernel graph and fuse operations across calls.
@@ -2712,10 +2772,11 @@ ExecutionResult MlxExecutable::Execute(const std::vector<MlxBuffer*>& inputs,
         } else {
             mlir::func::FuncOp func = entry_func_;
             mlir::ModuleOp mod = *module_;
-            compiled_fn_ = mlxc::compile(
-                CompiledFn([func, mod](const std::vector<mlxc::array>& in) {
+            compiled_fn_ =
+                mlxc::compile(CompiledFn([func, mod](const std::vector<mlxc::array>& in) {
                     auto r = interpretFunction(func, mod, in);
-                    if (!r.ok()) throw std::runtime_error(r.error);
+                    if (!r.ok())
+                        throw std::runtime_error(r.error);
                     return r.outputs;
                 }));
         }
@@ -2728,20 +2789,23 @@ ExecutionResult MlxExecutable::Execute(const std::vector<MlxBuffer*>& inputs,
         try {
             std::vector<mlxc::array> arrays;
             arrays.reserve(inputs.size());
-            for (auto* buf : inputs) arrays.push_back(buf->array());
+            for (auto* buf : inputs)
+                arrays.push_back(buf->array());
             auto outputs = fn(arrays);
             mlxc::eval(outputs);
             ExecutionResult result;
             for (auto& arr : outputs) {
                 int pjrt_dtype = MlxDtypeToPjrt(arr.dtype());
                 std::vector<int64_t> dims;
-                for (int d : arr.shape()) dims.push_back(static_cast<int64_t>(d));
+                for (int d : arr.shape())
+                    dims.push_back(static_cast<int64_t>(d));
                 result.buffers.push_back(
                     std::make_unique<MlxBuffer>(device, std::move(arr), pjrt_dtype, dims));
             }
             return result;
         } catch (const std::exception& e) {
-            fprintf(stderr, "[jax-mlx] mlxc::compile eval failed (%s); falling back to interpreter\n",
+            fprintf(stderr,
+                    "[jax-mlx] mlxc::compile eval failed (%s); falling back to interpreter\n",
                     e.what());
             compiled_fn_ = CompiledFn{};  // sentinel: use interpreter for this executable
         }

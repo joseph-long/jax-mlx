@@ -12,14 +12,28 @@ public:
     MlxDevice(MlxClient* client, int id, const std::string& name);
     ~MlxDevice();
 
-    int id() const { return id_; }
-    int local_hardware_id() const { return id_; }
-    const std::string& device_kind() const { return device_kind_; }
-    const std::string& debug_string() const { return debug_string_; }
-    const std::string& to_string() const { return debug_string_; }
+    int id() const {
+        return id_;
+    }
+    int local_hardware_id() const {
+        return id_;
+    }
+    const std::string& device_kind() const {
+        return device_kind_;
+    }
+    const std::string& debug_string() const {
+        return debug_string_;
+    }
+    const std::string& to_string() const {
+        return debug_string_;
+    }
 
-    MlxClient* client() const { return client_; }
-    bool IsAddressable() const { return true; }
+    MlxClient* client() const {
+        return client_;
+    }
+    bool IsAddressable() const {
+        return true;
+    }
 
 private:
     MlxClient* client_;

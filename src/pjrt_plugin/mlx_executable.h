@@ -26,7 +26,9 @@ struct ExecutionResult {
     std::vector<std::unique_ptr<MlxBuffer>> buffers;
     std::string error;
 
-    bool ok() const { return error.empty(); }
+    bool ok() const {
+        return error.empty();
+    }
 
     static ExecutionResult Error(const std::string& msg) {
         ExecutionResult r;
@@ -42,13 +44,21 @@ public:
     MlxExecutable(MlxClient* client, mps::ParsedModule module);
     ~MlxExecutable();
 
-    bool IsValid() const { return valid_; }
-    const std::string& error() const { return error_; }
+    bool IsValid() const {
+        return valid_;
+    }
+    const std::string& error() const {
+        return error_;
+    }
 
     ExecutionResult Execute(const std::vector<MlxBuffer*>& inputs, MlxDevice* device);
 
-    const std::string& name() const { return name_; }
-    int num_outputs() const { return num_outputs_; }
+    const std::string& name() const {
+        return name_;
+    }
+    int num_outputs() const {
+        return num_outputs_;
+    }
 
 private:
     MlxClient* client_;
@@ -68,7 +78,6 @@ private:
     using CompiledFn =
         std::function<std::vector<mlx::core::array>(const std::vector<mlx::core::array>&)>;
     std::optional<CompiledFn> compiled_fn_;
-
 };
 
 }  // namespace jax_mlx

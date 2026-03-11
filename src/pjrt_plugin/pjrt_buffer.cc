@@ -1,11 +1,11 @@
 // PJRT Buffer API implementation for Metal backend
 
+#include <cstring>
+#include <vector>
+
 #include "pjrt_plugin/logging.h"
 #include "pjrt_plugin/mlx_buffer.h"
 #include "pjrt_plugin/pjrt_types.h"
-
-#include <cstring>
-#include <vector>
 
 // ============================================================================
 // Buffer API
@@ -69,7 +69,7 @@ PJRT_Error* MPS_Buffer_Device(PJRT_Buffer_Device_Args* args) {
     if (args->buffer && args->buffer->client && !args->buffer->client->devices.empty()) {
         args->device = args->buffer->client->devices[0];
         JAXPLUGIN_LOG_DEBUG(" PJRT_Buffer_Device: returning device=%p from client=%p\n",
-                      (void*)args->device, (void*)args->buffer->client);
+                            (void*)args->device, (void*)args->buffer->client);
     } else {
         args->device = nullptr;
         JAXPLUGIN_LOG_DEBUG(" PJRT_Buffer_Device: returning nullptr (no client or devices)\n");
@@ -110,8 +110,8 @@ PJRT_Error* MPS_Buffer_CopyToDevice(PJRT_Buffer_CopyToDevice_Args* args) {
     }
     auto* src = args->buffer->buffer.get();
     auto* dst = new PJRT_Buffer();
-    dst->buffer = std::make_unique<jax_mlx::MlxBuffer>(
-        src->device(), src->array(), src->dtype(), src->dimensions());
+    dst->buffer = std::make_unique<jax_mlx::MlxBuffer>(src->device(), src->array(), src->dtype(),
+                                                       src->dimensions());
     dst->client = args->buffer->client;
     args->dst_buffer = dst;
     fprintf(stderr, "[jax-mlx] MPS_Buffer_CopyToDevice done\n");
@@ -120,8 +120,7 @@ PJRT_Error* MPS_Buffer_CopyToDevice(PJRT_Buffer_CopyToDevice_Args* args) {
 
 PJRT_Error* MPS_Buffer_CopyToMemory(PJRT_Buffer_CopyToMemory_Args* args) {
     if (!args || !args->buffer || !args->buffer->buffer) {
-        return MakeError("CopyToMemory: null source buffer",
-                         PJRT_Error_Code_INVALID_ARGUMENT);
+        return MakeError("CopyToMemory: null source buffer", PJRT_Error_Code_INVALID_ARGUMENT);
     }
     if (!args->dst_memory || !args->dst_memory->device) {
         return MakeError("CopyToMemory: null destination memory/device",
@@ -132,8 +131,8 @@ PJRT_Error* MPS_Buffer_CopyToMemory(PJRT_Buffer_CopyToMemory_Args* args) {
     // equivalent to creating another buffer view/copy-on-write handle.
     auto* src = args->buffer->buffer.get();
     auto* dst = new PJRT_Buffer();
-    dst->buffer = std::make_unique<jax_mlx::MlxBuffer>(
-        src->device(), src->array(), src->dtype(), src->dimensions());
+    dst->buffer = std::make_unique<jax_mlx::MlxBuffer>(src->device(), src->array(), src->dtype(),
+                                                       src->dimensions());
     dst->client = args->buffer->client;
     args->dst_buffer = dst;
     return nullptr;
@@ -153,8 +152,7 @@ PJRT_Error* MPS_Buffer_ToHostBuffer(PJRT_Buffer_ToHostBuffer_Args* args) {
 
 PJRT_Error* MPS_Buffer_CopyRawToHost(PJRT_Buffer_CopyRawToHost_Args* args) {
     if (!args || !args->buffer || !args->buffer->buffer || !args->dst) {
-        return MakeError("CopyRawToHost: invalid arguments",
-                         PJRT_Error_Code_INVALID_ARGUMENT);
+        return MakeError("CopyRawToHost: invalid arguments", PJRT_Error_Code_INVALID_ARGUMENT);
     }
 
     size_t total = args->buffer->buffer->byte_size();

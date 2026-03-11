@@ -262,7 +262,9 @@ class OperationTestConfig:
             grad_val = grad_func(*args)
             if device is not None:
                 grad_val = jax.tree.map(
-                    lambda v: jax.device_put(v, device) if isinstance(v, jax.Array) else v,
+                    lambda v: jax.device_put(v, device)
+                    if isinstance(v, jax.Array)
+                    else v,
                     grad_val,
                 )
             grad_vals.append(grad_val)

@@ -10,9 +10,7 @@ from .configs import OperationTestConfig, make_benchmark_op_configs
 
 pytestmark = pytest.mark.benchmark
 
-BENCH_AMORTIZED_ITERS = int(
-    os.environ.get("JAX_BENCH_ITERS", "16")
-)
+BENCH_AMORTIZED_ITERS = int(os.environ.get("JAX_BENCH_ITERS", "16"))
 if BENCH_AMORTIZED_ITERS < 1:
     raise ValueError("JAX_BENCH_ITERS must be >= 1")
 BENCH_PROFILE = os.environ.get("JAX_BENCH_PROFILE", "default").lower()

@@ -97,7 +97,7 @@ PJRT_Error* MPS_Client_Devices(PJRT_Client_Devices_Args* args) {
         return nullptr;
     }
     JAXPLUGIN_LOG_DEBUG(" PJRT_Client_Devices: %zu devices, data=%p\n", client->devices.size(),
-                  (void*)client->devices.data());
+                        (void*)client->devices.data());
     for (size_t i = 0; i < client->devices.size(); i++) {
         JAXPLUGIN_LOG_DEBUG(" PJRT_Client_Devices: device[%zu]=%p\n", i, (void*)client->devices[i]);
     }
@@ -167,7 +167,7 @@ PJRT_Error* MPS_Client_Compile(PJRT_Client_Compile_Args* args) {
     // Get the program from the args
     std::string format_str(args->program->format, args->program->format_size);
     JAXPLUGIN_LOG_DEBUG(" Program format: %s (size=%zu)\n", format_str.c_str(),
-                  args->program->format_size);
+                        args->program->format_size);
     JAXPLUGIN_LOG_DEBUG(" Program code size: %zu\n", args->program->code_size);
 
     // Parse the StableHLO bytecode - returns ParsedModule with ownership of MLIR context
@@ -192,7 +192,8 @@ PJRT_Error* MPS_Client_Compile(PJRT_Client_Compile_Args* args) {
 
     // Log any unsupported operations found (for debugging)
     if (!parsed_module.unsupported_ops.empty()) {
-        JAXPLUGIN_LOG_DEBUG(" Found %zu unsupported operations:\n", parsed_module.unsupported_ops.size());
+        JAXPLUGIN_LOG_DEBUG(" Found %zu unsupported operations:\n",
+                            parsed_module.unsupported_ops.size());
         for (const auto& op : parsed_module.unsupported_ops) {
             JAXPLUGIN_LOG_DEBUG("   - %s\n", op.c_str());
         }
@@ -264,9 +265,9 @@ PJRT_Error* MPS_Client_BufferFromHostBuffer(PJRT_Client_BufferFromHostBuffer_Arg
             static std::once_flag warned;
             std::call_once(warned, [] {
                 std::fprintf(stderr,
-                    "[jax-mlx] WARNING: zero-sized tensor detected. "
-                    "Computation will fall back to a slow path. "
-                    "MLX Metal kernels do not support zero-element dimensions.\n");
+                             "[jax-mlx] WARNING: zero-sized tensor detected. "
+                             "Computation will fall back to a slow path. "
+                             "MLX Metal kernels do not support zero-element dimensions.\n");
             });
             break;
         }
@@ -296,21 +297,21 @@ PJRT_Error* MPS_Client_BufferFromHostBuffer(PJRT_Client_BufferFromHostBuffer_Arg
 PJRT_Error* MPS_Client_CreateViewOfDeviceBuffer(PJRT_Client_CreateViewOfDeviceBuffer_Args* args) {
     // Keep this as an explicit runtime error rather than a null API callback so
     // callers fail gracefully instead of segfaulting.
-    if (args) args->buffer = nullptr;
-    return MakeError("CreateViewOfDeviceBuffer not implemented",
-                     PJRT_Error_Code_UNIMPLEMENTED);
+    if (args)
+        args->buffer = nullptr;
+    return MakeError("CreateViewOfDeviceBuffer not implemented", PJRT_Error_Code_UNIMPLEMENTED);
 }
 
 PJRT_Error* MPS_Client_CreateUninitializedBuffer(PJRT_Client_CreateUninitializedBuffer_Args* args) {
-    if (args) args->buffer = nullptr;
-    return MakeError("CreateUninitializedBuffer not implemented",
-                     PJRT_Error_Code_UNIMPLEMENTED);
+    if (args)
+        args->buffer = nullptr;
+    return MakeError("CreateUninitializedBuffer not implemented", PJRT_Error_Code_UNIMPLEMENTED);
 }
 
 PJRT_Error* MPS_Client_CreateErrorBuffer(PJRT_Client_CreateErrorBuffer_Args* args) {
-    if (args) args->buffer = nullptr;
-    return MakeError("CreateErrorBuffer not implemented",
-                     PJRT_Error_Code_UNIMPLEMENTED);
+    if (args)
+        args->buffer = nullptr;
+    return MakeError("CreateErrorBuffer not implemented", PJRT_Error_Code_UNIMPLEMENTED);
 }
 
 // ============================================================================

@@ -100,9 +100,9 @@ ParsedModule parseStableHLOBytecode(const char* data, size_t size) {
     auto context = std::make_unique<mlir::MLIRContext>();
     registerDialects(*context);
 
-    auto buffer = llvm::MemoryBuffer::getMemBuffer(llvm::StringRef(data, size),
-                                                   "stablehlo_bytecode",
-                                                   /*RequiresNullTerminator=*/false);
+    auto buffer =
+        llvm::MemoryBuffer::getMemBuffer(llvm::StringRef(data, size), "stablehlo_bytecode",
+                                         /*RequiresNullTerminator=*/false);
 
     mlir::OwningOpRef<mlir::ModuleOp> moduleOp =
         mlir::stablehlo::deserializePortableArtifact(buffer->getBuffer(), context.get());

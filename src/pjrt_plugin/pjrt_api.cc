@@ -114,8 +114,7 @@ PJRT_Error* MPS_Client_Compile(PJRT_Client_Compile_Args* args);
 PJRT_Error* MPS_Client_DefaultDeviceAssignment(PJRT_Client_DefaultDeviceAssignment_Args* args);
 PJRT_Error* MPS_Client_BufferFromHostBuffer(PJRT_Client_BufferFromHostBuffer_Args* args);
 PJRT_Error* MPS_Client_CreateViewOfDeviceBuffer(PJRT_Client_CreateViewOfDeviceBuffer_Args* args);
-PJRT_Error* MPS_Client_CreateUninitializedBuffer(
-    PJRT_Client_CreateUninitializedBuffer_Args* args);
+PJRT_Error* MPS_Client_CreateUninitializedBuffer(PJRT_Client_CreateUninitializedBuffer_Args* args);
 PJRT_Error* MPS_Client_CreateErrorBuffer(PJRT_Client_CreateErrorBuffer_Args* args);
 
 // Device Description API (pjrt_device.cc)

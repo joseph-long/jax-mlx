@@ -8,7 +8,8 @@ namespace jax_mlx {
 
 std::unique_ptr<MlxClient> MlxClient::Create() {
     auto client = std::unique_ptr<MlxClient>(new MlxClient());
-    if (!client->Initialize()) return nullptr;
+    if (!client->Initialize())
+        return nullptr;
     return client;
 }
 
@@ -31,9 +32,8 @@ int MlxClient::addressable_device_count() const {
 }
 
 MlxDevice* MlxClient::device(int index) {
-    return (index >= 0 && index < static_cast<int>(devices_.size()))
-               ? devices_[index].get()
-               : nullptr;
+    return (index >= 0 && index < static_cast<int>(devices_.size())) ? devices_[index].get()
+                                                                     : nullptr;
 }
 
 MlxDevice* MlxClient::addressable_device(int index) {
@@ -42,7 +42,8 @@ MlxDevice* MlxClient::addressable_device(int index) {
 
 MlxDevice* MlxClient::LookupDevice(int device_id) {
     for (auto& d : devices_) {
-        if (d->id() == device_id) return d.get();
+        if (d->id() == device_id)
+            return d.get();
     }
     return nullptr;
 }
@@ -54,7 +55,7 @@ std::unique_ptr<MlxBuffer> MlxClient::BufferFromHostBuffer(
 }
 
 std::unique_ptr<MlxExecutable> MlxClient::CompileStableHLO(mps::ParsedModule module,
-                                                             MlxDevice* /*device*/) {
+                                                           MlxDevice* /*device*/) {
     return std::make_unique<MlxExecutable>(this, std::move(module));
 }
 

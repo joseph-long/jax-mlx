@@ -1,7 +1,7 @@
 #include "pjrt_plugin/mlx_buffer.h"
 
-#include <cstdlib>
 #include <cstddef>
+#include <cstdlib>
 #include <cstring>
 #include <numeric>
 #include <stdexcept>
@@ -14,14 +14,15 @@ namespace {
 
 std::vector<int64_t> NormalizeStridesToElements(const std::vector<int64_t>& dims,
                                                 const std::vector<int64_t>& raw_strides,
-                                                int64_t data_size_elems,
-                                                size_t elem_size) {
-    if (raw_strides.empty()) return raw_strides;
+                                                int64_t data_size_elems, size_t elem_size) {
+    if (raw_strides.empty())
+        return raw_strides;
 
     auto max_offset = [&](const std::vector<int64_t>& strides) {
         int64_t off = 0;
         for (size_t i = 0; i < dims.size(); ++i) {
-            if (dims[i] > 1) off += (dims[i] - 1) * std::abs(strides[i]);
+            if (dims[i] > 1)
+                off += (dims[i] - 1) * std::abs(strides[i]);
         }
         return off;
     };
@@ -29,7 +30,8 @@ std::vector<int64_t> NormalizeStridesToElements(const std::vector<int64_t>& dims
     // MLX exposes strides in element units. Some call paths may present byte
     // units; detect that and normalize.
     int64_t off = max_offset(raw_strides);
-    if (off < data_size_elems || elem_size <= 1) return raw_strides;
+    if (off < data_size_elems || elem_size <= 1)
+        return raw_strides;
 
     std::vector<int64_t> normalized = raw_strides;
     bool divisible = true;
@@ -40,38 +42,26 @@ std::vector<int64_t> NormalizeStridesToElements(const std::vector<int64_t>& dims
         }
         s /= static_cast<int64_t>(elem_size);
     }
-    if (!divisible) return raw_strides;
+    if (!divisible)
+        return raw_strides;
 
     return max_offset(normalized) < data_size_elems ? normalized : raw_strides;
 }
 
-void CopyStridedToContiguous(const uint8_t* src,
-                             uint8_t* dst,
-                             const std::vector<int64_t>& dims,
-                             const std::vector<int64_t>& strides_elems,
-                             size_t elem_size,
-                             size_t dim,
-                             int64_t src_index,
-                             size_t& dst_offset) {
+void CopyStridedToContiguous(const uint8_t* src, uint8_t* dst, const std::vector<int64_t>& dims,
+                             const std::vector<int64_t>& strides_elems, size_t elem_size,
+                             size_t dim, int64_t src_index, size_t& dst_offset) {
     if (dim == dims.size()) {
         auto* src_bytes = reinterpret_cast<const std::byte*>(src);
         std::ptrdiff_t byte_offset =
             static_cast<std::ptrdiff_t>(src_index) * static_cast<std::ptrdiff_t>(elem_size);
-        std::memcpy(dst + dst_offset,
-                    src_bytes + byte_offset,
-                    elem_size);
+        std::memcpy(dst + dst_offset, src_bytes + byte_offset, elem_size);
         dst_offset += elem_size;
         return;
     }
     for (int64_t i = 0; i < dims[dim]; ++i) {
-        CopyStridedToContiguous(src,
-                                dst,
-                                dims,
-                                strides_elems,
-                                elem_size,
-                                dim + 1,
-                                src_index + i * strides_elems[dim],
-                                dst_offset);
+        CopyStridedToContiguous(src, dst, dims, strides_elems, elem_size, dim + 1,
+                                src_index + i * strides_elems[dim], dst_offset);
     }
 }
 
@@ -84,8 +74,8 @@ MlxBuffer::MlxBuffer(MlxDevice* device, mlx::core::array array, int pjrt_dtype,
 MlxBuffer::~MlxBuffer() {}
 
 std::unique_ptr<MlxBuffer> MlxBuffer::FromHostBuffer(const void* data, int pjrt_dtype,
-                                                       const std::vector<int64_t>& dims,
-                                                       MlxDevice* device) {
+                                                     const std::vector<int64_t>& dims,
+                                                     MlxDevice* device) {
     mlx::core::Dtype mlx_dtype = PjrtDtypeToMlx(pjrt_dtype);
 
     // Convert dims to MLX Shape (int32_t)
@@ -96,7 +86,8 @@ std::unique_ptr<MlxBuffer> MlxBuffer::FromHostBuffer(const void* data, int pjrt_
 
     // Compute total byte count
     int64_t nelems = 1;
-    for (int64_t d : dims) nelems *= d;
+    for (int64_t d : dims)
+        nelems *= d;
     size_t nbytes = static_cast<size_t>(nelems) * mlx_dtype.size();
 
     // Copy data into a heap buffer that MLX will own via the deleter
@@ -106,14 +97,14 @@ std::unique_ptr<MlxBuffer> MlxBuffer::FromHostBuffer(const void* data, int pjrt_
     }
 
     // Construct the MLX array, transferring ownership of data_copy
-    auto arr = mlx::core::array(data_copy, mlx_shape, mlx_dtype,
-                                [](void* p) { std::free(p); });
+    auto arr = mlx::core::array(data_copy, mlx_shape, mlx_dtype, [](void* p) { std::free(p); });
 
     return std::make_unique<MlxBuffer>(device, std::move(arr), pjrt_dtype, dims);
 }
 
 int64_t MlxBuffer::element_count() const {
-    if (dims_.empty()) return 1;
+    if (dims_.empty())
+        return 1;
     return std::accumulate(dims_.begin(), dims_.end(), int64_t{1},
                            [](int64_t a, int64_t b) { return a * b; });
 }
@@ -131,24 +122,19 @@ void MlxBuffer::ToHostBuffer(void* dst, std::function<void()> on_done) {
         } else {
             std::vector<int64_t> raw_strides;
             raw_strides.reserve(array_.strides().size());
-            for (auto s : array_.strides()) raw_strides.push_back(static_cast<int64_t>(s));
+            for (auto s : array_.strides())
+                raw_strides.push_back(static_cast<int64_t>(s));
 
-            auto strides = NormalizeStridesToElements(dims_,
-                                                      raw_strides,
+            auto strides = NormalizeStridesToElements(dims_, raw_strides,
                                                       static_cast<int64_t>(array_.data_size()),
                                                       DtypeByteSize(pjrt_dtype_));
             size_t dst_offset = 0;
-            CopyStridedToContiguous(array_.data<uint8_t>(),
-                                    static_cast<uint8_t*>(dst),
-                                    dims_,
-                                    strides,
-                                    DtypeByteSize(pjrt_dtype_),
-                                    0,
-                                    0,
-                                    dst_offset);
+            CopyStridedToContiguous(array_.data<uint8_t>(), static_cast<uint8_t*>(dst), dims_,
+                                    strides, DtypeByteSize(pjrt_dtype_), 0, 0, dst_offset);
         }
     }
-    if (on_done) on_done();
+    if (on_done)
+        on_done();
 }
 
 void MlxBuffer::Delete() {

@@ -21,9 +21,15 @@ public:
     static std::unique_ptr<MlxClient> Create();
     ~MlxClient();
 
-    const std::string& platform_name() const { return platform_name_; }
-    const std::string& platform_version() const { return platform_version_; }
-    int process_index() const { return 0; }
+    const std::string& platform_name() const {
+        return platform_name_;
+    }
+    const std::string& platform_version() const {
+        return platform_version_;
+    }
+    int process_index() const {
+        return 0;
+    }
 
     int device_count() const;
     int addressable_device_count() const;
@@ -31,15 +37,12 @@ public:
     MlxDevice* addressable_device(int index);
     MlxDevice* LookupDevice(int device_id);
 
-    std::unique_ptr<MlxBuffer> BufferFromHostBuffer(
-        const void* data,
-        int pjrt_dtype,
-        const std::vector<int64_t>& dims,
-        const std::vector<int64_t>& byte_strides,
-        MlxDevice* device);
+    std::unique_ptr<MlxBuffer> BufferFromHostBuffer(const void* data, int pjrt_dtype,
+                                                    const std::vector<int64_t>& dims,
+                                                    const std::vector<int64_t>& byte_strides,
+                                                    MlxDevice* device);
 
-    std::unique_ptr<MlxExecutable> CompileStableHLO(mps::ParsedModule module,
-                                                     MlxDevice* device);
+    std::unique_ptr<MlxExecutable> CompileStableHLO(mps::ParsedModule module, MlxDevice* device);
 
 private:
     MlxClient();
