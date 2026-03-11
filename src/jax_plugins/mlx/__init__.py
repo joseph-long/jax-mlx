@@ -157,7 +157,7 @@ def initialize():
     try:
         xb.register_plugin(
             "mlx",
-            priority=-1,  # Below CPU (0) so CPU is the default device during dev stub phase
+            priority=1,  # Above CPU (0) so MLX is the default backend when available
             library_path=library_path,
             options=None,
         )
