@@ -43,6 +43,31 @@ The plugin registers itself with JAX automatically and is enabled by default. Se
 
 jax-mlx is built against the StableHLO bytecode format matching jaxlib 0.9.x. Using a different jaxlib version will likely cause deserialization failures at JIT compile time. See [Version Pinning](#version-pinning) for details.
 
+### Install From GitHub Actions Wheel Artifact
+
+GitHub Actions builds a wheel artifact (`wheel`) on macOS runners for each CI run.
+If you want to install a prebuilt wheel (instead of building locally or using PyPI),
+download the artifact and install it directly.
+
+Using GitHub CLI:
+
+```bash
+# 1) Find a recent successful run of build.yml
+gh run list --workflow build.yml --branch main
+
+# 2) Download the wheel artifact from a specific run id
+gh run download <RUN_ID> -n wheel -D /tmp/jax-mlx-wheel
+
+# 3) Install the wheel
+uv pip install /tmp/jax-mlx-wheel/*.whl
+```
+
+Using the GitHub UI:
+1. Open the `jax-mlx` Actions tab.
+2. Open a successful `jax-mlx` workflow run.
+3. Download the `wheel` artifact.
+4. Install with `uv pip install <path-to-downloaded-wheel>.whl`.
+
 ## Architecture
 
 This project implements a [PJRT plugin](https://openxla.org/xla/pjrt) to dispatch StableHLO operations to the C++ MLX implementations.
