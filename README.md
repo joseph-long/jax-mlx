@@ -116,10 +116,11 @@ jax-mlx/
 │   ├── jax_plugins/mlx/         # Python JAX plugin
 │   ├── pjrt_plugin/             # C++ PJRT implementation
 │   │   ├── pjrt_api.cc          # PJRT C API entry point
-│   │   ├── mlx_client.h/mm      # Metal client management
-│   │   ├── mlx_executable.h/mm  # StableHLO compilation & execution
-│   │   └── ops/                 # Operation implementations
+│   │   ├── pjrt_*.cc            # PJRT client/device/buffer/executable plumbing
+│   │   ├── mlx_*.cc/.h          # MLX-backed runtime objects
+│   │   └── stablehlo_parser.cc  # StableHLO bytecode parsing
 │   └── proto/                   # Protobuf definitions
+├── scripts/                     # test/benchmark helpers
 └── tests/
 ```
 
@@ -129,10 +130,10 @@ jax-mlx/
 
 PJRT (Portable JAX Runtime) is JAX's abstraction for hardware backends. The plugin implements:
 
-- `PJRT_Client_Create` - Initialize Metal device
-- `PJRT_Client_Compile` - Parse HLO and prepare MLXGraph
-- `PJRT_Client_BufferFromHostBuffer` - Transfer data to GPU
-- `PJRT_LoadedExecutable_Execute` - Run computation on GPU
+- `PJRT_Client_Create` - Initialize the MLX client/device model
+- `PJRT_Client_Compile` - Parse StableHLO and build an executable
+- `PJRT_Client_BufferFromHostBuffer` - Wrap host data in MLX-backed buffers
+- `PJRT_LoadedExecutable_Execute` - Interpret/execute StableHLO via MLX ops
 
 ## Testing
 
