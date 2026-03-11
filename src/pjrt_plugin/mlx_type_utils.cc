@@ -31,7 +31,6 @@ mlx::core::Dtype PjrtDtypeToMlx(int pjrt_dtype) {
         case PJRT_Buffer_Type_PRED:
             return mlx::core::bool_;
         case PJRT_Buffer_Type_C64:
-            return mlx::core::complex64;
         // MLX has no float64 complex — fall back to complex64
         case PJRT_Buffer_Type_C128:
             return mlx::core::complex64;

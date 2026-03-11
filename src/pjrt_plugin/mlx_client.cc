@@ -13,8 +13,8 @@ std::unique_ptr<MlxClient> MlxClient::Create() {
     return client;
 }
 
-MlxClient::MlxClient() {}
-MlxClient::~MlxClient() {}
+MlxClient::MlxClient() = default;
+MlxClient::~MlxClient() = default;
 
 bool MlxClient::Initialize() {
     platform_name_ = "mlx";

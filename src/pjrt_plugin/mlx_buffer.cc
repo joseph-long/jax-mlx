@@ -20,9 +20,9 @@ std::vector<int64_t> NormalizeStridesToElements(const std::vector<int64_t>& dims
 
     auto max_offset = [&](const std::vector<int64_t>& strides) {
         int64_t off = 0;
-        for (size_t i = 0; i < dims.size(); ++i) {
-            if (dims[i] > 1)
-                off += (dims[i] - 1) * std::abs(strides[i]);
+        for (long long dim : dims) {
+            if (dim > 1)
+                off += (dim - 1) * std::abs(dim);
         }
         return off;
     };
@@ -52,7 +52,7 @@ void CopyStridedToContiguous(const uint8_t* src, uint8_t* dst, const std::vector
                              const std::vector<int64_t>& strides_elems, size_t elem_size,
                              size_t dim, int64_t src_index, size_t& dst_offset) {
     if (dim == dims.size()) {
-        auto* src_bytes = reinterpret_cast<const std::byte*>(src);
+        const auto* src_bytes = reinterpret_cast<const std::byte*>(src);
         std::ptrdiff_t byte_offset =
             static_cast<std::ptrdiff_t>(src_index) * static_cast<std::ptrdiff_t>(elem_size);
         std::memcpy(dst + dst_offset, src_bytes + byte_offset, elem_size);
@@ -71,7 +71,7 @@ MlxBuffer::MlxBuffer(MlxDevice* device, mlx::core::array array, int pjrt_dtype,
                      const std::vector<int64_t>& dims)
     : device_(device), array_(std::move(array)), pjrt_dtype_(pjrt_dtype), dims_(dims) {}
 
-MlxBuffer::~MlxBuffer() {}
+MlxBuffer::~MlxBuffer() = default;
 
 std::unique_ptr<MlxBuffer> MlxBuffer::FromHostBuffer(const void* data, int pjrt_dtype,
                                                      const std::vector<int64_t>& dims,

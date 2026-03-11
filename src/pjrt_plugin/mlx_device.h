@@ -9,7 +9,7 @@ class MlxClient;
 // Represents a single MLX device (GPU or CPU)
 class MlxDevice {
 public:
-    MlxDevice(MlxClient* client, int id, const std::string& name);
+    MlxDevice(MlxClient* client, int id, std::string name);
     ~MlxDevice();
 
     int id() const {

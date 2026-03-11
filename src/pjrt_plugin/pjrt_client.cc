@@ -260,8 +260,8 @@ PJRT_Error* MPS_Client_BufferFromHostBuffer(PJRT_Client_BufferFromHostBuffer_Arg
     // Warn once when a zero-sized tensor is encountered, but allow it through.
     // The interpreter short-circuits ops on zero-element inputs rather than
     // dispatching Metal kernels, which cannot handle zero-sized tensors.
-    for (size_t i = 0; i < dims.size(); i++) {
-        if (dims[i] == 0) {
+    for (long long dim : dims) {
+        if (dim == 0) {
             static std::once_flag warned;
             std::call_once(warned, [] {
                 std::fprintf(stderr,
