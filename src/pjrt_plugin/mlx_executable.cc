@@ -1700,7 +1700,8 @@ static InterpResult interpretFunction(mlir::func::FuncOp func, mlir::ModuleOp mo
     return interpretBlock(entry, module, std::move(vm));
 }
 
-static InterpResult interpretBlock(mlir::Block& entry, mlir::ModuleOp module,  // NOLINT(readability-function-size)
+static InterpResult interpretBlock(mlir::Block& entry,
+                                   mlir::ModuleOp module,  // NOLINT(readability-function-size)
                                    ValueMap vm) {
     std::vector<mlxc::array> outputs;
     bool traceOps = std::getenv("JAX_MLX_TRACE_OPS") != nullptr;
@@ -1894,7 +1895,7 @@ static InterpResult interpretBlock(mlir::Block& entry, mlir::ModuleOp module,  /
         } else if (opName == "stablehlo.popcnt") {
             set(0, popcnt(operand(0)));
 
-        // --- CHLO unary ops ---
+            // --- CHLO unary ops ---
         } else if (opName == "chlo.asin") {
             set(0, mlxc::arcsin(operand(0)));
         } else if (opName == "chlo.acos") {
@@ -1918,7 +1919,7 @@ static InterpResult interpretBlock(mlir::Block& entry, mlir::ModuleOp module,  /
         } else if (opName == "chlo.lgamma") {
             set(0, HandleLgamma(operand(0)));
 
-        // --- Binary arithmetic ---
+            // --- Binary arithmetic ---
         } else if (opName == "stablehlo.add") {
             set(0, mlxc::add(operand(0), operand(1)));
         } else if (opName == "stablehlo.subtract") {
@@ -1987,10 +1988,8 @@ static InterpResult interpretBlock(mlir::Block& entry, mlir::ModuleOp module,  /
                 // f32: +subnormal = 0x00000001, -subnormal = 0x80000001
                 // f64: +subnormal = 0x0000000000000001, -subnormal = 0x8000000000000001
                 auto min_pos = mlxc::full(x_bits.shape(), 1, itype);
-                auto min_neg =
-                    isF32
-                        ? mlxc::full(x_bits.shape(), (-2147483647), itype)
-                        : mlxc::full(x_bits.shape(), -9223372036854775807LL, itype);
+                auto min_neg = isF32 ? mlxc::full(x_bits.shape(), (-2147483647), itype)
+                                     : mlxc::full(x_bits.shape(), -9223372036854775807LL, itype);
                 auto min_sub = mlxc::where(y_pos, min_pos, min_neg);
                 auto res_bits = mlxc::where(x_is_0, min_sub, nz_bits);
                 res_bits = mlxc::where(x_eq_y, y_bits, res_bits);
