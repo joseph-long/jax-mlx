@@ -1,10 +1,9 @@
 import numpy
-import pytest
 from jax import numpy as jnp
 from jax import random
 from jax.scipy.linalg import solve_triangular
 
-from .util import OperationTestConfig, xfail_match
+from .util import OperationTestConfig
 
 
 def _random_posdef(key, n: int, batch_shape: tuple[int, ...] = ()):

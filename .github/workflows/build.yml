@@ -110,6 +110,11 @@ jobs:
           key: mlir-stablehlo-v3-macos14-${{ hashFiles('scripts/setup_deps.sh') }}
           fail-on-cache-miss: true
 
+      - name: Install project dependencies
+        run: uv sync --all-groups --no-install-project
+        env:
+          CMAKE_PREFIX_PATH: ${{ github.workspace }}/.jax-mlx-deps
+
       - name: Install llvm
         uses: tecolicom/actions-use-homebrew-tools@v1
         with:

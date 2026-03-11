@@ -5,11 +5,10 @@ the dot_general batch dimension handling.
 """
 
 import numpy
-import pytest
 from jax import lax, random
 from jax import numpy as jnp
 
-from .util import OperationTestConfig, xfail_match
+from .util import OperationTestConfig
 
 
 def make_matmul_op_configs():

@@ -161,7 +161,9 @@ def test_unsupported_op_error_message(jit: bool) -> None:
     with jax.default_device(device):
         try:
             # ApproxTopK lowers to a custom call that is currently unsupported.
-            func = lambda x: jax.lax.approx_max_k(x, 1)
+            def func(x):
+                return jax.lax.approx_max_k(x, 1)
+
             if jit:
                 func = jax.jit(func)
             func(jnp.array([1.0, 2.0, 3.0], dtype=jnp.float32))
